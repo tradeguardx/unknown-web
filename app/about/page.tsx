@@ -1,4 +1,18 @@
 import Link from "next/link";
+import type { Metadata } from "next";
+import { SITE_URL } from "@/lib/site";
+
+export const metadata: Metadata = {
+  title: "about",
+  description:
+    "About unknown.chat — a 'talk to strangers' app where the strangers are AI personas. No accounts, no memory, fresh persona each session.",
+  alternates: { canonical: `${SITE_URL}/about` },
+  openGraph: {
+    title: "about · unknown.chat",
+    description: "How unknown.chat works — AI personas, no memory, no accounts.",
+    url: `${SITE_URL}/about`,
+  },
+};
 
 export default function About() {
   return (
