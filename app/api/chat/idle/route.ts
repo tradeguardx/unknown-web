@@ -7,9 +7,8 @@
 
 import { NextResponse } from "next/server";
 import { appendMessage, endSession, getSession } from "@/lib/sessions";
-import { buildSystemPrompt } from "@/lib/prompts";
 import { parseReply, type PacedMessage } from "@/lib/replyParser";
-import { getAnthropic, MODEL, cachedSystem } from "@/lib/anthropic";
+import { callLLM } from "@/lib/llmProvider";
 import { clientIp, rateLimit } from "@/lib/rateLimit";
 
 export const runtime = "nodejs";
@@ -47,25 +46,27 @@ export async function POST(req: Request) {
   const seconds = Math.round(silenceMs / 1000);
   const idleMarker = `[the user has been silent for ${seconds}s]`;
 
-  const system = buildSystemPrompt(session.persona, session.prefs);
-  const claudeMessages = [
+  const llmMessages: Array<{ role: "user" | "assistant"; content: string }> = [
     ...session.messages.map(m => ({ role: m.role, content: m.content })),
     { role: "user" as const, content: idleMarker },
   ];
 
   let raw: string;
   try {
-    const resp = await getAnthropic().messages.create({
-      model: MODEL,
-      max_tokens: 128,
-      system: cachedSystem(system),
-      messages: claudeMessages,
+    raw = await callLLM({
+      persona: session.persona,
+      prefs: session.prefs,
+      messages: llmMessages,
+      maxTokens: 128,
     });
-    const block = resp.content.find(b => b.type === "text");
-    raw = block && block.type === "text" ? block.text : "";
   } catch (err) {
-    console.error("anthropic error", err);
-    return NextResponse.json({ error: "upstream error" }, { status: 502 });
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[llm error]", msg);
+    const body =
+      process.env.NODE_ENV === "development"
+        ? { error: "upstream error", detail: msg }
+        : { error: "upstream error" };
+    return NextResponse.json(body, { status: 502 });
   }
 
   const parsed = parseReply(session.persona, raw);

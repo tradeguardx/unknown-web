@@ -61,6 +61,12 @@ export function ChatWindow() {
   const [notifyPerm, setNotifyPerm] = useState<NotificationPermission>("default");
   const [notifyPref, setNotifyPref] = useState(false);
   const notifyPrefRef = useRef(false);
+  // `mounted` flips to true after first client render — used to gate browser-only
+  // UI (like the bell button) so SSR and initial client paint match. Without this
+  // we hit React's "Hydration failed because the server rendered HTML didn't match"
+  // since `"Notification" in window` is undefined on the server.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
 
   const timeoutsRef = useRef<number[]>([]);
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -150,7 +156,7 @@ export function ChatWindow() {
   }
 
   const notifyActive = notifyPerm === "granted" && notifyPref;
-  const notifyShow = typeof window !== "undefined" && "Notification" in window;
+  const notifyShow = mounted && typeof window !== "undefined" && "Notification" in window;
   const notifyTitle =
     notifyPerm === "denied"
       ? "notifications blocked in browser settings"
