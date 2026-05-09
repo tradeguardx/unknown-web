@@ -10,6 +10,7 @@ import { appendMessage, endSession, getSession } from "@/lib/sessions";
 import { buildSystemPrompt } from "@/lib/prompts";
 import { parseReply, type PacedMessage } from "@/lib/replyParser";
 import { getAnthropic, MODEL } from "@/lib/anthropic";
+import { clientIp, rateLimit } from "@/lib/rateLimit";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -20,6 +21,16 @@ interface IdleBody {
 }
 
 export async function POST(req: Request) {
+  // 30 idle pokes per minute per IP. Should never happen in normal use (client
+  // only fires every 45–90s), so this is just an abuse cap.
+  const limit = rateLimit(clientIp(req), 30, 60_000);
+  if (!limit.ok) {
+    return NextResponse.json(
+      { error: "rate limit", retryAfterMs: limit.retryAfterMs },
+      { status: 429, headers: { "Retry-After": Math.ceil(limit.retryAfterMs / 1000).toString() } },
+    );
+  }
+
   const body = (await req.json().catch(() => ({}))) as IdleBody;
   const { sessionId, silenceMs } = body;
 

@@ -8,6 +8,7 @@ import { createSession, appendMessage } from "@/lib/sessions";
 import { pickFirstMessage } from "@/lib/persona";
 import { computePacing } from "@/lib/pacing";
 import { intentRequiresAgeGate, type UserPrefs } from "@/lib/prefs";
+import { clientIp, rateLimit } from "@/lib/rateLimit";
 
 export const runtime = "nodejs";
 
@@ -16,6 +17,15 @@ interface StartBody {
 }
 
 export async function POST(req: Request) {
+  // 20 new chats per minute per IP — generous for human use, blocks bots.
+  const limit = rateLimit(clientIp(req), 20, 60_000);
+  if (!limit.ok) {
+    return NextResponse.json(
+      { error: "rate limit", retryAfterMs: limit.retryAfterMs },
+      { status: 429, headers: { "Retry-After": Math.ceil(limit.retryAfterMs / 1000).toString() } },
+    );
+  }
+
   const body = (await req.json().catch(() => ({}))) as StartBody;
 
   // Every chat requires the user to have acknowledged that strangers are AI personas.

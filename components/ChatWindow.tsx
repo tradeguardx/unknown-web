@@ -254,6 +254,10 @@ export function ChatWindow() {
         connect();
         return;
       }
+      if (res.status === 429) {
+        pushMsg({ role: "system", text: "you're sending too fast. slow down a bit and try again." });
+        return;
+      }
       if (!res.ok) {
         pushMsg({ role: "system", text: "something glitched. try sending again." });
         return;

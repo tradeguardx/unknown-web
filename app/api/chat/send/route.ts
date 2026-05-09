@@ -9,6 +9,7 @@ import { appendMessage, endSession, getSession } from "@/lib/sessions";
 import { buildSystemPrompt } from "@/lib/prompts";
 import { parseReply, type PacedMessage } from "@/lib/replyParser";
 import { getAnthropic, MODEL } from "@/lib/anthropic";
+import { clientIp, rateLimit } from "@/lib/rateLimit";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -19,6 +20,16 @@ interface SendBody {
 }
 
 export async function POST(req: Request) {
+  // 60 messages per minute per IP — generous (1/sec average), blocks abusive loops.
+  // This is the main cost-control gate since each call hits the Anthropic API.
+  const limit = rateLimit(clientIp(req), 60, 60_000);
+  if (!limit.ok) {
+    return NextResponse.json(
+      { error: "rate limit", retryAfterMs: limit.retryAfterMs },
+      { status: 429, headers: { "Retry-After": Math.ceil(limit.retryAfterMs / 1000).toString() } },
+    );
+  }
+
   const body = (await req.json().catch(() => ({}))) as SendBody;
   const { sessionId, message } = body;
 
