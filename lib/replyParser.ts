@@ -46,7 +46,10 @@ export function parseReply(persona: Persona, raw: string): ParsedReply {
 
   // Split on newlines, but cap at 3 messages and drop empties.
   // Some models also use double-newlines or weird spacing — normalize.
+  // Also: Claude occasionally emits the LITERAL two-character sequence "\n"
+  // (backslash + n) instead of a real newline — convert those before splitting.
   const chunks = cleaned
+    .replace(/\\n/g, "\n")
     .split(/\n+/)
     .map(s => s.trim())
     .filter(Boolean)

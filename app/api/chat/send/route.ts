@@ -8,8 +8,9 @@ import { NextResponse } from "next/server";
 import { appendMessage, endSession, getSession } from "@/lib/sessions";
 import { buildSystemPrompt } from "@/lib/prompts";
 import { parseReply, type PacedMessage } from "@/lib/replyParser";
-import { getAnthropic, MODEL } from "@/lib/anthropic";
+import { getAnthropic, MODEL, cachedSystem } from "@/lib/anthropic";
 import { clientIp, rateLimit } from "@/lib/rateLimit";
+import { checkProhibitedContent } from "@/lib/contentFilter";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -53,6 +54,26 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "message too long" }, { status: 413 });
   }
 
+  // Defense-in-depth content filter: refuse messages with CSAM-coded patterns
+  // *before* they reach the model. End the session immediately on a hit.
+  const filter = checkProhibitedContent(message, session.prefs?.intent);
+  if (filter.blocked) {
+    console.error(
+      "[content-filter] blocked message",
+      JSON.stringify({
+        sessionId,
+        reason: filter.reason,
+        intent: session.prefs?.intent,
+        sample: message.slice(0, 80),
+      }),
+    );
+    endSession(sessionId, "policy");
+    return NextResponse.json(
+      { error: "content policy violation", reason: "policy", code: "content_policy" },
+      { status: 451 },
+    );
+  }
+
   appendMessage(sessionId, { role: "user", content: message, ts: Date.now() });
 
   // Random "stranger ghosted before reading" outcome — small chance the user just gets dropped.
@@ -79,7 +100,7 @@ export async function POST(req: Request) {
     const resp = await getAnthropic().messages.create({
       model: MODEL,
       max_tokens: 256,
-      system,
+      system: cachedSystem(system),
       messages: claudeMessages,
     });
     const block = resp.content.find(b => b.type === "text");

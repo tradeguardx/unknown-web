@@ -9,16 +9,25 @@ import { pickFirstMessage } from "@/lib/persona";
 import { computePacing } from "@/lib/pacing";
 import { intentRequiresAgeGate, type UserPrefs } from "@/lib/prefs";
 import { clientIp, rateLimit } from "@/lib/rateLimit";
+import { isCaptchaEnabled, verifyTurnstileToken } from "@/lib/turnstile";
+import {
+  captchaRequired,
+  recordChatStart,
+  resetAfterCaptcha,
+} from "@/lib/captchaCounter";
 
 export const runtime = "nodejs";
 
 interface StartBody {
   prefs?: UserPrefs;
+  captchaToken?: string;
 }
 
 export async function POST(req: Request) {
+  const ip = clientIp(req);
+
   // 20 new chats per minute per IP — generous for human use, blocks bots.
-  const limit = rateLimit(clientIp(req), 20, 60_000);
+  const limit = rateLimit(ip, 20, 60_000);
   if (!limit.ok) {
     return NextResponse.json(
       { error: "rate limit", retryAfterMs: limit.retryAfterMs },
@@ -47,6 +56,28 @@ export async function POST(req: Request) {
       { status: 403 },
     );
   }
+
+  // CAPTCHA gating: every Nth chat per IP demands a Turnstile token.
+  // Disabled if TURNSTILE_SECRET_KEY isn't configured — safe for local dev.
+  if (isCaptchaEnabled() && captchaRequired(ip)) {
+    const token = body.captchaToken;
+    if (!token) {
+      return NextResponse.json(
+        { error: "captcha required", code: "captcha_required" },
+        { status: 403 },
+      );
+    }
+    const ok = await verifyTurnstileToken(token, ip);
+    if (!ok) {
+      return NextResponse.json(
+        { error: "captcha verification failed", code: "captcha_failed" },
+        { status: 403 },
+      );
+    }
+    resetAfterCaptcha(ip);
+  }
+
+  recordChatStart(ip);
 
   const session = createSession(body.prefs);
 

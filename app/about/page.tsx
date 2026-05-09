@@ -1,5 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { SiteHeader } from "@/components/SiteHeader";
+import { SiteFooter } from "@/components/SiteFooter";
 import { SITE_URL } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -16,39 +18,59 @@ export const metadata: Metadata = {
 
 export default function About() {
   return (
-    <main className="min-h-screen px-6 py-12">
-      <div className="max-w-xl mx-auto">
-        <Link href="/" className="text-sm text-neutral-500 hover:text-neutral-800">← back</Link>
-        <h1 className="mt-6 text-3xl font-bold">about unknown.chat</h1>
+    <div className="min-h-screen flex flex-col">
+      <SiteHeader />
 
-        <section className="mt-6 space-y-4 text-neutral-700 leading-relaxed">
-          <p>
-            unknown.chat is a "talk to strangers" app where the strangers are AI personas.
-            Each connection generates a fresh persona — a random country, age, mood, way of
-            typing, and quirks — so every chat feels different.
+      <main className="flex-1">
+        <div className="max-w-3xl mx-auto px-4 py-10">
+          <p className="text-xs text-neutral-500">
+            <Link href="/" className="hover:text-neutral-900">← back</Link>
           </p>
-          <p>
-            We disclose that the strangers are AI here and during onboarding, and we don't
-            try to deceive you about that. <em>Inside</em> the chat, however, the persona
-            stays in character — that's the point. If you ask "are you a bot?" the persona
-            will react like a person would: laugh, deny it, get offended, or ignore you.
-          </p>
-          <p>
-            <strong>No memory across chats.</strong> When you skip or the stranger leaves,
-            the persona is gone. We don't keep a profile of you.
-          </p>
-          <p>
-            Be kind, don't share personal info, and don't expect anything you say here to
-            mean anything tomorrow.
-          </p>
-        </section>
+          <h1 className="mt-4 text-3xl font-bold tracking-tight">about unknown.chat</h1>
 
-        <h2 className="mt-10 text-xl font-semibold">tech</h2>
-        <p className="mt-2 text-neutral-700">
-          Built with Next.js and Anthropic's Claude. The personas you talk to are generated
-          per-session with a system prompt and a small bit of pacing logic.
-        </p>
-      </div>
-    </main>
+          <section className="mt-6 space-y-4 text-neutral-700 leading-relaxed">
+            <p>
+              unknown.chat is a "talk to strangers" app where the strangers are AI personas.
+              Each connection generates a fresh persona — a random country, age, mood, way of
+              typing, and quirks — so every chat feels different.
+            </p>
+            <p>
+              We disclose that the strangers are AI here and during onboarding, and we don't
+              try to deceive you about that. <em>Inside</em> the chat, however, the persona
+              stays in character — that's the point. If you ask "are you a bot?" the persona
+              will react like a person would: laugh, deny it, get offended, or ignore you.
+            </p>
+            <p>
+              <strong>No memory across chats.</strong> When you skip or the stranger leaves,
+              the persona is gone. We don't keep a profile of you.
+            </p>
+            <p>
+              Be kind, don't share personal info, and don't expect anything you say here to
+              mean anything tomorrow.
+            </p>
+          </section>
+
+          <h2 className="mt-10 text-xl font-semibold">tech</h2>
+          <p className="mt-2 text-neutral-700">
+            Built with Next.js and Anthropic's Claude. The personas you talk to are generated
+            per-session with a system prompt and a small bit of pacing logic.
+          </p>
+
+          <h2 className="mt-10 text-xl font-semibold">contact</h2>
+          <p className="mt-2 text-neutral-700">
+            For privacy questions, abuse reports, DMCA notices, or anything else — reach out
+            via the contact details on this page (TBD: replace with your preferred contact
+            method, e.g. an email address or a typeform link).
+          </p>
+
+          <div className="mt-10 text-sm text-neutral-500">
+            See also: <Link href="/terms" className="underline hover:text-neutral-900">terms of use</Link>{" "}
+            · <Link href="/privacy" className="underline hover:text-neutral-900">privacy policy</Link>.
+          </div>
+        </div>
+      </main>
+
+      <SiteFooter />
+    </div>
   );
 }

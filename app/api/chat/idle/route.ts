@@ -9,7 +9,7 @@ import { NextResponse } from "next/server";
 import { appendMessage, endSession, getSession } from "@/lib/sessions";
 import { buildSystemPrompt } from "@/lib/prompts";
 import { parseReply, type PacedMessage } from "@/lib/replyParser";
-import { getAnthropic, MODEL } from "@/lib/anthropic";
+import { getAnthropic, MODEL, cachedSystem } from "@/lib/anthropic";
 import { clientIp, rateLimit } from "@/lib/rateLimit";
 
 export const runtime = "nodejs";
@@ -58,7 +58,7 @@ export async function POST(req: Request) {
     const resp = await getAnthropic().messages.create({
       model: MODEL,
       max_tokens: 128,
-      system,
+      system: cachedSystem(system),
       messages: claudeMessages,
     });
     const block = resp.content.find(b => b.type === "text");

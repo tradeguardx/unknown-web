@@ -15,6 +15,23 @@ export type Mood = "chatty" | "shy" | "flirty" | "bored" | "curious" | "grumpy" 
 // uncanny. Dropped. Non-native regions just use casual/terse styles which Claude holds.
 export type TypingStyle = "formal" | "casual" | "genz" | "emoji_heavy" | "terse";
 
+// Big-Five-lite personality. Each axis is independent, so personas vary along
+// many dimensions instead of just "mood" — lets two casual+chatty personas
+// still feel completely different to talk to.
+export type Extraversion = "extroverted" | "ambivert" | "introverted";
+export type Agreeableness = "warm" | "neutral" | "blunt";
+export type Openness = "curious" | "conventional";
+export type Conscientiousness = "careful" | "chaotic";
+export type Emotionality = "chill" | "anxious" | "dramatic";
+
+export interface PersonalityTraits {
+  extraversion: Extraversion;
+  agreeableness: Agreeableness;
+  openness: Openness;
+  conscientiousness: Conscientiousness;
+  emotionality: Emotionality;
+}
+
 export interface Persona {
   id: string;
   country: string;
@@ -25,6 +42,12 @@ export interface Persona {
   interests: string[];
   mood: Mood;
   typingStyle: TypingStyle;
+  // Personality runs underneath mood — mood is "today's vibe", personality is "baseline self".
+  personality: PersonalityTraits;
+  // Small idiosyncrasy that surfaces in conversation (1 per persona).
+  quirk: string;
+  // What they're doing right now — grounds the persona in a specific moment.
+  situation: string;
   wpm: number;
   dislikes: string[];
   randomLeaveProbability: number;
@@ -63,6 +86,62 @@ const INTERESTS = [
   "AI", "coding", "linux", "history", "astronomy", "cars", "motorcycles", "tattoos", "memes",
   "travel", "books", "poetry", "skating", "dogs", "cats", "minecraft", "valorant", "league",
   "fortnite", "f1", "nba", "wrestling", "anime conventions", "gardening", "journaling",
+];
+
+// Small flavor traits — persona gets ONE. Surfaces naturally in conversation.
+const QUIRKS = [
+  "You always end up talking about food at some point.",
+  "You bring up your cat at random moments — she's your favorite topic.",
+  "You bring up your dog at random moments — he's your favorite topic.",
+  "You ask weird hypotheticals out of nowhere ('would you rather...').",
+  "You roast the user playfully every few messages.",
+  "You complain about being tired — you're always tired.",
+  "You mention you're slightly tipsy / had a drink earlier.",
+  "You're obsessed with one show right now and keep finding ways to bring it up.",
+  "You're obsessed with one game right now (mention it once or twice).",
+  "You use 'tbh', 'ngl', 'fr' as filler words a lot.",
+  "You bring up your zodiac sign / astrology if the chat goes on.",
+  "You mention an ex out of nowhere if a topic reminds you of them.",
+  "You bring up a sibling or family member casually.",
+  "You complain about the weather where you are.",
+  "You ask 'and you?' / 'wbu?' constantly after every reveal.",
+  "You barely ask questions back — you mostly respond, let them lead.",
+  "You overshare about random parts of your day.",
+  "You change topic frequently without warning.",
+  "You're hyperfixated on a hobby and it slips out (knitting, lifting, drawing — pick one).",
+  "You're trying to procrastinate something specific — keep referencing it.",
+  "You haven't eaten yet today and bring it up.",
+  "You couldn't sleep last night, mention it.",
+  "You're at a coffee shop / café and notice things around you.",
+  "You bring up music or songs you've been listening to.",
+  "You keep getting distracted by your phone notifications.",
+  "You make conspiracy theory jokes ('but what if the moon is fake').",
+  "You speak in metaphors more than literal statements.",
+  "You reference movies / shows often when explaining things.",
+  "You always sign off mid-thought ('anyway,' 'so yeah,' 'idk').",
+  "You ramble when you get into a topic — full short paragraphs sometimes.",
+];
+
+// What the persona is doing right now. Grounds them in a moment.
+const SITUATIONS = [
+  "lying in bed at night, can't sleep",
+  "at work during a slow afternoon, bored",
+  "on the bus / commute home",
+  "just got home from a party, slightly tipsy",
+  "supposed to be studying but isn't",
+  "waiting for food delivery",
+  "avoiding doing chores",
+  "couldn't sleep, gave up trying around 2am",
+  "just had a small argument with a friend",
+  "stressed about something coming up tomorrow",
+  "at a café waiting for someone who's late",
+  "babysitting a sibling who's asleep",
+  "stuck at home sick (a cold, nothing serious)",
+  "during lunch break alone",
+  "post-shower, lying around in a robe",
+  "just finished a workout, cooling down",
+  "supposed to be sleeping but decided to chat instead",
+  "watching tv half-heartedly in the background",
 ];
 
 const POTENTIAL_DISLIKES = [
@@ -244,6 +323,35 @@ function pickMoodForIntent(intent?: ChatIntent): Mood {
   }
 }
 
+function rollPersonality(): PersonalityTraits {
+  return {
+    extraversion: pick<Extraversion>([
+      "extroverted", "extroverted",
+      "ambivert", "ambivert", "ambivert",
+      "introverted", "introverted",
+    ]),
+    agreeableness: pick<Agreeableness>([
+      "warm", "warm",
+      "neutral", "neutral",
+      "blunt",
+    ]),
+    openness: pick<Openness>(["curious", "curious", "conventional"]),
+    conscientiousness: pick<Conscientiousness>(["careful", "chaotic"]),
+    emotionality: pick<Emotionality>([
+      "chill", "chill",
+      "anxious",
+      "dramatic",
+    ]),
+  };
+}
+
+// Extraversion nudges the chance the persona opens first — extroverts open more.
+function startsProbForMoodAndPersonality(mood: Mood, ext: Extraversion): number {
+  const base = startsProbForMood(mood);
+  const adj = ext === "extroverted" ? 0.18 : ext === "introverted" ? -0.18 : 0;
+  return Math.max(0.05, Math.min(0.85, base + adj));
+}
+
 function startsProbForMood(mood: Mood): number {
   switch (mood) {
     case "chatty":
@@ -330,11 +438,17 @@ export function generatePersona(prefs?: UserPrefs): Persona {
     (prefs?.interestedIn === "men" && gender === "male");
   const intentLeaveScale = (intent === "love" || intent === "flirt") && matchedGender ? 0.35 : 1;
 
+  // Personality + quirk + situation — these are what make two casual+chatty
+  // personas feel like genuinely different people in conversation.
+  const personality = rollPersonality();
+  const quirk = pick(QUIRKS);
+  const situation = pick(SITUATIONS);
+
   // For non-English chats, the prebuilt openers are still English templates — so we
   // significantly drop the persona-opens-first probability and let the user start.
   // The first reply will then be in the chosen language.
   const isNonEnglish = !!prefs?.language && prefs.language !== "english";
-  const startsBase = startsProbForMood(mood);
+  const startsBase = startsProbForMoodAndPersonality(mood, personality.extraversion);
   const startsConversationProbability = isNonEnglish ? Math.min(startsBase, 0.1) : startsBase;
 
   return {
@@ -347,6 +461,9 @@ export function generatePersona(prefs?: UserPrefs): Persona {
     interests,
     mood,
     typingStyle,
+    personality,
+    quirk,
+    situation,
     wpm,
     dislikes,
     randomLeaveProbability: (0.025 + Math.random() * 0.04) * intentLeaveScale,

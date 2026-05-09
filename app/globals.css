@@ -8,3 +8,18 @@ body {
   color: #0b0b0d;
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
+
+/* Blinking cursor for the textual logo. Binary on/off, terminal-style —
+   not a smooth pulse. 1.1s cycle is the classic CRT cadence. */
+@keyframes logo-blink {
+  0%, 49%   { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+.logo-cursor {
+  animation: logo-blink 1.1s steps(1, start) infinite;
+}
+
+/* Stop the blink when the user prefers reduced motion (a11y). */
+@media (prefers-reduced-motion: reduce) {
+  .logo-cursor { animation: none; opacity: 1; }
+}

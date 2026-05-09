@@ -1,6 +1,8 @@
-import Link from "next/link";
 import type { Metadata } from "next";
 import { LandingForm } from "@/components/LandingForm";
+import { SiteHeader } from "@/components/SiteHeader";
+import { SiteFooter } from "@/components/SiteFooter";
+import { Logo } from "@/components/Logo";
 import { SITE_URL } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -38,23 +40,28 @@ const jsonLd = {
 
 export default function Landing() {
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center px-6 py-10">
+    <div className="min-h-screen flex flex-col">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <div className="max-w-md w-full">
-        <div className="text-center">
-          <h1 className="text-4xl font-bold tracking-tight">unknown.chat</h1>
-          <p className="mt-3 text-neutral-600">talk to someone you'll never meet again.</p>
+      <SiteHeader />
+
+      <main className="flex-1 flex flex-col items-center justify-center px-6 py-12">
+        <div className="max-w-md w-full">
+          <div className="text-center">
+            <h1 className="inline-block">
+              <Logo size="lg" />
+              <span className="sr-only">unknown.chat</span>
+            </h1>
+            <p className="mt-3 text-neutral-600">talk to someone you'll never meet again.</p>
+          </div>
+
+          <LandingForm />
         </div>
+      </main>
 
-        <LandingForm />
-
-        <footer className="mt-10 text-center text-xs text-neutral-400">
-          <Link href="/about" className="hover:text-neutral-600">about</Link>
-        </footer>
-      </div>
-    </main>
+      <SiteFooter />
+    </div>
   );
 }

@@ -4,7 +4,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { MessageBubble } from "./MessageBubble";
 import { TypingIndicator } from "./TypingIndicator";
+import { CaptchaModal } from "./CaptchaModal";
 import { loadPrefs } from "@/lib/clientPrefs";
+
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "";
 
 type DisplayMsg =
   | { role: "user" | "assistant"; text: string }
@@ -27,7 +30,7 @@ interface SendResponse {
   messages: PacedMessage[];
   left: boolean;
   reason?: string;
-  leaveDelayMs?: number; // for ghost-leave, no messages
+  leaveDelayMs?: number;
 }
 
 interface IdleResponse {
@@ -37,10 +40,8 @@ interface IdleResponse {
   stay: boolean;
 }
 
-// How long to wait before the persona considers pinging the silent user.
-// Random per-check so it doesn't feel scripted. Persona may also choose [STAY] and stay quiet.
 function nextIdleDelayMs(): number {
-  return 45_000 + Math.floor(Math.random() * 45_000); // 45–90s
+  return 45_000 + Math.floor(Math.random() * 45_000);
 }
 
 export function ChatWindow() {
@@ -49,21 +50,115 @@ export function ChatWindow() {
   const [typing, setTyping] = useState(false);
   const [input, setInput] = useState("");
   const [ended, setEnded] = useState(false);
+  const [captchaOpen, setCaptchaOpen] = useState(false);
+  // Unread counter — increments when a stranger message arrives while the tab is
+  // hidden (user switched apps/tabs). Reflected in document.title so the user can
+  // see "(2) unknown.chat" in their tab bar without needing OS notification permission.
+  const [unread, setUnread] = useState(0);
+  // OS desktop notifications — opt-in via the bell icon. Two pieces of state:
+  //   - notifyPerm: browser-level permission (default | granted | denied)
+  //   - notifyPref: user-level preference, only meaningful when permission is granted
+  const [notifyPerm, setNotifyPerm] = useState<NotificationPermission>("default");
+  const [notifyPref, setNotifyPref] = useState(false);
+  const notifyPrefRef = useRef(false);
 
   const timeoutsRef = useRef<number[]>([]);
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
-  // Idle tracking: when did the user last send something? Used to compute silenceMs
-  // for the /idle endpoint, and to gate idle pings (no double-pings while a persona reply is animating).
   const lastUserActivityRef = useRef<number>(Date.now());
   const idleTimerRef = useRef<number | null>(null);
   const replyInFlightRef = useRef<boolean>(false);
   const sessionIdRef = useRef<string | null>(null);
   const endedRef = useRef<boolean>(false);
 
-  // Keep refs synced with state so callbacks scheduled long ago see the current values.
   useEffect(() => { sessionIdRef.current = sessionId; }, [sessionId]);
   useEffect(() => { endedRef.current = ended; }, [ended]);
+
+  // Sync the unread count into the tab title.
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    document.title = unread > 0 ? `(${unread}) unknown.chat` : "chat · unknown.chat";
+  }, [unread]);
+
+  // Reset unread when the tab regains focus.
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const onVis = () => { if (!document.hidden) setUnread(0); };
+    document.addEventListener("visibilitychange", onVis);
+    window.addEventListener("focus", onVis);
+    return () => {
+      document.removeEventListener("visibilitychange", onVis);
+      window.removeEventListener("focus", onVis);
+    };
+  }, []);
+
+  useEffect(() => { notifyPrefRef.current = notifyPref; }, [notifyPref]);
+
+  // Restore notification preference + permission state on mount.
+  useEffect(() => {
+    if (typeof window === "undefined" || !("Notification" in window)) return;
+    setNotifyPerm(Notification.permission);
+    try {
+      const saved = localStorage.getItem("unknownchat:notify:v1");
+      setNotifyPref(saved === "1");
+    } catch { /* ignore */ }
+  }, []);
+
+  // Helper called whenever a stranger-side event happens (message or disconnect).
+  // Increments the unread counter and (if user opted in) shows an OS notification —
+  // both only when the tab is currently hidden.
+  const bumpIfHidden = useCallback((body: string = "Stranger sent a message") => {
+    if (typeof document === "undefined" || !document.hidden) return;
+    setUnread(u => u + 1);
+
+    if (typeof window === "undefined" || !("Notification" in window)) return;
+    if (Notification.permission !== "granted") return;
+    if (!notifyPrefRef.current) return;
+    try {
+      const n = new Notification("unknown.chat", {
+        body,
+        icon: "/icon.svg",
+        tag: "unknown-chat-msg", // collapses duplicate notifications
+      });
+      n.onclick = () => {
+        window.focus();
+        n.close();
+      };
+    } catch { /* ignore */ }
+  }, []);
+
+  async function toggleNotify() {
+    if (typeof window === "undefined" || !("Notification" in window)) return;
+    if (Notification.permission === "denied") return; // can only change in browser settings
+
+    if (Notification.permission === "default") {
+      const result = await Notification.requestPermission();
+      setNotifyPerm(result);
+      if (result === "granted") {
+        setNotifyPref(true);
+        try { localStorage.setItem("unknownchat:notify:v1", "1"); } catch { /* ignore */ }
+      }
+      return;
+    }
+
+    // permission === "granted" — toggle the user-level preference
+    setNotifyPref(prev => {
+      const next = !prev;
+      try { localStorage.setItem("unknownchat:notify:v1", next ? "1" : "0"); } catch { /* ignore */ }
+      return next;
+    });
+  }
+
+  const notifyActive = notifyPerm === "granted" && notifyPref;
+  const notifyShow = typeof window !== "undefined" && "Notification" in window;
+  const notifyTitle =
+    notifyPerm === "denied"
+      ? "notifications blocked in browser settings"
+      : notifyActive
+      ? "notifications on — click to mute"
+      : notifyPerm === "granted"
+      ? "notifications muted — click to enable"
+      : "click to enable notifications";
 
   const clearAllTimeouts = useCallback(() => {
     timeoutsRef.current.forEach(t => window.clearTimeout(t));
@@ -84,8 +179,6 @@ export function ChatWindow() {
     setMessages(prev => [...prev, m]);
   }, []);
 
-  // Animate a sequence of paced messages. Returns the total duration so the
-  // caller can chain idle re-arming after the last message finishes typing.
   const playPacedMessages = useCallback((msgs: PacedMessage[]): number => {
     let cursor = 0;
     for (const m of msgs) {
@@ -95,14 +188,13 @@ export function ChatWindow() {
       schedule(() => {
         setTyping(false);
         pushMsg({ role: "assistant", text: m.text });
+        bumpIfHidden();
       }, endTyping);
       cursor = endTyping;
     }
     return cursor;
-  }, [pushMsg, schedule]);
+  }, [pushMsg, schedule, bumpIfHidden]);
 
-  // Arm an idle check. If the user stays silent past the delay, ask the server
-  // what the persona wants to do (ping / leave / stay). Re-arms after each idle round.
   const armIdleTimer = useCallback(() => {
     if (idleTimerRef.current !== null) {
       window.clearTimeout(idleTimerRef.current);
@@ -112,13 +204,11 @@ export function ChatWindow() {
       idleTimerRef.current = null;
       const sid = sessionIdRef.current;
       if (!sid || endedRef.current || replyInFlightRef.current) {
-        // Can't or shouldn't poke right now — re-arm and wait again.
         armIdleTimer();
         return;
       }
       const silenceMs = Date.now() - lastUserActivityRef.current;
       if (silenceMs < delay - 2_000) {
-        // User did something between scheduling and firing — re-arm.
         armIdleTimer();
         return;
       }
@@ -133,10 +223,10 @@ export function ChatWindow() {
           const data = await res.json().catch(() => ({}));
           pushMsg({ role: "system", text: `stranger has disconnected${data?.reason ? ` (${data.reason})` : ""}.` });
           setEnded(true);
+          bumpIfHidden("Stranger has disconnected");
           return;
         }
         if (!res.ok) {
-          // Silent failure — re-arm and try later.
           armIdleTimer();
           return;
         }
@@ -150,21 +240,20 @@ export function ChatWindow() {
           schedule(() => {
             pushMsg({ role: "system", text: `stranger has disconnected${data.reason ? ` (${data.reason})` : ""}.` });
             setEnded(true);
+            bumpIfHidden("Stranger has disconnected");
           }, total);
         } else {
-          // Persona pinged — give the user a chance to reply, then re-arm.
           schedule(() => armIdleTimer(), total + 1_000);
         }
       } catch {
         armIdleTimer();
       } finally {
-        // replyInFlight stays true until messages animate; allow other flows by clearing soon.
         schedule(() => { replyInFlightRef.current = false; }, 100);
       }
     }, delay);
   }, [playPacedMessages, pushMsg, schedule]);
 
-  const connect = useCallback(async () => {
+  const connect = useCallback(async (captchaToken?: string) => {
     clearAllTimeouts();
     setMessages([{ role: "system", text: "looking for a stranger..." }]);
     setTyping(false);
@@ -180,9 +269,15 @@ export function ChatWindow() {
       const res = await fetch("/api/chat/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prefs }),
+        body: JSON.stringify({ prefs, captchaToken }),
       });
       if (res.status === 403) {
+        const data = await res.json().catch(() => ({} as { code?: string }));
+        const code = (data as { code?: string })?.code;
+        if (code === "captcha_required" || code === "captcha_failed") {
+          setCaptchaOpen(true);
+          return;
+        }
         pushMsg({ role: "system", text: "this intent requires 18+ confirmation. update your prefs to continue." });
         setEnded(true);
         return;
@@ -199,6 +294,7 @@ export function ChatWindow() {
         schedule(() => {
           setTyping(false);
           pushMsg({ role: "assistant", text });
+          bumpIfHidden();
         }, delayMs);
         openerEnd = delayMs;
       }
@@ -207,14 +303,13 @@ export function ChatWindow() {
       pushMsg({ role: "system", text: "couldn't connect. try again." });
       setEnded(true);
     }
-  }, [armIdleTimer, clearAllTimeouts, pushMsg, schedule]);
+  }, [armIdleTimer, clearAllTimeouts, pushMsg, schedule, bumpIfHidden]);
 
   useEffect(() => {
     connect();
     return () => clearAllTimeouts();
   }, [connect, clearAllTimeouts]);
 
-  // Autoscroll on new content.
   useEffect(() => {
     const el = scrollRef.current;
     if (el) el.scrollTop = el.scrollHeight;
@@ -224,7 +319,6 @@ export function ChatWindow() {
     const text = input.trim();
     if (!text || !sessionId || ended) return;
 
-    // Stamp activity. Cancel any pending idle ping — user is no longer silent.
     lastUserActivityRef.current = Date.now();
     if (idleTimerRef.current !== null) {
       window.clearTimeout(idleTimerRef.current);
@@ -247,11 +341,18 @@ export function ChatWindow() {
         const reason = (data && data.reason) || "left";
         pushMsg({ role: "system", text: `stranger has disconnected (${reason}).` });
         setEnded(true);
+        bumpIfHidden();
         return;
       }
       if (res.status === 404) {
         pushMsg({ role: "system", text: "connection dropped. finding someone new..." });
         connect();
+        return;
+      }
+      if (res.status === 451) {
+        // Server-side content filter rejected the message. End the session — no retries.
+        pushMsg({ role: "system", text: "this chat has ended due to a content policy violation." });
+        setEnded(true);
         return;
       }
       if (res.status === 429) {
@@ -265,12 +366,12 @@ export function ChatWindow() {
 
       const data = (await res.json()) as SendResponse;
 
-      // Ghost-leave: no messages, just a delay then disconnect notice.
       if (data.left && data.messages.length === 0) {
         const delay = data.leaveDelayMs ?? 5_000;
         schedule(() => {
           pushMsg({ role: "system", text: `stranger has disconnected${data.reason ? ` (${data.reason})` : ""}.` });
           setEnded(true);
+          bumpIfHidden("Stranger has disconnected");
         }, delay);
         return;
       }
@@ -280,10 +381,9 @@ export function ChatWindow() {
         schedule(() => {
           pushMsg({ role: "system", text: `stranger has disconnected${data.reason ? ` (${data.reason})` : ""}.` });
           setEnded(true);
+          bumpIfHidden("Stranger has disconnected");
         }, total);
       } else {
-        // Re-arm idle timer once the persona's burst finishes, so silence detection
-        // resumes from "after persona finished talking".
         schedule(() => armIdleTimer(), total + 500);
       }
     } catch {
@@ -294,12 +394,30 @@ export function ChatWindow() {
   }
 
   function skip() {
-    clearAllTimeouts();
+    // If the chat has had real activity (any non-system message from either side),
+    // confirm before disconnecting. Skipping right after connecting is fine — no prompt.
     if (sessionId && !ended) {
+      const hasRealActivity = messages.some(m => m.role === "user" || m.role === "assistant");
+      if (hasRealActivity) {
+        const ok = window.confirm("are you sure you want to skip this stranger?");
+        if (!ok) return;
+      }
       pushMsg({ role: "system", text: "you skipped." });
     }
+    clearAllTimeouts();
     setEnded(false);
     connect();
+  }
+
+  function onCaptchaSuccess(token: string) {
+    setCaptchaOpen(false);
+    connect(token);
+  }
+
+  function onCaptchaCancel() {
+    setCaptchaOpen(false);
+    pushMsg({ role: "system", text: "verification cancelled. tap 'new' or 'skip' when ready." });
+    setEnded(true);
   }
 
   return (
@@ -307,6 +425,18 @@ export function ChatWindow() {
       <header className="px-4 py-3 border-b border-neutral-200 flex items-center justify-between">
         <Link href="/" className="font-semibold tracking-tight">unknown.chat</Link>
         <div className="text-xs text-neutral-400 flex items-center gap-3">
+          {notifyShow && (
+            <button
+              type="button"
+              onClick={toggleNotify}
+              title={notifyTitle}
+              disabled={notifyPerm === "denied"}
+              className="hover:text-neutral-600 disabled:opacity-40 disabled:cursor-not-allowed"
+              aria-pressed={notifyActive}
+            >
+              {notifyActive ? "🔔" : "🔕"}
+            </button>
+          )}
           <Link href="/" className="hover:text-neutral-600">prefs</Link>
           <Link href="/about" className="hover:text-neutral-600">about</Link>
         </div>
@@ -351,6 +481,14 @@ export function ChatWindow() {
           </button>
         </div>
       </div>
+
+      {captchaOpen && TURNSTILE_SITE_KEY && (
+        <CaptchaModal
+          siteKey={TURNSTILE_SITE_KEY}
+          onSuccess={onCaptchaSuccess}
+          onCancel={onCaptchaCancel}
+        />
+      )}
     </div>
   );
 }
