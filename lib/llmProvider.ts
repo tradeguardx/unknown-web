@@ -3,6 +3,9 @@
 //
 //   - "anthropic" (default) → Claude Haiku 4.5 + lib/prompts.ts (with prompt caching)
 //   - "deepseek"            → deepseek-chat + lib/promptsDeepSeek.ts
+//   - "mixed"               → 50/50 coin flip per SESSION (not per turn). Once
+//                             a session picks a provider, that provider serves
+//                             every turn of that chat for consistency.
 //
 // The Anthropic call is identical to what was previously inline in the route
 // handlers — copying it verbatim keeps the Claude flow untouched.
@@ -20,9 +23,31 @@ import { cachedSystem, getAnthropic, MODEL } from "./anthropic";
 import { deepseekChat } from "./deepseek";
 
 export type LLMProvider = "anthropic" | "deepseek";
+export type LLMProviderConfig = LLMProvider | "mixed";
 
+function getEnvConfig(): LLMProviderConfig {
+  const env = process.env.LLM_PROVIDER;
+  if (env === "deepseek") return "deepseek";
+  if (env === "mixed") return "mixed";
+  return "anthropic";
+}
+
+// Called at session creation. For "mixed" mode, rolls a coin so each session
+// commits to one provider for its lifetime — keeps a chat coherent (no
+// mid-conversation switch from Claude voice to DeepSeek voice).
+export function pickProviderForSession(): LLMProvider {
+  const cfg = getEnvConfig();
+  if (cfg === "mixed") return Math.random() < 0.5 ? "anthropic" : "deepseek";
+  return cfg;
+}
+
+// Back-compat default picker. If "mixed" mode is on and this is called outside
+// a session context, falls back to anthropic — but in normal flow, callLLM()
+// receives an explicit per-session provider, so this default rarely fires.
 export function getActiveProvider(): LLMProvider {
-  return process.env.LLM_PROVIDER === "deepseek" ? "deepseek" : "anthropic";
+  const cfg = getEnvConfig();
+  if (cfg === "mixed") return "anthropic";
+  return cfg;
 }
 
 // Cap conversation history sent to the LLM. The persona's identity (country,
@@ -53,10 +78,14 @@ export interface LLMRequest {
   userMemory?: UserMemory;
   messages: Array<{ role: "user" | "assistant"; content: string }>;
   maxTokens: number;
+  // Optional override — used when a session has already committed to a
+  // specific provider (mixed-mode sessions). If omitted, falls back to the
+  // env-derived default.
+  provider?: LLMProvider;
 }
 
 export async function callLLM(req: LLMRequest): Promise<string> {
-  const provider = getActiveProvider();
+  const provider = req.provider ?? getActiveProvider();
 
   if (provider === "deepseek") {
     const system = buildSystemPromptDeepSeek(req.persona, req.prefs, req.userMemory);

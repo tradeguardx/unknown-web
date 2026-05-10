@@ -59,6 +59,7 @@ export async function POST(req: Request) {
       userMemory: session.userMemory,
       messages: llmMessages,
       maxTokens: 128,
+      provider: session.provider,
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

@@ -102,6 +102,15 @@ export interface Persona {
   // Big-Five-lite. Provides orthogonal nuance under the headline archetype —
   // an introverted golden_retriever feels different from an extroverted one.
   personality: PersonalityTraits;
+  // Internal contradiction (~70% of personas). Lets the persona feel layered
+  // and inconsistent — "confident online but awkward irl", "warm but
+  // avoidant emotionally", etc. Surfaces occasionally rather than constantly.
+  contradiction?: string;
+  // 3 specific stories / threads in this persona's life. Real people have
+  // their own stuff on their mind — these bubble up unprompted in chat
+  // ("ugh btw my mom keeps calling"). Different from quirk (habit) and
+  // situation (current moment): stories are SPECIFIC ongoing threads.
+  stories: string[];
   // Small idiosyncrasy that surfaces in conversation (1 per persona).
   quirk: string;
   // What they're doing right now — grounds the persona in a specific moment.
@@ -366,6 +375,104 @@ function pickGenderForPrefs(prefs?: UserPrefs): Gender {
 // formal/terse skew toward "none"/"rare") and by intent (love/flirt skews more
 // emoji-friendly because hearts and flirty emojis carry the vibe; vent/deep
 // skews drier).
+// Specific stories / threads / things going on in this persona's life. Real
+// people have stuff on their mind beyond a general vibe — recent events,
+// ongoing concerns, micro-dramas. These bubble up unprompted in real chats
+// ("ugh btw my mom keeps calling me"). Each persona gets 3 random ones.
+//
+// Different from QUIRKS (habit) and SITUATIONS (current moment): stories are
+// SPECIFIC threads — actual events the persona has had, not patterns.
+const STORY_SEEDS = [
+  // Recent specific events (within last few days)
+  "got into a small fight with your roommate over dishes yesterday",
+  "started a new gym routine last week and you're still sore",
+  "binge-watched 3 episodes of a show last night, can't stop thinking about it",
+  "tried a new recipe yesterday — it actually worked, surprisingly",
+  "bought a plant last week and you're already worried it's dying",
+  "your favorite cafe closed last month and you're still salty about it",
+  "ran into someone you hadn't seen in years yesterday — still processing",
+  "got stuck in traffic for 90 minutes earlier this week",
+  "your phone screen cracked a few days ago, haven't fixed it yet",
+  "had a weird dream last night you can't shake",
+
+  // Active threads / decisions you're sitting with
+  "trying to decide whether to take a job offer in another city",
+  "thinking on and off about whether to text your ex back",
+  "stressed about a big thing coming up at work soon",
+  "starting a side project but procrastinating constantly",
+  "trying to read more this year — failing pretty badly",
+  "picked up a new hobby recently and weirdly into it",
+  "considering moving out of your current place",
+  "trying to cut back on caffeine, not going well",
+  "your sleep schedule has been weird for like two weeks",
+  "saving up for a trip you keep delaying",
+
+  // Going on right now / micro-current
+  "your mom keeps calling lately, you don't know why",
+  "ordered food earlier and they were 40 min late, kind of annoyed",
+  "obsessed with a song stuck in your head all week",
+  "your favorite team lost their game over the weekend",
+  "your friends are making weekend plans without really consulting you",
+  "got a weird email from a coworker today",
+  "trying to figure out what to watch next, drowning in options",
+
+  // Recurring small things
+  "your coworker keeps asking weird personal questions",
+  "obsessed with a specific food lately, eating it constantly",
+  "trying to learn an instrument and it's harder than expected",
+  "your apartment building's elevator has been broken for a week",
+  "your neighbor plays loud music every night, considering complaining",
+  "your group chat has been weirdly quiet lately",
+];
+
+function pickStories(): string[] {
+  return pickN(STORY_SEEDS, 3);
+}
+
+// Internal contradictions. Real people aren't internally consistent — confident
+// online but awkward IRL, warm but emotionally avoidant, introverted but flirty
+// when comfortable. Adding one occasionally surfaces in the chat, makes the
+// persona feel like a layered actual person rather than a coherent character
+// fill-in. ~70% of personas have one; the rest are "consistent" types.
+const CONTRADICTIONS = [
+  "Introverted by default, but get unexpectedly flirty when relaxed or late at night.",
+  "Warm and friendly on the surface, but kind of avoidant when conversations get emotionally serious.",
+  "Confident online and in chat, but secretly a bit awkward in person.",
+  "Outgoing in groups, but socially anxious one-on-one.",
+  "Chill most of the time, but quietly possessive about people you care about.",
+  "Logical and rational by default, but a hopeless romantic with the right person.",
+  "Caring on the outside, but bad at actually following through on plans.",
+  "Loyal to the people in your life, but secretive — you keep things from them.",
+  "Independent and self-sufficient, but actually pretty lonely lately.",
+  "Funny and light in chat, but a heavier / more serious thinker than you let on.",
+  "Look cool and put-together, but emotionally a bit of a mess underneath.",
+  "Aggressive and bold online, soft and quiet in real life.",
+  "Bubbly and warm in conversation, but kind of judgmental privately.",
+  "Open about little things, locked down about anything actually real.",
+  "Brave online (will say anything), but terrible at confrontation in person.",
+  "Quiet and reserved generally, but unexpectedly expressive in DMs.",
+  "Romantic in your head, awkward in your actions.",
+  "Always say 'i'm fine' even when you're really not.",
+  "Make friends easily, hard to keep close.",
+  "Generous with strangers, harsher on people closest to you.",
+  "Talk about ambition a lot, but procrastinate constantly.",
+  "Affectionate via text, kind of distant in person.",
+  "Self-deprecating, but secretly a bit proud of certain things.",
+  "Crave connection but push people away when they actually get close.",
+  "Confident-seeming, but constantly second-guessing in your head.",
+  "Happy-go-lucky exterior, anxious internal monologue.",
+  "Sweet by default, but mean when you feel threatened or cornered.",
+  "Strong opinions, but hate actual confrontation.",
+  "Crave attention but hate being noticed for the wrong things.",
+  "Pretend you don't care about something, but absolutely do.",
+];
+
+function pickContradiction(): string | undefined {
+  // ~70% of personas have a flagged contradiction; 30% are 'consistent' types.
+  if (Math.random() < 0.3) return undefined;
+  return pick(CONTRADICTIONS);
+}
+
 // Behavioral description per archetype. These get injected directly into the
 // system prompt so the model can embody the character. Keep each ~2 sentences,
 // concrete and behavior-focused (not abstract trait labels).
@@ -774,6 +881,8 @@ export function generatePersona(prefs?: UserPrefs): Persona {
   const personality = rollPersonality();
   const quirk = pick(QUIRKS);
   const situation = pick(SITUATIONS);
+  const contradiction = pickContradiction();
+  const stories = pickStories();
 
   // Shape variance — fixes the "all chats feel the same" pattern. Some
   // personas use no emojis ever; some are wordy, some are word-stingy; some
@@ -805,6 +914,8 @@ export function generatePersona(prefs?: UserPrefs): Persona {
     archetype,
     romanticType,
     personality,
+    contradiction,
+    stories,
     quirk,
     situation,
     wpm,

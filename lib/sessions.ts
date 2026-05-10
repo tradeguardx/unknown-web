@@ -3,6 +3,7 @@
 
 import { generatePersona, type Persona } from "./persona";
 import type { UserPrefs } from "./prefs";
+import { type LLMProvider, pickProviderForSession } from "./llmProvider";
 import { nanoid } from "nanoid";
 
 export interface ChatMessage {
@@ -40,6 +41,10 @@ export interface Session {
   // factually even after old messages roll out of the recent-history window.
   // Internal only — never shown to the user.
   userMemory: UserMemory;
+  // LLM provider this session committed to at creation. In LLM_PROVIDER=mixed
+  // mode this rolls per-session so the chat is coherent (no mid-chat voice
+  // shift). In single-provider mode it's just whatever's configured.
+  provider: LLMProvider;
   // Once true, no further messages from the persona — they "left".
   ended: boolean;
   endReason?: string;
@@ -72,6 +77,7 @@ export function createSession(prefs?: UserPrefs): Session {
     prefs,
     messages: [],
     userMemory: { identity: [], interests: [], emotional: [] },
+    provider: pickProviderForSession(),
     ended: false,
     createdAt: Date.now(),
   };
