@@ -5,11 +5,20 @@ app = 'unknown-web'
 primary_region = 'ams'
 
 [build]
+  # Public client-side env vars baked into the Next.js bundle at build time.
+  # These aren't secrets (the values ship to every browser anyway) so it's fine
+  # to have them in source control. Anything actually secret stays in
+  # `fly secrets set ...` and is only available at runtime.
+  [build.args]
+    NEXT_PUBLIC_PLAUSIBLE_DOMAIN = 'unknown.chat'
 
 [env]
   NODE_ENV = 'production'
   PORT = '8080'
   HOSTNAME = '0.0.0.0'
+  # Mirror the build-arg so server-side code (lib/analytics.ts) can read it
+  # at runtime via process.env without depending on the Fly secret being set.
+  NEXT_PUBLIC_PLAUSIBLE_DOMAIN = 'unknown.chat'
 
 [http_service]
   internal_port = 8080
