@@ -11,6 +11,10 @@ primary_region = 'ams'
   # `fly secrets set ...` and is only available at runtime.
   [build.args]
     NEXT_PUBLIC_PLAUSIBLE_DOMAIN = 'unknown.chat'
+    # Plausible's per-site tracker URL (legacy /js/script.js is being sunset).
+    # Get this value from Plausible dashboard → Site Settings → Site Settings →
+    # Installation, or from the install page snippet.
+    NEXT_PUBLIC_PLAUSIBLE_SCRIPT_URL = 'https://plausible.io/js/pa-nvCUS5xERM02jG1yxKvD6.js'
 
 [env]
   NODE_ENV = 'production'
@@ -19,6 +23,7 @@ primary_region = 'ams'
   # Mirror the build-arg so server-side code (lib/analytics.ts) can read it
   # at runtime via process.env without depending on the Fly secret being set.
   NEXT_PUBLIC_PLAUSIBLE_DOMAIN = 'unknown.chat'
+  NEXT_PUBLIC_PLAUSIBLE_SCRIPT_URL = 'https://plausible.io/js/pa-nvCUS5xERM02jG1yxKvD6.js'
 
 [http_service]
   internal_port = 8080

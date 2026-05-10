@@ -4,7 +4,12 @@ import Script from "next/script";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { CookieBanner } from "@/components/CookieBanner";
 
-const PLAUSIBLE_DOMAIN = process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN;
+// Plausible's new per-site tracker URL. The site ID is baked into the JS file
+// (no `data-domain` attribute needed). The legacy `/js/script.js` form still
+// works but is being sunset — Plausible flags it with a "72 hour upgrade"
+// notice in the dashboard. Set NEXT_PUBLIC_PLAUSIBLE_SCRIPT_URL to the value
+// shown on your Plausible install page (e.g. https://plausible.io/js/pa-XXX.js).
+const PLAUSIBLE_SCRIPT_URL = process.env.NEXT_PUBLIC_PLAUSIBLE_SCRIPT_URL;
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -56,13 +61,20 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         {children}
         <CookieBanner />
-        {PLAUSIBLE_DOMAIN && (
-          <Script
-            defer
-            data-domain={PLAUSIBLE_DOMAIN}
-            src="https://plausible.io/js/script.js"
-            strategy="afterInteractive"
-          />
+        {PLAUSIBLE_SCRIPT_URL && (
+          <>
+            <Script
+              async
+              src={PLAUSIBLE_SCRIPT_URL}
+              strategy="afterInteractive"
+            />
+            {/* Init shim: queues plausible() calls made before the async
+                script lands, so any custom event we fire from the client
+                won't be lost on first paint. */}
+            <Script id="plausible-init" strategy="afterInteractive">
+              {`window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)};plausible.init=plausible.init||function(i){plausible('init',i)};plausible.init();`}
+            </Script>
+          </>
         )}
       </body>
     </html>
