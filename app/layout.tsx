@@ -1,6 +1,5 @@
 import "./globals.css";
 import type { Metadata, Viewport } from "next";
-import Script from "next/script";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { CookieBanner } from "@/components/CookieBanner";
 
@@ -63,17 +62,19 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <CookieBanner />
         {PLAUSIBLE_SCRIPT_URL && (
           <>
-            <Script
-              async
-              src={PLAUSIBLE_SCRIPT_URL}
-              strategy="afterInteractive"
-            />
-            {/* Init shim: queues plausible() calls made before the async
+            {/* Plain <script> (not next/script) so the tag renders in the SSR
+                HTML directly — Plausible's installation verifier crawls the
+                static HTML and doesn't execute JavaScript, so a deferred
+                client-injected tag would look like a missing install. */}
+            <script defer src={PLAUSIBLE_SCRIPT_URL} />
+            {/* Init shim: queues plausible() calls made before the deferred
                 script lands, so any custom event we fire from the client
                 won't be lost on first paint. */}
-            <Script id="plausible-init" strategy="afterInteractive">
-              {`window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)};plausible.init=plausible.init||function(i){plausible('init',i)};plausible.init();`}
-            </Script>
+            <script
+              dangerouslySetInnerHTML={{
+                __html: `window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)};plausible.init=plausible.init||function(i){plausible('init',i)};plausible.init();`,
+              }}
+            />
           </>
         )}
       </body>
