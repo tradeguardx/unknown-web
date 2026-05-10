@@ -15,15 +15,20 @@ primary_region = 'ams'
     # Get this value from Plausible dashboard → Site Settings → Site Settings →
     # Installation, or from the install page snippet.
     NEXT_PUBLIC_PLAUSIBLE_SCRIPT_URL = 'https://plausible.io/js/pa-nvCUS5xERM02jG1yxKvD6.js'
+    # Cloudflare Turnstile site key — public (ships to every browser as a
+    # data-sitekey attribute). The matching SECRET key stays in Fly secrets
+    # via `fly secrets set TURNSTILE_SECRET_KEY=...`.
+    NEXT_PUBLIC_TURNSTILE_SITE_KEY = '0x4AAAAAADMu8IXXDJC0QmtQ'
 
 [env]
   NODE_ENV = 'production'
   PORT = '8080'
   HOSTNAME = '0.0.0.0'
-  # Mirror the build-arg so server-side code (lib/analytics.ts) can read it
-  # at runtime via process.env without depending on the Fly secret being set.
+  # Mirror the build-args so server-side code (lib/analytics.ts) can read
+  # them at runtime via process.env without depending on Fly secrets.
   NEXT_PUBLIC_PLAUSIBLE_DOMAIN = 'unknown.chat'
   NEXT_PUBLIC_PLAUSIBLE_SCRIPT_URL = 'https://plausible.io/js/pa-nvCUS5xERM02jG1yxKvD6.js'
+  NEXT_PUBLIC_TURNSTILE_SITE_KEY = '0x4AAAAAADMu8IXXDJC0QmtQ'
 
 [http_service]
   internal_port = 8080
