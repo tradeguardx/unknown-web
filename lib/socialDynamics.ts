@@ -207,14 +207,22 @@ function intentKey(intent?: ChatIntent): "love_flirt" | "friends" | "vent" | "de
 }
 
 export function socialDynamicHints(personaGender: Gender, prefs?: UserPrefs): string {
-  // No hints when the user hasn't told us their orientation, picked "anyone",
-  // or persona is non-binary.
-  if (!prefs?.interestedIn || prefs.interestedIn === "anyone") return "";
+  // The block is determined by persona gender × USER gender (the user the
+  // persona is talking to), NOT by interestedIn. interestedIn is what the user
+  // is attracted to — that already biased the persona generator's gender pick.
+  // Here we just need to know: what gender combo am I in?
+  const userGender = prefs?.gender;
+
+  // Skip cleanly when we can't determine a clear gender combo:
+  //   - User didn't share their gender or chose "private"
+  //   - User or persona is non-binary (we don't have specific blocks for those)
+  if (!userGender || userGender === "private" || userGender === "nonbinary") return "";
   if (personaGender === "nonbinary") return "";
 
-  const k = intentKey(prefs.intent);
+  const k = intentKey(prefs?.intent);
 
-  if (personaGender === "male" && prefs.interestedIn === "women") {
+  // Male persona × female user
+  if (personaGender === "male" && userGender === "female") {
     if (k === "love_flirt") return M_TO_F_LOVE_FLIRT;
     if (k === "friends") return M_TO_F_FRIENDS;
     if (k === "vent") return M_TO_F_VENT;
@@ -222,7 +230,8 @@ export function socialDynamicHints(personaGender: Gender, prefs?: UserPrefs): st
     return M_TO_F_DEFAULT;
   }
 
-  if (personaGender === "female" && prefs.interestedIn === "men") {
+  // Female persona × male user
+  if (personaGender === "female" && userGender === "male") {
     if (k === "love_flirt") return F_TO_M_LOVE_FLIRT;
     if (k === "friends") return F_TO_M_FRIENDS;
     if (k === "vent") return F_TO_M_VENT;
@@ -230,8 +239,9 @@ export function socialDynamicHints(personaGender: Gender, prefs?: UserPrefs): st
     return F_TO_M_DEFAULT;
   }
 
-  if (personaGender === "male" && prefs.interestedIn === "men") return M_TO_M_DEFAULT;
-  if (personaGender === "female" && prefs.interestedIn === "women") return F_TO_F_DEFAULT;
+  // Same-gender pairings (less common, single block per pairing)
+  if (personaGender === "male" && userGender === "male") return M_TO_M_DEFAULT;
+  if (personaGender === "female" && userGender === "female") return F_TO_F_DEFAULT;
 
   return "";
 }

@@ -35,6 +35,10 @@ export const metadata: Metadata = {
     icon: "/icon.svg",
     apple: "/icon.svg",
   },
+  // Google Search Console domain ownership verification.
+  verification: {
+    google: "ud2K06XfyLx3ss77EunfuOk6chtTcVPRa3lyfVwYV04",
+  },
 };
 
 export const viewport: Viewport = {
