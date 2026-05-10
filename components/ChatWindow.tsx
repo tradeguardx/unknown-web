@@ -365,6 +365,10 @@ export function ChatWindow() {
         pushMsg({ role: "system", text: "you're sending too fast. slow down a bit and try again." });
         return;
       }
+      if (res.status === 503) {
+        pushMsg({ role: "system", text: "the chat service is temporarily limited. please try again in a few minutes." });
+        return;
+      }
       if (!res.ok) {
         pushMsg({ role: "system", text: "something glitched. try sending again." });
         return;

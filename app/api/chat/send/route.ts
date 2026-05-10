@@ -105,6 +105,18 @@ export async function POST(req: Request) {
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("[llm error]", msg);
+
+    // Detect upstream rate-limit (Groq TPD cap, Anthropic 429, etc.) and surface
+    // a friendlier error code so the client can show a useful message instead of
+    // a generic "something glitched".
+    const isRateLimit = /\b(429|rate.?limit|tokens per day|TPD|TPM)\b/i.test(msg);
+    if (isRateLimit) {
+      return NextResponse.json(
+        { error: "upstream rate limit", code: "upstream_rate_limit" },
+        { status: 503 },
+      );
+    }
+
     // In dev, expose the upstream message so we don't have to alt-tab to the terminal.
     const body =
       process.env.NODE_ENV === "development"
