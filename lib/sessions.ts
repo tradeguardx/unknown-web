@@ -47,6 +47,11 @@ export interface Session {
   provider: LLMProvider;
   // Number of warn-level content filter hits so far. Second hit promotes to close.
   warningCount: number;
+  // Number of consecutive idle pings the persona has sent without the user
+  // replying. Resets to 0 whenever the user sends a real message. After 2
+  // unanswered pings the persona is forced to leave (no third ping ever) —
+  // models impatience the way real strangers behave.
+  silentPingCount: number;
   // Once true, no further messages from the persona — they "left".
   ended: boolean;
   endReason?: string;
@@ -81,6 +86,7 @@ export function createSession(prefs?: UserPrefs): Session {
     userMemory: { identity: [], interests: [], emotional: [] },
     provider: pickProviderForSession(),
     warningCount: 0,
+    silentPingCount: 0,
     ended: false,
     createdAt: Date.now(),
   };
@@ -110,6 +116,19 @@ export function incrementWarning(id: string): number {
   if (!s) return 0;
   s.warningCount += 1;
   return s.warningCount;
+}
+
+export function incrementSilentPing(id: string): number {
+  const s = SESSIONS.get(id);
+  if (!s) return 0;
+  s.silentPingCount += 1;
+  return s.silentPingCount;
+}
+
+export function resetSilentPing(id: string): void {
+  const s = SESSIONS.get(id);
+  if (!s) return;
+  s.silentPingCount = 0;
 }
 
 export function getRecentUserMessages(id: string, limit = 5): string[] {

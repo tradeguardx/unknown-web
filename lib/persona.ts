@@ -76,11 +76,24 @@ export type Archetype =
 
 export interface Persona {
   id: string;
+  // First name (or initial / nickname). Real strangers usually share a first
+  // name when asked — dodging every time was a major AI tell. Generated at
+  // creation from a country/gender-appropriate pool. Persona is told to share
+  // this casually when asked, with ~10% chance of giving a nickname/initial
+  // and ~10% chance of deflecting (so it's not 100% predictable either).
+  name: string;
   country: string;
   countryCode: string;
   city?: string;
   age: number;
   gender: Gender;
+  // Persona's local hour at session start (0-23). Lets the prompt nudge mood:
+  // late-night personas are sleepier / more raw; early-morning are groggy.
+  localHour: number;
+  // Energy direction across the chat. "warming" = starts cool, gets engaged;
+  // "cooling" = starts engaged, gets bored; "steady" = no drift. Combined with
+  // chat duration injected at request time, the persona drifts naturally.
+  vibeArc: "warming" | "cooling" | "steady";
   interests: string[];
   mood: Mood;
   typingStyle: TypingStyle;
@@ -122,6 +135,151 @@ export interface Persona {
   // Probability the persona sends the first message. Stored on persona because
   // mood/intent influence it (chatty/flirty open more, shy/bored open less).
   startsConversationProbability: number;
+}
+
+// Per-country name pools for personas. Sharing a first name when asked is
+// what real strangers do; dodging every time was a major AI-pattern tell.
+// Pools are short and culturally plausible — not exhaustive, just enough that
+// no two adjacent chats have the same name.
+//
+// "neutral" is used for nonbinary / private-gender personas; otherwise we pick
+// from male/female. Falls back to the international list for unknown codes.
+const NAMES: Record<string, { male: string[]; female: string[]; neutral: string[] }> = {
+  US: {
+    male: ["Jake", "Mike", "Ryan", "Chris", "Tyler", "Josh", "Alex", "Brandon", "Kevin", "Sam"],
+    female: ["Emma", "Sarah", "Jess", "Megan", "Ashley", "Hannah", "Olivia", "Mia", "Chloe", "Nina"],
+    neutral: ["Alex", "Sam", "Riley", "Jordan", "Casey", "Taylor", "Morgan"],
+  },
+  IN: {
+    male: ["Arjun", "Rahul", "Aarav", "Karan", "Rohan", "Aditya", "Vikram", "Rishi", "Nikhil", "Aman"],
+    female: ["Priya", "Ananya", "Sneha", "Riya", "Pooja", "Neha", "Kavya", "Isha", "Diya", "Tanya"],
+    neutral: ["Aryan", "Kiran", "Nisha", "Sai"],
+  },
+  GB: {
+    male: ["Oliver", "Harry", "Jack", "Charlie", "George", "Tom", "Will", "Lewis", "Liam", "Ethan"],
+    female: ["Amelia", "Olivia", "Sophie", "Grace", "Ella", "Emily", "Lily", "Mia", "Ruby", "Charlotte"],
+    neutral: ["Sam", "Alex", "Robin", "Charlie"],
+  },
+  DE: {
+    male: ["Lukas", "Felix", "Max", "Jonas", "Paul", "Ben", "Tim", "Lennart"],
+    female: ["Hannah", "Lena", "Mia", "Sophia", "Anna", "Lara", "Marie", "Emma"],
+    neutral: ["Toni", "Kim", "Robin"],
+  },
+  BR: {
+    male: ["Gabriel", "Lucas", "Pedro", "Matheus", "Felipe", "João", "Bruno", "Diego"],
+    female: ["Beatriz", "Júlia", "Larissa", "Camila", "Ana", "Sofia", "Marina", "Letícia"],
+    neutral: ["Eli", "Vico"],
+  },
+  CA: {
+    male: ["Liam", "Noah", "Ethan", "Owen", "Mason", "Logan", "Connor", "Adam"],
+    female: ["Emma", "Sophia", "Olivia", "Ava", "Chloe", "Maya", "Abby", "Madison"],
+    neutral: ["Riley", "Jordan", "Avery"],
+  },
+  PH: {
+    male: ["JM", "Mark", "Paolo", "Carlo", "Joshua", "Kyle", "Ryan", "Daniel"],
+    female: ["Bea", "Andrea", "Trisha", "Kim", "Janine", "Maine", "Reign", "Althea"],
+    neutral: ["Kai", "Jam"],
+  },
+  AU: {
+    male: ["Liam", "Jack", "Cooper", "Max", "Ollie", "Ethan", "Hugo"],
+    female: ["Charlotte", "Olivia", "Mia", "Isla", "Ruby", "Zoe", "Ella"],
+    neutral: ["Sam", "Charlie"],
+  },
+  FR: {
+    male: ["Lucas", "Hugo", "Léo", "Théo", "Nathan", "Mathis", "Tom"],
+    female: ["Emma", "Léa", "Manon", "Camille", "Chloé", "Inès", "Sarah"],
+    neutral: ["Alex", "Sam"],
+  },
+  MX: {
+    male: ["Diego", "Mateo", "Daniel", "Santiago", "Sebastián", "Andrés", "Carlos"],
+    female: ["Sofía", "Valentina", "Camila", "Isabella", "Daniela", "Renata", "Andrea"],
+    neutral: ["Sam", "Cris"],
+  },
+  JP: {
+    male: ["Haru", "Yuto", "Sora", "Ren", "Riku", "Kai", "Daiki"],
+    female: ["Yui", "Aoi", "Saki", "Hina", "Mio", "Rina", "Akari"],
+    neutral: ["Hikari", "Aki"],
+  },
+  TR: {
+    male: ["Mert", "Emre", "Can", "Burak", "Yusuf", "Ali", "Eren"],
+    female: ["Zeynep", "Ayşe", "Elif", "Ece", "Selin", "Defne"],
+    neutral: ["Deniz", "Umut"],
+  },
+  ID: {
+    male: ["Andi", "Budi", "Rizky", "Adi", "Bayu", "Reza"],
+    female: ["Putri", "Siti", "Dewi", "Rina", "Indah", "Sari"],
+    neutral: ["Ari"],
+  },
+  NG: {
+    male: ["Tunde", "Chinedu", "Emeka", "Femi", "Tobi", "Seun", "Kayode"],
+    female: ["Ada", "Chiamaka", "Funke", "Bisi", "Ngozi", "Tomi", "Folake"],
+    neutral: ["Tobi"],
+  },
+  PL: {
+    male: ["Jakub", "Kacper", "Filip", "Mateusz", "Bartek", "Tomek"],
+    female: ["Zuzia", "Julia", "Ola", "Magda", "Kasia", "Ania"],
+    neutral: ["Alex"],
+  },
+  EG: {
+    male: ["Ahmed", "Mohamed", "Omar", "Youssef", "Karim", "Hassan"],
+    female: ["Fatma", "Nour", "Mariam", "Salma", "Yara", "Layla"],
+    neutral: ["Nour"],
+  },
+  ES: {
+    male: ["Hugo", "Daniel", "Pablo", "Álex", "Mario", "David", "Adrián"],
+    female: ["Lucía", "Sofía", "Martina", "Paula", "Carla", "Daniela", "Alba"],
+    neutral: ["Alex"],
+  },
+  RU: {
+    male: ["Artem", "Maxim", "Ivan", "Dmitry", "Sergey", "Daniil"],
+    female: ["Anastasia", "Maria", "Sofia", "Polina", "Alina", "Daria"],
+    neutral: ["Sasha"],
+  },
+  KR: {
+    male: ["Minjun", "Hyun", "Jihoon", "Jaehyun", "Sungho", "Daniel"],
+    female: ["Jiwoo", "Hyejin", "Yuna", "Seohyun", "Minji", "Soyeon"],
+    neutral: ["Jin"],
+  },
+  AR: {
+    male: ["Mateo", "Joaquín", "Tomás", "Lucas", "Bruno", "Nico"],
+    female: ["Sofía", "Martina", "Mía", "Catalina", "Valentina"],
+    neutral: ["Sam"],
+  },
+};
+
+const NAMES_FALLBACK = {
+  male: ["Alex", "Sam", "Chris", "Jordan"],
+  female: ["Alex", "Sam", "Jess", "Riley"],
+  neutral: ["Alex", "Sam", "Riley", "Jordan"],
+};
+
+function pickName(countryCode: string, gender: Gender): string {
+  const pool = NAMES[countryCode] || NAMES_FALLBACK;
+  const bucket =
+    gender === "male" ? pool.male
+  : gender === "female" ? pool.female
+  : pool.neutral;
+  if (!bucket || !bucket.length) return pick(NAMES_FALLBACK.neutral);
+  return pick(bucket);
+}
+
+// Persona's local hour at session start. Weighted toward awake hours so most
+// chats happen with a persona that's ostensibly conscious — but late-night and
+// early-morning slots are kept around because that's also where insomniac /
+// "couldn't sleep" / "just woke up" energy comes from naturally.
+function pickLocalHour(): number {
+  const r = Math.random();
+  // 60% daytime/evening (10am-11pm), 25% late night (11pm-3am), 15% early/morning grog.
+  if (r < 0.6) return 10 + Math.floor(Math.random() * 14);
+  if (r < 0.85) return (23 + Math.floor(Math.random() * 4)) % 24;
+  return 5 + Math.floor(Math.random() * 5);
+}
+
+function pickVibeArc(): "warming" | "cooling" | "steady" {
+  const r = Math.random();
+  if (r < 0.35) return "warming";
+  if (r < 0.55) return "cooling";
+  return "steady";
 }
 
 const COUNTRIES: Array<{ name: string; code: string; cities: string[]; weight: number }> = [
@@ -900,11 +1058,14 @@ export function generatePersona(prefs?: UserPrefs): Persona {
 
   return {
     id: makeId(),
+    name: pickName(country.code, gender),
     country: country.name,
     countryCode: country.code,
     city,
     age,
     gender,
+    localHour: pickLocalHour(),
+    vibeArc: pickVibeArc(),
     interests,
     mood,
     typingStyle,

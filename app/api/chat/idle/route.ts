@@ -6,11 +6,20 @@
 // Same response shape as /send so the client can render messages identically.
 
 import { NextResponse } from "next/server";
-import { appendMessage, endSession, getSession } from "@/lib/sessions";
+import {
+  appendMessage,
+  endSession,
+  getSession,
+  incrementSilentPing,
+} from "@/lib/sessions";
 import { parseReply, type PacedMessage } from "@/lib/replyParser";
 import { callLLM, trimHistory } from "@/lib/llmProvider";
 import { clientIp, rateLimit } from "@/lib/rateLimit";
 import { trackChatEnded } from "@/lib/analytics";
+
+// Cap on consecutive idle pings before we force the persona to leave. Real
+// strangers don't keep poking; after 2 unanswered pings, the chat is over.
+const MAX_SILENT_PINGS = 2;
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -42,10 +51,19 @@ export async function POST(req: Request) {
   if (!session) return NextResponse.json({ error: "session not found" }, { status: 404 });
   if (session.ended) return NextResponse.json({ error: "session ended", reason: session.endReason }, { status: 410 });
 
+  // Increment the impatience counter BEFORE we ask the LLM what to do. The
+  // marker we inject tells the model how many times the user has already
+  // been pinged this round — so it can pick the right response (silent leave,
+  // proactive bye, etc.) without endlessly looping pings.
+  const pingNumber = incrementSilentPing(sessionId);
+  const seconds = Math.round(silenceMs / 1000);
+  const forceLeave = pingNumber > MAX_SILENT_PINGS;
+
   // The persona must SEE that the user went silent. We inject this as a synthetic
   // user-role message, marked as a system note. The system prompt explains the convention.
-  const seconds = Math.round(silenceMs / 1000);
-  const idleMarker = `[the user has been silent for ${seconds}s]`;
+  const idleMarker = forceLeave
+    ? `[the user has been silent for ${seconds}s — this is ping #${pingNumber}, you must leave now: end your reply with [LEAVE: silent], optional one-line goodbye max]`
+    : `[the user has been silent for ${seconds}s — this is your idle moment #${pingNumber} this round]`;
 
   const llmMessages: Array<{ role: "user" | "assistant"; content: string }> = [
     ...trimHistory(session.messages).map(m => ({ role: m.role, content: m.content })),
@@ -74,11 +92,24 @@ export async function POST(req: Request) {
 
   const parsed = parseReply(session.persona, raw);
 
-  if (parsed.stay) {
+  // If the model emitted [STAY] but we'd already decided to force-leave, we
+  // override the model — silence is silence, the chat ends. Otherwise pass
+  // STAY through and let the client re-arm the idle timer.
+  if (parsed.stay && !forceLeave) {
     return NextResponse.json({
       messages: [] as PacedMessage[],
       left: false,
       stay: true,
+    });
+  }
+  if (parsed.stay && forceLeave) {
+    endSession(sessionId, "silent");
+    void trackChatEnded(req, session, "silent");
+    return NextResponse.json({
+      messages: [] as PacedMessage[],
+      left: true,
+      reason: "silent",
+      stay: false,
     });
   }
 
@@ -89,15 +120,21 @@ export async function POST(req: Request) {
     appendMessage(sessionId, { role: "assistant", content: m.text, ts: cursor });
   }
 
-  if (parsed.left) {
-    endSession(sessionId, parsed.leaveReason || "silent");
-    void trackChatEnded(req, session, parsed.leaveReason || "silent");
+  // Force-leave fallback: if we told the model to leave (forceLeave) but it
+  // ignored the instruction and didn't emit [LEAVE: ...], end the session
+  // server-side anyway. The persona's last messages still play out, the chat
+  // just closes after.
+  const shouldEnd = parsed.left || forceLeave;
+  const leaveReason = parsed.leaveReason || "silent";
+  if (shouldEnd) {
+    endSession(sessionId, leaveReason);
+    void trackChatEnded(req, session, leaveReason);
   }
 
   return NextResponse.json({
     messages: parsed.messages,
-    left: parsed.left,
-    reason: parsed.left ? parsed.leaveReason : undefined,
+    left: shouldEnd,
+    reason: shouldEnd ? leaveReason : undefined,
     stay: false,
   });
 }

@@ -12,6 +12,7 @@ import {
   getRecentUserMessages,
   getSession,
   incrementWarning,
+  resetSilentPing,
 } from "@/lib/sessions";
 import { parseReply, type PacedMessage } from "@/lib/replyParser";
 import { callLLM, trimHistory } from "@/lib/llmProvider";
@@ -130,6 +131,9 @@ export async function POST(req: Request) {
   }
 
   appendMessage(sessionId, { role: "user", content: message, ts: Date.now() });
+  // User just spoke — reset the impatience counter so the persona's next idle
+  // poll starts fresh from "ping" instead of "force-leave".
+  resetSilentPing(sessionId);
 
   // Random "stranger ghosted before reading" outcome — small chance the user just gets dropped.
   if (Math.random() < session.persona.randomLeaveProbability * 0.4) {
