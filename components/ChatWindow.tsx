@@ -11,7 +11,8 @@ const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "";
 
 type DisplayMsg =
   | { role: "user" | "assistant"; text: string }
-  | { role: "system"; text: string };
+  | { role: "system"; text: string }
+  | { role: "warning"; text: string };
 
 interface PacedMessage {
   text: string;
@@ -31,6 +32,7 @@ interface SendResponse {
   left: boolean;
   reason?: string;
   leaveDelayMs?: number;
+  warning?: { text: string; reason: string; count: number };
 }
 
 interface IdleResponse {
@@ -356,8 +358,14 @@ export function ChatWindow() {
         return;
       }
       if (res.status === 451) {
-        // Server-side content filter rejected the message. End the session — no retries.
-        pushMsg({ role: "system", text: "this chat has ended due to a content policy violation." });
+        // Server-side content filter closed the session. Surface the specific
+        // reason text the server returned so the user knows *why* (CSAM, drugs,
+        // threats, repeat warnings, etc.) — no retries.
+        const data = await res.json().catch(() => ({} as { closeText?: string }));
+        const closeText =
+          (data && (data as { closeText?: string }).closeText) ||
+          "this chat has ended due to a content policy violation.";
+        pushMsg({ role: "warning", text: closeText });
         setEnded(true);
         return;
       }
@@ -375,6 +383,14 @@ export function ChatWindow() {
       }
 
       const data = (await res.json()) as SendResponse;
+
+      // First-offense warning: server kept the session alive but flagged the
+      // message. Show the warning and don't expect a stranger reply.
+      if (data.warning) {
+        pushMsg({ role: "warning", text: data.warning.text });
+        armIdleTimer();
+        return;
+      }
 
       if (data.left && data.messages.length === 0) {
         const delay = data.leaveDelayMs ?? 5_000;

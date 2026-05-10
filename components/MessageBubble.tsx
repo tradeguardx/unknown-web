@@ -1,9 +1,17 @@
 interface Props {
-  role: "user" | "assistant" | "system";
+  role: "user" | "assistant" | "system" | "warning";
   text: string;
 }
 
 export function MessageBubble({ role, text }: Props) {
+  if (role === "warning") {
+    return (
+      <div className="my-2 mx-auto max-w-md text-center text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+        {text}
+      </div>
+    );
+  }
+
   if (role === "system") {
     return (
       <div className="text-center text-xs text-neutral-400 my-2 italic">{text}</div>

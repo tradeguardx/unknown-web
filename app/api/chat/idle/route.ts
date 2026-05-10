@@ -10,6 +10,7 @@ import { appendMessage, endSession, getSession } from "@/lib/sessions";
 import { parseReply, type PacedMessage } from "@/lib/replyParser";
 import { callLLM, trimHistory } from "@/lib/llmProvider";
 import { clientIp, rateLimit } from "@/lib/rateLimit";
+import { trackChatEnded } from "@/lib/analytics";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -88,7 +89,10 @@ export async function POST(req: Request) {
     appendMessage(sessionId, { role: "assistant", content: m.text, ts: cursor });
   }
 
-  if (parsed.left) endSession(sessionId, parsed.leaveReason || "silent");
+  if (parsed.left) {
+    endSession(sessionId, parsed.leaveReason || "silent");
+    void trackChatEnded(req, session, parsed.leaveReason || "silent");
+  }
 
   return NextResponse.json({
     messages: parsed.messages,

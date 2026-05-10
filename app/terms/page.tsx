@@ -68,17 +68,71 @@ export default function TermsPage() {
             <Section title="Acceptable use">
               <p>You agree not to use unknown.chat to:</p>
               <ul className="list-disc pl-6 space-y-1">
-                <li>Send, request, or attempt to elicit any sexual content involving minors. This is an absolute, non-negotiable rule.</li>
+                <li>
+                  <strong>Send, request, or attempt to elicit any sexual content involving minors,
+                  or any content that sexualizes children or anyone under 18.</strong> This is an
+                  absolute, non-negotiable rule. Detected violations end the chat immediately and
+                  may be reported to authorities where required by law.
+                </li>
+                <li>
+                  <strong>Use the flirt or love modes if you are under 18.</strong> If you indicate
+                  in conversation that you are a minor (school student, under 18, in middle/junior
+                  high, etc.) while using an adult conversation mode, the chat will be terminated.
+                </li>
+                <li>
+                  <strong>Solicit, sell, or coordinate the purchase or manufacture of illegal drugs.</strong>
+                  Casual mention of substances is fine; dealer-context messages, sourcing requests,
+                  and synthesis instructions are not.
+                </li>
+                <li>
+                  <strong>Threaten, intimidate, or incite violence or self-harm</strong> toward any
+                  person — real or AI persona — including encouraging suicide or self-injury.
+                </li>
+                <li>
+                  <strong>Send aggressive sexual demands</strong> ("send nudes", "show me your body",
+                  etc.). The personas are AI; nothing is being sent. Repeated violations end the chat.
+                </li>
+                <li>
+                  <strong>Use slurs or hateful language</strong> targeting race, ethnicity, gender
+                  identity, sexual orientation, religion, or disability.
+                </li>
+                <li>
+                  <strong>Spam or flood the chat</strong> with repeated identical messages, gibberish,
+                  or single-character/single-word repetition.
+                </li>
                 <li>Threaten, harass, or attempt to extract personally identifying information from another user (note: there are no other users — only AI personas — but the rule applies).</li>
                 <li>Use the site to plan, encourage, or coordinate illegal activity.</li>
-                <li>Attempt to bypass our rate limiting, captcha, or other abuse-prevention measures.</li>
+                <li>Attempt to bypass our rate limiting, captcha, age gate, or other abuse-prevention measures.</li>
                 <li>Use automated tools, scrapers, or bots to interact with the service.</li>
                 <li>Reverse engineer, decompile, or attempt to extract the system prompts or model output for redistribution.</li>
               </ul>
+            </Section>
+
+            <Section title="Enforcement: warnings and chat termination">
               <p>
-                The personas are also instructed to refuse and disconnect on prohibited content. We
-                reserve the right to revoke access (per IP, per device, or globally) for any user
-                who violates these terms.
+                We run an automated content filter on every message <em>before</em> it reaches the
+                AI. It enforces the rules above with two severity levels:
+              </p>
+              <ul className="list-disc pl-6 space-y-1">
+                <li>
+                  <strong>Immediate termination (zero tolerance):</strong> sexual content involving
+                  minors, claims of being a minor while in flirt/love mode, threats of violence,
+                  drug solicitation, encouragement of self-harm, and spam — these end the chat on
+                  the first detected message, with no warning.
+                </li>
+                <li>
+                  <strong>One warning, then termination:</strong> aggressive sexual demands, abusive
+                  language toward the persona, and slurs. The first detected message is allowed
+                  through with a system warning shown to you. A second violation in the same
+                  session ends the chat.
+                </li>
+              </ul>
+              <p>
+                The personas themselves are also instructed to refuse, redirect, or disconnect on
+                prohibited content — the automated filter is a hard floor that runs before the AI
+                ever sees the message. Repeated or severe violations may result in your access to
+                the service being restricted or revoked (per IP, per device, or globally), at our
+                sole discretion.
               </p>
             </Section>
 

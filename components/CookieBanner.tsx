@@ -40,7 +40,8 @@ export function CookieBanner() {
     >
       <p className="text-xs text-neutral-700 leading-relaxed">
         unknown.chat stores your preferences in your browser's local storage so the form
-        remembers what you picked. We don't use cookies for tracking or analytics.{" "}
+        remembers what you picked. We use Plausible — a privacy-friendly, cookie-free analytics
+        service — for aggregate usage stats. No tracking cookies, no third-party trackers.{" "}
         <Link href="/privacy" className="underline hover:text-neutral-900">read more</Link>
       </p>
       <button

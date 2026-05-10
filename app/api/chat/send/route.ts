@@ -6,12 +6,23 @@
 // Returns an array of PacedMessage so the client can animate each one.
 
 import { NextResponse } from "next/server";
-import { appendMessage, endSession, getSession } from "@/lib/sessions";
+import {
+  appendMessage,
+  endSession,
+  getRecentUserMessages,
+  getSession,
+  incrementWarning,
+} from "@/lib/sessions";
 import { parseReply, type PacedMessage } from "@/lib/replyParser";
 import { callLLM, trimHistory } from "@/lib/llmProvider";
 import { clientIp, rateLimit } from "@/lib/rateLimit";
-import { checkProhibitedContent } from "@/lib/contentFilter";
+import { checkContent, getCloseText } from "@/lib/contentFilter";
 import { refreshUserMemory, shouldRefreshMemory } from "@/lib/userMemory";
+import {
+  trackChatEnded,
+  trackContentFilterClosed,
+  trackContentFilterWarned,
+} from "@/lib/analytics";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -49,30 +60,73 @@ export async function POST(req: Request) {
 
   if (session.messages.length >= 200) {
     endSession(sessionId, "too long");
+    void trackChatEnded(req, session, "too_long");
     return NextResponse.json({ error: "session ended", reason: "too long" }, { status: 410 });
   }
   if (message.length > 2000) {
     return NextResponse.json({ error: "message too long" }, { status: 413 });
   }
 
-  // Defense-in-depth content filter: refuse messages with CSAM-coded patterns
-  // *before* they reach the model. End the session immediately on a hit.
-  const filter = checkProhibitedContent(message, session.prefs?.intent);
-  if (filter.blocked) {
+  // Defense-in-depth content enforcement. Three severities:
+  //   - close: CSAM, threats, drug dealing, minor-in-adult-mode, spam, repeat offenders → end session
+  //   - warn:  sexual demands, abuse, slurs → first hit returns a system warning, second hit closes
+  //   - ok:    let it through to the LLM
+  const filter = checkContent({
+    text: message,
+    intent: session.prefs?.intent,
+    warningCount: session.warningCount,
+    recentUserMessages: getRecentUserMessages(sessionId, 5),
+  });
+
+  if (filter.severity === "close") {
     console.error(
-      "[content-filter] blocked message",
+      "[content-filter] closed session",
       JSON.stringify({
         sessionId,
         reason: filter.reason,
         intent: session.prefs?.intent,
+        warningCount: session.warningCount,
         sample: message.slice(0, 80),
       }),
     );
-    endSession(sessionId, "policy");
+    endSession(sessionId, filter.reason || "policy");
+    void trackContentFilterClosed(req, session, filter.reason || "unknown");
+    void trackChatEnded(req, session, `policy:${filter.reason || "unknown"}`);
     return NextResponse.json(
-      { error: "content policy violation", reason: "policy", code: "content_policy" },
+      {
+        error: "content policy violation",
+        reason: filter.reason,
+        code: "content_policy",
+        closeText: getCloseText(filter.reason || ""),
+      },
       { status: 451 },
     );
+  }
+
+  if (filter.severity === "warn") {
+    const newCount = incrementWarning(sessionId);
+    console.warn(
+      "[content-filter] warned",
+      JSON.stringify({
+        sessionId,
+        reason: filter.reason,
+        warningCount: newCount,
+        sample: message.slice(0, 80),
+      }),
+    );
+    void trackContentFilterWarned(req, session, filter.reason || "unknown", newCount);
+    // Warning is delivered as a synthetic system message — UI renders distinctly.
+    // We do NOT append it to session.messages or send it to the LLM; this is purely
+    // a server→client signal so the chat does not break flow with the persona.
+    return NextResponse.json({
+      messages: [] as PacedMessage[],
+      left: false,
+      warning: {
+        text: filter.warningText,
+        reason: filter.reason,
+        count: newCount,
+      },
+    });
   }
 
   appendMessage(sessionId, { role: "user", content: message, ts: Date.now() });
@@ -80,6 +134,7 @@ export async function POST(req: Request) {
   // Random "stranger ghosted before reading" outcome — small chance the user just gets dropped.
   if (Math.random() < session.persona.randomLeaveProbability * 0.4) {
     endSession(sessionId, "ghosted");
+    void trackChatEnded(req, session, "ghosted");
     return NextResponse.json({
       messages: [] as PacedMessage[],
       left: true,
@@ -140,6 +195,7 @@ export async function POST(req: Request) {
 
   if (parsed.left) {
     endSession(sessionId, parsed.leaveReason || "left");
+    void trackChatEnded(req, session, parsed.leaveReason || "left");
   }
 
   // Fire-and-forget rolling memory refresh. Runs every Nth message (default 10),

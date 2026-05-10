@@ -45,6 +45,8 @@ export interface Session {
   // mode this rolls per-session so the chat is coherent (no mid-chat voice
   // shift). In single-provider mode it's just whatever's configured.
   provider: LLMProvider;
+  // Number of warn-level content filter hits so far. Second hit promotes to close.
+  warningCount: number;
   // Once true, no further messages from the persona — they "left".
   ended: boolean;
   endReason?: string;
@@ -78,6 +80,7 @@ export function createSession(prefs?: UserPrefs): Session {
     messages: [],
     userMemory: { identity: [], interests: [], emotional: [] },
     provider: pickProviderForSession(),
+    warningCount: 0,
     ended: false,
     createdAt: Date.now(),
   };
@@ -100,4 +103,20 @@ export function endSession(id: string, reason: string): void {
   if (!s) return;
   s.ended = true;
   s.endReason = reason;
+}
+
+export function incrementWarning(id: string): number {
+  const s = SESSIONS.get(id);
+  if (!s) return 0;
+  s.warningCount += 1;
+  return s.warningCount;
+}
+
+export function getRecentUserMessages(id: string, limit = 5): string[] {
+  const s = SESSIONS.get(id);
+  if (!s) return [];
+  return s.messages
+    .filter(m => m.role === "user")
+    .slice(-limit)
+    .map(m => m.content);
 }

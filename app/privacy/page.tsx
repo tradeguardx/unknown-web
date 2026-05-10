@@ -32,7 +32,7 @@ export default function PrivacyPage() {
             <Section title="The short version">
               <ul className="list-disc pl-6 space-y-1">
                 <li>We don't have user accounts, so we don't ask for your name, email, or any other identifier.</li>
-                <li>We don't run analytics, advertising, or third-party trackers.</li>
+                <li>We use <a href="https://plausible.io/data-policy" target="_blank" rel="noopener noreferrer" className="underline">Plausible Analytics</a> — a privacy-friendly, cookie-free analytics service. No advertising, no third-party trackers.</li>
                 <li>We don't store your chat messages anywhere persistent. Sessions live in our server's memory and are gone when the chat ends or the server restarts.</li>
                 <li>Your chat messages <em>are</em> sent to Anthropic's Claude API for processing — that's how the AI personas work. Their privacy policy applies for that data flow.</li>
                 <li>Your local preferences (country, language, intent, age confirmation, sound, notification permission) are stored in your browser's local storage on your device. We don't have a copy.</li>
@@ -66,6 +66,36 @@ export default function PrivacyPage() {
                 chat session.
               </p>
 
+              <h3 className="font-medium text-neutral-900 mt-4">Plausible Analytics (privacy-friendly, no cookies)</h3>
+              <p>
+                We use <a href="https://plausible.io" target="_blank" rel="noopener noreferrer" className="underline">Plausible Analytics</a>{" "}
+                to understand aggregate usage of the site (how many people visit, which pages, what
+                country, what device — never anything tied to you). Plausible:
+              </p>
+              <ul className="list-disc pl-6 space-y-1">
+                <li>Does not use cookies and does not collect any persistent identifiers.</li>
+                <li>Does not track you across other sites.</li>
+                <li>Stores all data in the EU and is fully GDPR / CCPA / PECR compliant.</li>
+                <li>
+                  Generates a per-day, per-site visitor hash from your IP + User-Agent + a
+                  daily-rotating salt. The hash cannot be reversed back to your IP. The salt
+                  rotates every 24 hours so even the hash is forgotten.
+                </li>
+              </ul>
+              <p>
+                We also send a small number of <strong>aggregate</strong> server-side events to
+                Plausible — when a chat is started, when a chat ends (with the reason and a coarse
+                duration bucket), and when our content filter blocks a message. These events
+                contain no message content, no user identifier, and no IP address (Plausible
+                hashes IPs as described above). They exist so we can see whether the product is
+                working — funnel conversion, average chat length, abuse rates — not to track
+                individuals.
+              </p>
+              <p>
+                You can read Plausible's full data policy{" "}
+                <a href="https://plausible.io/data-policy" target="_blank" rel="noopener noreferrer" className="underline">here</a>.
+              </p>
+
               <h3 className="font-medium text-neutral-900 mt-4">Cloudflare Turnstile (captcha)</h3>
               <p>
                 Roughly every 5 chats we present a captcha challenge from Cloudflare Turnstile to
@@ -80,10 +110,9 @@ export default function PrivacyPage() {
             <Section title="What we don't collect">
               <ul className="list-disc pl-6 space-y-1">
                 <li>No accounts, names, emails, or phone numbers.</li>
-                <li>No analytics tools (no Google Analytics, Plausible, Mixpanel, etc.).</li>
-                <li>No advertising trackers, no Facebook Pixel, no third-party fingerprinting.</li>
+                <li>No Google Analytics, no Mixpanel, no Facebook Pixel, no advertising trackers, no third-party fingerprinting.</li>
                 <li>No persistent server-side history of your chats.</li>
-                <li>No first-party cookies for tracking purposes (we do not set tracking cookies).</li>
+                <li>No tracking cookies. (Plausible Analytics does not use cookies; see above.)</li>
               </ul>
             </Section>
 
