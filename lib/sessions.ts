@@ -12,6 +12,22 @@ export interface ChatMessage {
   ts: number;
 }
 
+// Structured rolling memory about the user, populated by lib/userMemory.ts.
+// Three categories, because what the persona "remembers" matters in different
+// ways:
+//   - identity: stable facts (name, age, location, work)
+//   - interests: hobbies, fandoms, what they like
+//   - emotional: mood patterns, vibes, behaviors, how they tend to act —
+//                THE most important category for psychological realism.
+//                ("gets flirty late", "sarcastic", "stressed about career")
+export interface UserMemory {
+  identity: string[];
+  interests: string[];
+  emotional: string[];
+}
+
+export const EMPTY_USER_MEMORY: UserMemory = { identity: [], interests: [], emotional: [] };
+
 export interface Session {
   id: string;
   persona: Persona;
@@ -19,6 +35,11 @@ export interface Session {
   // Snapshot of user prefs at session start. Stored so /api/chat/send can rebuild
   // the same system prompt the persona was generated against.
   prefs?: UserPrefs;
+  // Rolling categorized memory about the user. Survives history trimming —
+  // injected into the system prompt so the persona "remembers" emotionally and
+  // factually even after old messages roll out of the recent-history window.
+  // Internal only — never shown to the user.
+  userMemory: UserMemory;
   // Once true, no further messages from the persona — they "left".
   ended: boolean;
   endReason?: string;
@@ -50,6 +71,7 @@ export function createSession(prefs?: UserPrefs): Session {
     persona: generatePersona(prefs),
     prefs,
     messages: [],
+    userMemory: { identity: [], interests: [], emotional: [] },
     ended: false,
     createdAt: Date.now(),
   };

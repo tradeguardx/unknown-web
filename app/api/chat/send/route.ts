@@ -1,6 +1,6 @@
 // POST /api/chat/send
 // Body: { sessionId, message }
-// Calls the active LLM provider (Anthropic or Groq, per LLM_PROVIDER env)
+// Calls the active LLM provider (Anthropic or DeepSeek, per LLM_PROVIDER env)
 // with the persona system prompt + history. The reply may be split into
 // 1–3 short bursts (the prompt instructs the model to use \n for natural multi-message replies).
 // Returns an array of PacedMessage so the client can animate each one.
@@ -8,9 +8,10 @@
 import { NextResponse } from "next/server";
 import { appendMessage, endSession, getSession } from "@/lib/sessions";
 import { parseReply, type PacedMessage } from "@/lib/replyParser";
-import { callLLM } from "@/lib/llmProvider";
+import { callLLM, trimHistory } from "@/lib/llmProvider";
 import { clientIp, rateLimit } from "@/lib/rateLimit";
 import { checkProhibitedContent } from "@/lib/contentFilter";
+import { refreshUserMemory, shouldRefreshMemory } from "@/lib/userMemory";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -89,7 +90,7 @@ export async function POST(req: Request) {
     });
   }
 
-  const llmMessages = session.messages.map(m => ({
+  const llmMessages = trimHistory(session.messages).map(m => ({
     role: m.role,
     content: m.content,
   }));
@@ -99,6 +100,7 @@ export async function POST(req: Request) {
     raw = await callLLM({
       persona: session.persona,
       prefs: session.prefs,
+      userMemory: session.userMemory,
       messages: llmMessages,
       maxTokens: 256,
     });
@@ -106,7 +108,7 @@ export async function POST(req: Request) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("[llm error]", msg);
 
-    // Detect upstream rate-limit (Groq TPD cap, Anthropic 429, etc.) and surface
+    // Detect upstream rate-limit (Anthropic 429, DeepSeek 429, etc.) and surface
     // a friendlier error code so the client can show a useful message instead of
     // a generic "something glitched".
     const isRateLimit = /\b(429|rate.?limit|tokens per day|TPD|TPM)\b/i.test(msg);
@@ -137,6 +139,17 @@ export async function POST(req: Request) {
 
   if (parsed.left) {
     endSession(sessionId, parsed.leaveReason || "left");
+  }
+
+  // Fire-and-forget rolling memory refresh. Runs every Nth message (default 10),
+  // uses DeepSeek's deepseek-chat — cheap and reliable structured output.
+  // Doesn't block the user's reply. Next request picks up the updated memory.
+  if (shouldRefreshMemory(session.messages.length)) {
+    setImmediate(() => {
+      refreshUserMemory({ sessionId }).catch(err =>
+        console.warn("[userMemory refresh]", err instanceof Error ? err.message : String(err)),
+      );
+    });
   }
 
   return NextResponse.json({

@@ -1,7 +1,8 @@
-// Thin abstraction that routes to Anthropic or Groq based on the LLM_PROVIDER env var.
+// Thin abstraction that routes to Anthropic or DeepSeek based on the
+// LLM_PROVIDER env var.
 //
 //   - "anthropic" (default) → Claude Haiku 4.5 + lib/prompts.ts (with prompt caching)
-//   - "groq"                → Llama 3.3 70B Versatile + lib/promptsGroq.ts
+//   - "deepseek"            → deepseek-chat + lib/promptsDeepSeek.ts
 //
 // The Anthropic call is identical to what was previously inline in the route
 // handlers — copying it verbatim keeps the Claude flow untouched.
@@ -12,20 +13,44 @@
 
 import type { Persona } from "./persona";
 import type { UserPrefs } from "./prefs";
+import type { UserMemory } from "./sessions";
 import { buildSystemPrompt } from "./prompts";
-import { buildSystemPromptGroq } from "./promptsGroq";
+import { buildSystemPromptDeepSeek } from "./promptsDeepSeek";
 import { cachedSystem, getAnthropic, MODEL } from "./anthropic";
-import { groqChat } from "./groq";
+import { deepseekChat } from "./deepseek";
 
-export type LLMProvider = "anthropic" | "groq";
+export type LLMProvider = "anthropic" | "deepseek";
 
 export function getActiveProvider(): LLMProvider {
-  return process.env.LLM_PROVIDER === "groq" ? "groq" : "anthropic";
+  return process.env.LLM_PROVIDER === "deepseek" ? "deepseek" : "anthropic";
+}
+
+// Cap conversation history sent to the LLM. The persona's identity (country,
+// age, mood, personality, etc.) lives in the system prompt and is always sent
+// in full — only the message history rolls. User-shared identity from the
+// prefs form (their country, gender, intent, language) is also baked into the
+// system prompt's user-context section, so it never gets dropped.
+//
+// What CAN drop with a tight window: in-chat reveals like the user's name,
+// hobbies they shared, mid-chat backstory. Acceptable for chat-with-stranger
+// realism — real strangers don't have perfect recall either.
+//
+// Tunable via HISTORY_LIMIT env var. Default 20 messages = ~10 turns of recent
+// back-and-forth, which is plenty for conversational coherence.
+const HISTORY_LIMIT = Math.max(2, Number(process.env.HISTORY_LIMIT) || 20);
+
+export function trimHistory<T>(messages: T[]): T[] {
+  if (messages.length <= HISTORY_LIMIT) return messages;
+  return messages.slice(-HISTORY_LIMIT);
 }
 
 export interface LLMRequest {
   persona: Persona;
   prefs?: UserPrefs;
+  // Rolling categorized notes about the user (from lib/userMemory.ts).
+  // Injected into the system prompt so the persona "remembers" things — both
+  // factually and emotionally — even after history trims.
+  userMemory?: UserMemory;
   messages: Array<{ role: "user" | "assistant"; content: string }>;
   maxTokens: number;
 }
@@ -33,9 +58,9 @@ export interface LLMRequest {
 export async function callLLM(req: LLMRequest): Promise<string> {
   const provider = getActiveProvider();
 
-  if (provider === "groq") {
-    const system = buildSystemPromptGroq(req.persona, req.prefs);
-    return groqChat({
+  if (provider === "deepseek") {
+    const system = buildSystemPromptDeepSeek(req.persona, req.prefs, req.userMemory);
+    return deepseekChat({
       system,
       messages: req.messages,
       maxTokens: req.maxTokens,
@@ -43,7 +68,7 @@ export async function callLLM(req: LLMRequest): Promise<string> {
   }
 
   // anthropic (default) — preserved verbatim from original route handlers
-  const system = buildSystemPrompt(req.persona, req.prefs);
+  const system = buildSystemPrompt(req.persona, req.prefs, req.userMemory);
   const resp = await getAnthropic().messages.create({
     model: MODEL,
     max_tokens: req.maxTokens,

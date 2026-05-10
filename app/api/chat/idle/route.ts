@@ -8,7 +8,7 @@
 import { NextResponse } from "next/server";
 import { appendMessage, endSession, getSession } from "@/lib/sessions";
 import { parseReply, type PacedMessage } from "@/lib/replyParser";
-import { callLLM } from "@/lib/llmProvider";
+import { callLLM, trimHistory } from "@/lib/llmProvider";
 import { clientIp, rateLimit } from "@/lib/rateLimit";
 
 export const runtime = "nodejs";
@@ -47,7 +47,7 @@ export async function POST(req: Request) {
   const idleMarker = `[the user has been silent for ${seconds}s]`;
 
   const llmMessages: Array<{ role: "user" | "assistant"; content: string }> = [
-    ...session.messages.map(m => ({ role: m.role, content: m.content })),
+    ...trimHistory(session.messages).map(m => ({ role: m.role, content: m.content })),
     { role: "user" as const, content: idleMarker },
   ];
 
@@ -56,6 +56,7 @@ export async function POST(req: Request) {
     raw = await callLLM({
       persona: session.persona,
       prefs: session.prefs,
+      userMemory: session.userMemory,
       messages: llmMessages,
       maxTokens: 128,
     });

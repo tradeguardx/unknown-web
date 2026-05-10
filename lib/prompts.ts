@@ -13,6 +13,8 @@ import type {
   TypingStyle,
 } from "./persona";
 import { LANGUAGES, type UserPrefs } from "./prefs";
+import type { UserMemory } from "./sessions";
+import { socialDynamicHints } from "./socialDynamics";
 
 // One-line behavioral description per personality axis. These get joined into
 // a "Personality" section in the prompt — each axis is independent so two
@@ -99,12 +101,37 @@ You can use this to flavor your behavior subtly. Examples:
 But DO NOT mention "the app told me" or "your settings". You only "know" things they say in chat.`;
 }
 
-export function buildSystemPrompt(persona: Persona, prefs?: UserPrefs): string {
+function memorySection(memory?: UserMemory): string {
+  if (!memory) return "";
+  const parts: string[] = [];
+
+  if (memory.identity.length) {
+    parts.push(`About them (identity):\n${memory.identity.map(b => `- ${b}`).join("\n")}`);
+  }
+  if (memory.interests.length) {
+    parts.push(`What they're into (interests):\n${memory.interests.map(b => `- ${b}`).join("\n")}`);
+  }
+  if (memory.emotional.length) {
+    parts.push(`How they feel and behave (emotional — pay attention, this shapes HOW you respond):\n${memory.emotional.map(b => `- ${b}`).join("\n")}`);
+  }
+
+  if (parts.length === 0) return "";
+
+  return `
+
+# What you've learned about them so far in this chat (your memory)
+${parts.join("\n\n")}
+
+Use this naturally. Don't recite it as a list. Especially the emotional notes — those should color HOW you reply (your tone, your warmth, what you tease them about), not just what you say.`;
+}
+
+export function buildSystemPrompt(persona: Persona, prefs?: UserPrefs, userMemory?: UserMemory): string {
   const dislikesLine = persona.dislikes.length
     ? `Things you genuinely dislike or get annoyed by: ${persona.dislikes.join(", ")}.`
     : `You're pretty open and easygoing.`;
 
   const userCtx = userContextSection(prefs);
+  const memCtx = memorySection(userMemory);
   const styleHint = STYLE_HINTS[persona.typingStyle];
 
   // Language section — only added when user picked a non-English language.
@@ -137,7 +164,7 @@ Critical rules:
 # Personality (your baseline self — this shapes EVERY message, not just one)
 ${personalitySection(persona.personality)}
 
-These traits run UNDER your mood. A "chatty" mood with an "introverted" personality still types short and waits to be drawn out — you're just chattier than your usual baseline today. Don't drop these traits as the chat goes on.
+These traits run UNDER your mood. A "chatty" mood with an "introverted" personality still types short and waits to be drawn out — you're just chattier than your usual baseline today. Don't drop these traits as the chat goes on.${socialDynamicHints(persona.gender, prefs)}
 
 # Small habit you have (a quirk that shows up naturally)
 ${persona.quirk} Don't force it on every message — let it surface naturally when relevant. Once or twice across the chat, not constantly.
@@ -296,5 +323,5 @@ Shy/bored/grumpy moods often just leave. Chatty/flirty moods often poke.
 # Final reminder before you respond
 - Stay in character. Type the way "${persona.typingStyle}" types (see "How you type" above) — every message, not just the first.
 - Be a person, not an assistant.
-- Send 1 line usually, occasionally split into 2 with a real line break (press Enter) — never the literal characters backslash + n.${userCtx}`;
+- Send 1 line usually, occasionally split into 2 with a real line break (press Enter) — never the literal characters backslash + n.${userCtx}${memCtx}`;
 }
