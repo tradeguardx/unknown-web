@@ -65,14 +65,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             {/* Plain <script> (not next/script) so the tag renders in the SSR
                 HTML directly — Plausible's installation verifier crawls the
                 static HTML and doesn't execute JavaScript, so a deferred
-                client-injected tag would look like a missing install. */}
-            <script defer src={PLAUSIBLE_SCRIPT_URL} />
-            {/* Init shim: queues plausible() calls made before the deferred
-                script lands, so any custom event we fire from the client
-                won't be lost on first paint. */}
+                client-injected tag would look like a missing install.
+                Snippet matches Plausible's install page verbatim — their
+                verifier looks for the canonical init shim shape. */}
+            <script async src={PLAUSIBLE_SCRIPT_URL} />
             <script
               dangerouslySetInnerHTML={{
-                __html: `window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)};plausible.init=plausible.init||function(i){plausible('init',i)};plausible.init();`,
+                __html: `window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};plausible.init()`,
               }}
             />
           </>
