@@ -31,7 +31,7 @@ export default async function OgImage() {
           talk to someone you'll never meet again.
         </div>
         <div style={{ marginTop: 60, fontSize: 24, color: "#737373" }}>
-          AI personas · anonymous · no memory
+          anonymous · no accounts · no memory
         </div>
       </div>
     ),

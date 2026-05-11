@@ -17,7 +17,7 @@ export const metadata: Metadata = {
     template: `%s · ${SITE_NAME}`,
   },
   description:
-    "Anonymous chat where every stranger is a different AI persona. Random country, mood, language each time. No accounts, no memory — just talk.",
+    "Anonymous chat with strangers who aren't quite real. Different mood, country, and language every time. No accounts, no memory — just talk.",
   applicationName: SITE_NAME,
   keywords: [
     "talk to strangers",

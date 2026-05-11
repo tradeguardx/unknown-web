@@ -38,8 +38,8 @@ export function LandingForm() {
       <div className="mt-6 text-left bg-white border border-neutral-200 rounded-xl p-4 text-sm text-neutral-700 leading-relaxed">
         <p>
           <span className="font-semibold">heads up — </span>
-          the strangers here are AI personas designed to feel like real people. They have moods,
-          quirks, and might leave without warning. See <Link href="/about" className="underline">about</Link>.
+          the strangers here aren't real people. they're characters built to type,
+          mood-swing, and leave like one anyway. read more in <Link href="/about" className="underline">about</Link>.
         </p>
         <label className="flex gap-2 items-start cursor-pointer mt-3 pt-3 border-t border-neutral-100">
           <input
@@ -49,7 +49,7 @@ export function LandingForm() {
             className="mt-0.5 cursor-pointer"
           />
           <span className="text-neutral-800">
-            I understand the strangers here are AI personas, not humans.
+            I understand these aren't real humans I'm meeting.
           </span>
         </label>
       </div>

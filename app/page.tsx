@@ -8,12 +8,12 @@ import { SITE_URL } from "@/lib/site";
 export const metadata: Metadata = {
   title: "unknown.chat — talk to a stranger",
   description:
-    "Anonymous chat where every stranger is a different AI persona. Random country, mood, language each time. No accounts, no memory — just talk.",
+    "Anonymous chat with strangers who aren't quite real. Different mood, country, and language every time. No accounts, no memory — just talk.",
   alternates: { canonical: SITE_URL },
   openGraph: {
     title: "unknown.chat — talk to a stranger",
     description:
-      "Anonymous chat where every stranger is a different AI persona. Random country, mood, language each time.",
+      "Anonymous chat with strangers who aren't quite real. Different mood, country, and language every time.",
     url: SITE_URL,
     siteName: "unknown.chat",
     type: "website",
@@ -22,7 +22,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "unknown.chat — talk to a stranger",
     description:
-      "Anonymous chat where every stranger is a different AI persona.",
+      "Anonymous chat with strangers who aren't quite real.",
   },
 };
 
@@ -32,7 +32,7 @@ const jsonLd = {
   name: "unknown.chat",
   url: SITE_URL,
   description:
-    "Anonymous chat where every stranger is a different AI persona. Random country, mood, language each time.",
+    "Anonymous chat with strangers who aren't quite real. Different mood, country, and language every time.",
   applicationCategory: "CommunicationApplication",
   operatingSystem: "Any",
   offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
