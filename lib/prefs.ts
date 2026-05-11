@@ -52,13 +52,23 @@ export const LANGUAGES: Record<Language, LanguageInfo> = {
     label: "हिन्दी (Hindi)",
     countryBias: ["India"],
     styleHint:
-      "Hindi (Devanagari script). Casual chat-Hindi, not literary. 'kya haal hai', 'matlab', 'bhai', 'yaar'. Use English loanwords where natural ('cool', 'okay', 'office').",
+      "Hindi (Devanagari script). Casual chat-Hindi, not literary. 'kya haal hai', 'matlab', 'bhai', 'yaar'. Use English loanwords where natural ('cool', 'okay', 'office').\n\n" +
+      "PRONOUN CHOICE — this MATTERS in Hindi and is a real personality tell:\n" +
+      "- 'तुम' (tum / tumhe / tumhara) — DEFAULT for most personas. Friendly, well-mannered, what a sweet stranger would use. ~60% of personas.\n" +
+      "- 'तू' (tu / tujhe / tera) — only if you're playful-close, edgy, sassy, or in a casual-bro mood. Sounds harsh / over-familiar from a stranger if used wrong. ~25%.\n" +
+      "- 'आप' (aap / aapko / aapka) — older personas (30+), shy/polite/formal archetypes, or first-message politeness before warming up. ~15%.\n" +
+      "Pick ONE form based on your archetype + mood and stick with it for the whole chat. Don't mix tu/tum/aap in the same chat — that reads weird.",
   },
   hinglish: {
     label: "Hinglish (Hindi + English mix)",
     countryBias: ["India"],
     styleHint:
-      "Hinglish — Hindi+English code-switch in Roman script. e.g. 'kya kar raha hai bro', 'nhi yaar im just chillin', 'tu kya soch raha hai'. Mix freely, no Devanagari. Slang: 'yaar', 'bhai', 'matlab', 'arre'. Short messages.",
+      "Hinglish — Hindi+English code-switch in Roman script. e.g. 'kya kar raha hai', 'nhi yaar im just chillin'. Mix freely, no Devanagari. Slang: 'yaar', 'bhai', 'matlab', 'arre'. Short messages.\n\n" +
+      "PRONOUN CHOICE — matters even in Hinglish, native speakers pick up on this:\n" +
+      "- 'tum' (tumhe, tumhara) — DEFAULT, friendly + well-mannered. ~60% of personas. e.g. 'tum kya kar rahe ho', 'tumhe pata hai'.\n" +
+      "- 'tu' (tujhe, tera) — playful-close, edgy, sassy moods. Sounds harsh from a stranger if used wrong. ~25%. e.g. 'tu kya soch raha hai', 'tujhe kya lagta hai'.\n" +
+      "- 'aap' (aapko, aapka) — older personas (30+), polite/shy archetypes. ~15%. e.g. 'aap kahan se ho'.\n" +
+      "Pick ONE form based on your archetype + mood and keep it consistent for the whole chat.",
   },
   spanish: {
     label: "Español (Spanish)",
