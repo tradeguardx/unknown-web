@@ -18,6 +18,10 @@ interface PacedMessage {
   text: string;
   preTypingMs: number;
   totalMs: number;
+  // Optional pacing flavor from the server. "on_read" means we should NOT show
+  // the typing indicator for most of preTypingMs — that's the "left you on read"
+  // illusion. Older clients without this field fall back to the default behavior.
+  mode?: "fast" | "normal" | "slow" | "on_read";
 }
 
 interface StartResponse {
@@ -189,10 +193,45 @@ export function ChatWindow() {
 
   const playPacedMessages = useCallback((msgs: PacedMessage[]): number => {
     let cursor = 0;
-    for (const m of msgs) {
-      const startTyping = cursor + m.preTypingMs;
-      const endTyping = cursor + m.preTypingMs + (m.totalMs - m.preTypingMs);
-      schedule(() => setTyping(true), startTyping);
+    for (let i = 0; i < msgs.length; i++) {
+      const m = msgs[i];
+      // "Cancelled mid-message" simulation: ~3% chance, BEFORE the real reply,
+      // do a short typing burst that ends with no message — they started typing
+      // then changed their mind. Only on the first burst of a turn (i === 0)
+      // and only if there's enough preTypingMs to absorb a 4–8s phantom + gap.
+      if (i === 0 && msgs.length > 0 && m.preTypingMs > 10_000 && Math.random() < 0.03) {
+        const phantomStart = cursor + 1_000 + Math.floor(Math.random() * 2_000);
+        const phantomEnd = phantomStart + 4_000 + Math.floor(Math.random() * 4_000);
+        schedule(() => setTyping(true), phantomStart);
+        schedule(() => setTyping(false), phantomEnd);
+      }
+
+      // "on_read" mode: skip the typing indicator for most of the silence, then
+      // do a short typing burst right before delivery. This sells the "left you
+      // on read for a minute, came back with a one-liner" feel.
+      const isOnRead = m.mode === "on_read";
+      const typingDurationMs = m.totalMs - m.preTypingMs;
+      const onReadTypingStartOffset = isOnRead
+        ? Math.max(0, m.preTypingMs - (2_500 + Math.floor(Math.random() * 4_000)))
+        : 0;
+
+      const startTyping = cursor + (isOnRead ? m.preTypingMs - (m.preTypingMs - onReadTypingStartOffset) : m.preTypingMs);
+      const endTyping = cursor + m.totalMs;
+
+      schedule(() => setTyping(true), isOnRead ? cursor + onReadTypingStartOffset : startTyping);
+
+      // Typing flicker: ~25% chance, mid-typing, toggle indicator off for 1–3s
+      // then back on. Real-person move (they started typing, paused, resumed).
+      // Skip if the typing duration is too short for a noticeable flicker.
+      const flickerWindowMs = isOnRead ? typingDurationMs : (endTyping - startTyping);
+      if (flickerWindowMs > 5_000 && Math.random() < 0.25) {
+        const flickerBase = isOnRead ? cursor + onReadTypingStartOffset : startTyping;
+        const flickerOff = flickerBase + 1_000 + Math.floor(Math.random() * (flickerWindowMs * 0.4));
+        const flickerOn = flickerOff + 1_000 + Math.floor(Math.random() * 2_000);
+        schedule(() => setTyping(false), flickerOff);
+        schedule(() => setTyping(true), flickerOn);
+      }
+
       schedule(() => {
         setTyping(false);
         pushMsg({ role: "assistant", text: m.text });

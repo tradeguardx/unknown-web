@@ -6,7 +6,7 @@
 // The split-on-newline pattern lets the persona send 2 short messages in a row
 // (one of the things real strangers do that one-shot LLM replies can't naturally do).
 
-import { computePacing } from "./pacing";
+import { computePacing, type SpeedMode } from "./pacing";
 import type { Persona } from "./persona";
 
 const LEAVE_RE = /\[LEAVE(?::\s*([^\]]*))?\]/i;
@@ -18,6 +18,10 @@ export interface PacedMessage {
   preTypingMs: number;
   // total ms this message takes from "start" to "delivered" (prefix + typing time)
   totalMs: number;
+  // Pacing flavor (fast/normal/slow/on_read). The client uses this — particularly
+  // for on_read — to decide whether to skip the typing indicator for most of
+  // preTypingMs (the "left you on read" feel needs silence, not "typing...").
+  mode: SpeedMode;
 }
 
 export interface ParsedReply {
@@ -58,14 +62,19 @@ export function parseReply(persona: Persona, raw: string): ParsedReply {
   const messages: PacedMessage[] = chunks.map((text, idx) => {
     const pacing = computePacing(persona, text);
     if (idx === 0) {
-      return { text, preTypingMs: pacing.preTypingMs, totalMs: pacing.totalMs };
+      return { text, preTypingMs: pacing.preTypingMs, totalMs: pacing.totalMs, mode: pacing.mode };
     }
-    // Follow-up bursts have a short gap (0.6s–2.5s) before they start, then a full pacing cycle.
-    const followGap = 600 + Math.floor(Math.random() * 1900);
+    // Follow-up burst gap — most are quick (0.6–2.5s) but ~15% have a longer
+    // gap (5–15s) to model "sent one, got distracted, sent another later".
+    const longGap = Math.random() < 0.15;
+    const followGap = longGap
+      ? 5_000 + Math.floor(Math.random() * 10_000)
+      : 600 + Math.floor(Math.random() * 1900);
     return {
       text,
       preTypingMs: followGap,
       totalMs: followGap + pacing.totalMs - pacing.preTypingMs,
+      mode: longGap ? "slow" : "normal",
     };
   });
 
