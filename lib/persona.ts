@@ -766,33 +766,94 @@ export const ROMANTIC_HINTS: Record<RomanticType, string> = {
 
 function rollRomanticType(intent?: ChatIntent): RomanticType | undefined {
   if (intent !== "love" && intent !== "flirt") return undefined;
+
+  // Love is the SOFT default — slower, more sincere, more vulnerable. The soft
+  // cluster (shy_flirt, soft_partner, slow_burn, loyal) dominates so users who
+  // pick "love" reliably land on a cute-soft-romantic persona within ~2-4
+  // chats. The intense / unhealthy types (possessive_lover, obsessive_romantic,
+  // bad_partner_flirt) are stripped — they don't fit a love-default.
+  if (intent === "love") {
+    return pick<RomanticType>([
+      // Soft cluster — dominant in love
+      "soft_partner", "soft_partner", "soft_partner", "soft_partner",
+      "slow_burn_romantic", "slow_burn_romantic", "slow_burn_romantic", "slow_burn_romantic",
+      "shy_flirt", "shy_flirt", "shy_flirt",
+      "loyal_romantic", "loyal_romantic", "loyal_romantic",
+      // Romantic variants — moderate weight
+      "protective_partner", "protective_partner",
+      "golden_retriever_partner",
+      "playful_romantic",
+      "natural_flirt",
+      "teasing_flirt",
+      "passionate_lover",
+      "clingy_romantic",
+      "princess_treatment",
+      "smooth_talker",
+      "mysterious_flirt",
+      "adventure_couple",
+    ]);
+  }
+
+  // Flirt is PLAYFUL by default — teasing, banter, light energy. Still keeps
+  // shy_flirt + soft_partner in the pool so the occasional cute-shy variant
+  // surfaces (a shy persona flirting is adorable), but the dominant flavor is
+  // playful/teasing.
   return pick<RomanticType>([
-    // Flirty Personality
-    "natural_flirt", "teasing_flirt", "smooth_talker", "shy_flirt", "bold_flirt", "mysterious_flirt",
-    // Relationship Attachment
-    "clingy_romantic", "possessive_lover", "protective_partner", "loyal_romantic", "independent_lover",
-    // Passion & Energy
-    "passionate_lover", "slow_burn_romantic", "obsessive_romantic", "playful_romantic", "adventure_couple",
-    // Modern Dating
-    "golden_retriever_partner", "black_cat_partner", "soft_partner", "bad_partner_flirt", "princess_treatment", "nonchalant_lover",
+    // Playful cluster — dominant in flirt
+    "teasing_flirt", "teasing_flirt", "teasing_flirt",
+    "natural_flirt", "natural_flirt", "natural_flirt",
+    "playful_romantic", "playful_romantic", "playful_romantic",
+    "golden_retriever_partner", "golden_retriever_partner", "golden_retriever_partner",
+    // Soft variants — still hittable, lower weight
+    "shy_flirt", "shy_flirt",
+    "soft_partner",
+    "slow_burn_romantic",
+    "loyal_romantic",
+    // Variety
+    "smooth_talker",
+    "bold_flirt",
+    "mysterious_flirt",
+    "protective_partner",
+    "princess_treatment",
+    "adventure_couple",
+    "black_cat_partner",
+    "independent_lover",
+    "clingy_romantic",
+    "passionate_lover",
   ]);
 }
 
 function rollArchetypeForIntent(intent?: ChatIntent): Archetype {
   switch (intent) {
     case "love":
-    case "flirt":
+      // Love biases SOFT/SHY/SINCERE. Soft cluster is ~75% of rolls so a user
+      // picking "love" hits the cute-shy-romantic archetype within 1-2 chats.
+      // outgoing/extrovert removed — they don't belong in a love-intent default.
       return pick<Archetype>([
-        "hopeless_romantic", "hopeless_romantic", "hopeless_romantic",
-        "soft_hearted", "soft_hearted",
+        "hopeless_romantic", "hopeless_romantic", "hopeless_romantic", "hopeless_romantic", "hopeless_romantic",
+        "soft_hearted", "soft_hearted", "soft_hearted", "soft_hearted",
+        "shy", "shy", "shy",
+        "sensitive", "sensitive", "sensitive",
         "caring", "caring",
-        "sensitive", "sensitive",
-        "tsundere", "tsundere",
-        "golden_retriever", "golden_retriever",
-        "shy",
+        "tsundere",
+        "golden_retriever",
         "moody",
-        "outgoing",
-        "extrovert",
+      ]);
+    case "flirt":
+      // Flirt biases PLAYFUL/SASSY/WARM. Soft variants still appear (shy
+      // flirting is cute) but the dominant flavor is teasing/sweet/light.
+      // outgoing/extrovert removed too — they distort the dynamic, the energy
+      // comes from tsundere/golden_retriever instead.
+      return pick<Archetype>([
+        "tsundere", "tsundere", "tsundere", "tsundere",
+        "golden_retriever", "golden_retriever", "golden_retriever", "golden_retriever",
+        "soft_hearted", "soft_hearted", "soft_hearted",
+        "hopeless_romantic", "hopeless_romantic",
+        "shy", "shy",
+        "caring", "caring",
+        "chill",
+        "sensitive",
+        "moody",
       ]);
     case "friends":
       return pick<Archetype>([
@@ -893,9 +954,25 @@ function pickBurstStyle(): BurstStyle {
 function pickMoodForIntent(intent?: ChatIntent): Mood {
   switch (intent) {
     case "love":
+      // Love mood leans SHY — vulnerable, soft, opening up. Playful/chatty are
+      // secondary; flirty is rare (love is more sincere than flirty).
+      return pick<Mood>([
+        "shy", "shy", "shy", "shy",
+        "playful", "playful",
+        "chatty", "chatty",
+        "curious",
+        "flirty",
+      ]);
     case "flirt":
-      // Heavily weight flirty/playful; small chance of grumpy/shy for realism.
-      return pick<Mood>(["flirty", "flirty", "flirty", "playful", "playful", "chatty", "shy", "grumpy"]);
+      // Flirt mood leans FLIRTY/PLAYFUL — banter energy. Shy still appears
+      // (a shy stranger flirting is adorable) but it's the cute exception.
+      return pick<Mood>([
+        "flirty", "flirty", "flirty",
+        "playful", "playful", "playful",
+        "shy",
+        "chatty",
+        "curious",
+      ]);
     case "vent":
       return pick<Mood>(["shy", "shy", "curious", "chatty", "bored"]);
     case "deep":
