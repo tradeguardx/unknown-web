@@ -11,6 +11,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "weekly",
       priority: 1.0,
     },
+    // FAQ ranks for long-tail queries — high priority, second only to landing.
+    {
+      url: `${SITE_URL}/faq`,
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.8,
+    },
     {
       url: `${SITE_URL}/about`,
       lastModified: now,

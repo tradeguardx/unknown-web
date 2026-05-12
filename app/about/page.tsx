@@ -64,7 +64,8 @@ export default function About() {
           </p>
 
           <div className="mt-10 text-sm text-ink-mute">
-            See also: <Link href="/terms" className="underline hover:text-ink">terms of use</Link>{" "}
+            See also: <Link href="/faq" className="underline hover:text-ink">faq</Link>{" "}
+            · <Link href="/terms" className="underline hover:text-ink">terms of use</Link>{" "}
             · <Link href="/privacy" className="underline hover:text-ink">privacy policy</Link>.
           </div>
         </div>

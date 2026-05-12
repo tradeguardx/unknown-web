@@ -115,6 +115,7 @@ export function MenuDrawer({ open, onClose }: Props) {
         <div className="flex-1 px-5 py-4 flex flex-col gap-0.5 overflow-y-auto">
           <Section>navigate</Section>
           <DrawerLink href="/about" onClick={onClose}>about</DrawerLink>
+          <DrawerLink href="/faq" onClick={onClose}>faq</DrawerLink>
           <DrawerLink href="/terms" onClick={onClose}>terms</DrawerLink>
           <DrawerLink href="/privacy" onClick={onClose}>privacy</DrawerLink>
 

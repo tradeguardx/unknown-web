@@ -44,35 +44,80 @@ const PLAUSIBLE_SCRIPT_URL = process.env.NEXT_PUBLIC_PLAUSIBLE_SCRIPT_URL;
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: `${SITE_NAME} — talk to a stranger`,
+    // The site-wide default + template. The landing overrides this with its
+    // own (more keyword-rich) title; sub-pages get appended as "X · unknown.chat"
+    // — pattern is consistent with Vercel / Linear / brand-led product sites.
+    default: `${SITE_NAME} — talk to a stranger, anonymously`,
     template: `%s · ${SITE_NAME}`,
   },
   description:
-    "Anonymous chat with strangers who aren't quite real. Different mood, country, and language every time. No accounts, no memory — just talk.",
+    "Anonymous chat with AI strangers who text, mood-swing, and ghost like real people. No signup, no memory, fresh persona every time — the 3am chat you've been looking for.",
   applicationName: SITE_NAME,
+  // High-intent keyword set targeting:
+  //  - the post-Omegle audience (Omegle shut down 2023; people still search for it)
+  //  - Gen Z late-night / boredom / lonely queries
+  //  - non-English search markets we localize for (Hindi/Hinglish, etc.)
+  // Order matters less than Google claims, but more-specific terms first
+  // helps for some lesser engines.
   keywords: [
     "talk to strangers",
     "anonymous chat",
-    "AI chat",
     "Omegle alternative",
+    "Omegle replacement",
+    "Omegle without video",
+    "chat with strangers no signup",
+    "AI chat with strangers",
+    "AI personas chat",
     "random chat",
-    "AI personas",
     "stranger chat",
+    "text chat strangers",
+    "free chat no login",
+    "anonymous text chat",
+    "3am chat",
+    "late night chat",
+    "bored chat app",
+    "Hinglish chat",
+    "Hindi anonymous chat",
+    "AI girlfriend chat free",
+    "AI friend chat",
+    "chatroulette alternative",
   ],
   authors: [{ name: SITE_NAME }],
   creator: SITE_NAME,
   publisher: SITE_NAME,
-  robots: { index: true, follow: true },
+  category: "communication",
+  // Be generous with crawler permissions on indexable surfaces. The /chat
+  // route is excluded via robots.ts since it has no SEO value.
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-snippet": -1,
+      "max-image-preview": "large",
+      "max-video-preview": -1,
+    },
+  },
   openGraph: {
     type: "website",
     siteName: SITE_NAME,
     locale: "en_US",
+    // English-speaking + India is the primary audience right now;
+    // alternateLocale tells social previews + Google that the same content
+    // serves these locales (even though current pages are English-only —
+    // we render multi-language inside the chat itself).
+    alternateLocale: ["en_GB", "en_IN", "hi_IN"],
   },
-  twitter: { card: "summary_large_image" },
+  twitter: {
+    card: "summary_large_image",
+    creator: "@unknownchat",
+  },
   icons: {
     icon: "/icon.svg",
     apple: "/icon.svg",
   },
+  manifest: "/manifest.webmanifest",
   // Google Search Console domain ownership verification.
   verification: {
     google: "ud2K06XfyLx3ss77EunfuOk6chtTcVPRa3lyfVwYV04",
@@ -80,9 +125,12 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0b0b0d",
+  // Match the warm paper background so iOS / Android browser chrome blends
+  // with the page instead of flashing dark.
+  themeColor: "#f5eedb",
   width: "device-width",
   initialScale: 1,
+  maximumScale: 5,
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

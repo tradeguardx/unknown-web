@@ -1,0 +1,27 @@
+{
+  "name": "unknown.chat",
+  "short_name": "unknown.chat",
+  "description": "Anonymous chat with AI strangers who text, mood-swing, and ghost like real people. No signup, no memory.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f5eedb",
+  "theme_color": "#f5eedb",
+  "lang": "en",
+  "categories": ["social", "communication", "entertainment"],
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}
