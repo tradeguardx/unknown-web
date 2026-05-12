@@ -12,7 +12,7 @@ const YEAR = new Date().getFullYear();
 
 export function SiteFooter() {
   return (
-    <footer className="max-w-md mx-auto w-full mt-12 px-5 py-7 border-t-[1.5px] border-dashed border-paper-deep">
+    <footer className="max-w-md lg:max-w-3xl mx-auto w-full mt-12 px-5 lg:px-8 py-7 border-t-[1.5px] border-dashed border-paper-deep">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-3 font-sans text-xs">
         <Link href="/" className="text-ink-mute hover:text-ink">home</Link>
         <span aria-hidden className="text-ink-faint">·</span>

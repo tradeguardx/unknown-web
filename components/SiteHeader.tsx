@@ -15,14 +15,14 @@ export function SiteHeader() {
 
   return (
     <>
-      <header className="px-5 pt-4 pb-3 max-w-md mx-auto w-full flex items-center justify-between">
+      <header className="px-5 lg:px-8 pt-4 lg:pt-6 pb-3 max-w-md lg:max-w-3xl mx-auto w-full flex items-center justify-between">
         <Link
           href="/"
           aria-label="unknown.chat home"
-          className="wordmark-underline font-sans font-bold text-base tracking-[-0.025em] text-ink inline-flex items-baseline relative no-underline"
+          className="wordmark-underline font-sans font-bold text-base lg:text-lg tracking-[-0.025em] text-ink inline-flex items-baseline relative no-underline"
         >
           unknown
-          <span className="text-red text-[19px] -translate-y-[2px]">.</span>
+          <span className="text-red text-[19px] lg:text-[22px] -translate-y-[2px]">.</span>
           chat
         </Link>
         <button
@@ -30,7 +30,7 @@ export function SiteHeader() {
           className="p-1 text-ink-soft hover:text-ink"
           aria-label="menu"
         >
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+          <svg className="w-5 h-5 lg:w-6 lg:h-6" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <path d="M3 6h14M3 10h14M3 14h14" />
           </svg>
         </button>
