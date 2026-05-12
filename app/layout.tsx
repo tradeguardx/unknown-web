@@ -1,7 +1,38 @@
 import "./globals.css";
 import type { Metadata, Viewport } from "next";
+import { Space_Grotesk, Instrument_Serif, Caveat, Geist_Mono } from "next/font/google";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { CookieBanner } from "@/components/CookieBanner";
+
+// The four typefaces that anchor the design language. Loaded via next/font so
+// Next inlines them as preloaded WOFF2 + scoped CSS variables — no CLS, no
+// extra <link> tags. Each is bound to a CSS variable that tailwind.config.ts
+// reads (font-sans, font-serif, font-mono, font-display).
+const fontSans = Space_Grotesk({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-sans",
+  display: "swap",
+});
+const fontSerif = Instrument_Serif({
+  subsets: ["latin"],
+  weight: ["400"],
+  style: ["normal", "italic"],
+  variable: "--font-serif",
+  display: "swap",
+});
+const fontDisplay = Caveat({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-display",
+  display: "swap",
+});
+const fontMono = Geist_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  variable: "--font-mono",
+  display: "swap",
+});
 
 // Plausible's new per-site tracker URL. The site ID is baked into the JS file
 // (no `data-domain` attribute needed). The legacy `/js/script.js` form still
@@ -56,7 +87,10 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html
+      lang="en"
+      className={`${fontSans.variable} ${fontSerif.variable} ${fontDisplay.variable} ${fontMono.variable}`}
+    >
       <body>
         {children}
         <CookieBanner />

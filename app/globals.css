@@ -3,14 +3,40 @@
 @tailwind utilities;
 
 html, body { height: 100%; }
+
 body {
-  background: #fafaf7;
-  color: #0b0b0d;
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background-color: #f5eedb;
+  color: #1a1610;
+  /* Subtle paper-grain dot texture — three offset radial-gradients give an
+     organic non-repeating feel without an actual image asset. */
+  background-image:
+    radial-gradient(circle at 25% 35%, rgba(180, 165, 120, 0.04) 1px, transparent 1px),
+    radial-gradient(circle at 75% 75%, rgba(180, 165, 120, 0.03) 1px, transparent 1px),
+    radial-gradient(circle at 50% 15%, rgba(180, 165, 120, 0.05) 1px, transparent 1px);
+  background-size: 80px 80px, 60px 60px, 100px 100px;
+  font-family: var(--font-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
-/* Blinking cursor for the textual logo. Binary on/off, terminal-style —
-   not a smooth pulse. 1.1s cycle is the classic CRT cadence. */
+/* Wavy red underline used under the wordmark logo. Encoded inline SVG keeps it
+   crisp on any background without adding an image asset. */
+.wordmark-underline {
+  position: relative;
+}
+.wordmark-underline::after {
+  content: "";
+  position: absolute;
+  bottom: -2px;
+  right: 0;
+  width: 28px;
+  height: 3px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 3'><path d='M0 1.5 Q3.5 0 7 1.5 T14 1.5 T21 1.5 T28 1.5' stroke='%23e64a3a' stroke-width='1.5' fill='none' stroke-linecap='round'/></svg>");
+}
+
+/* Blinking cursor for the textual logo (kept from the previous design — the
+   new wordmark replaces the cursor with a red dot, but other surfaces may
+   still want a terminal-style cursor). */
 @keyframes logo-blink {
   0%, 49%   { opacity: 1; }
   50%, 100% { opacity: 0; }
@@ -19,7 +45,36 @@ body {
   animation: logo-blink 1.1s steps(1, start) infinite;
 }
 
-/* Stop the blink when the user prefers reduced motion (a11y). */
+/* Three-dot pulse for typing indicators and "looking for stranger" dots. */
+@keyframes pulse-dot {
+  0%, 100% { opacity: 0.3; transform: scale(0.8); }
+  50%      { opacity: 1;   transform: scale(1.1); }
+}
+.pulse-dot {
+  animation: pulse-dot 1.2s ease-in-out infinite;
+}
+
+/* "Live" indicator dot — slower, simple binary blink, used on counter chips. */
+@keyframes live-blink {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.3; }
+}
+.live-blink {
+  animation: live-blink 1.4s infinite;
+}
+
+/* Respect a11y motion preference for every keyframe animation. */
 @media (prefers-reduced-motion: reduce) {
-  .logo-cursor { animation: none; opacity: 1; }
+  .logo-cursor, .pulse-dot, .live-blink { animation: none; opacity: 1; }
+}
+
+/* Striped tape — the bit of "washi" that runs across postit tops. Used inline. */
+.tape-stripe {
+  background-image: repeating-linear-gradient(
+    45deg,
+    transparent 0,
+    transparent 3px,
+    rgba(255, 255, 255, 0.2) 3px,
+    rgba(255, 255, 255, 0.2) 6px
+  );
 }
