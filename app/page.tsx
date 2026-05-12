@@ -1,8 +1,5 @@
 import type { Metadata } from "next";
-import { LandingForm } from "@/components/LandingForm";
-import { SiteHeader } from "@/components/SiteHeader";
-import { SiteFooter } from "@/components/SiteFooter";
-import { Logo } from "@/components/Logo";
+import { MobileLanding } from "@/components/landing/MobileLanding";
 import { SITE_URL } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -40,28 +37,12 @@ const jsonLd = {
 
 export default function Landing() {
   return (
-    <div className="min-h-screen flex flex-col">
+    <>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <SiteHeader />
-
-      <main className="flex-1 flex flex-col items-center justify-center px-6 py-12">
-        <div className="max-w-md w-full">
-          <div className="text-center">
-            <h1 className="inline-block">
-              <Logo size="lg" />
-              <span className="sr-only">unknown.chat</span>
-            </h1>
-            <p className="mt-3 text-neutral-600">talk to someone you'll never meet again.</p>
-          </div>
-
-          <LandingForm />
-        </div>
-      </main>
-
-      <SiteFooter />
-    </div>
+      <MobileLanding />
+    </>
   );
 }
