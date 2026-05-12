@@ -30,7 +30,7 @@ export function MobileLanding() {
             desktop landing actually fills the viewport instead of feeling like
             a phone frame floating in white space. */}
         <section className="lg:grid lg:grid-cols-2 lg:gap-14 lg:items-center lg:pt-8">
-          <Hero />
+          <Hero onStart={() => setSheetOpen(true)} />
           <MiniChat onTap={() => setSheetOpen(true)} />
         </section>
 
@@ -94,7 +94,7 @@ function LiveCounter() {
 
 // ─── hero ────────────────────────────────────────────────────────────────
 
-function Hero() {
+function Hero({ onStart }: { onStart: () => void }) {
   return (
     <section className="pt-4 lg:pt-0 pb-6 lg:pb-0 text-center lg:text-left relative">
       <div className="inline-flex items-center gap-[7px] font-display text-lg lg:text-xl text-red font-semibold mb-2.5 lg:mb-4 -rotate-2 before:content-[''] before:w-[18px] before:h-[1.5px] before:bg-red before:rounded after:content-[''] after:w-[18px] after:h-[1.5px] after:bg-red after:rounded">
@@ -117,6 +117,20 @@ function Hero() {
         <br />
         <span className="line-through decoration-red decoration-2 text-ink-mute">no one&apos;s</span>{" "}
         <em>actually</em> no one&apos;s awake.
+      </p>
+
+      {/* Primary CTA — the unambiguous start path. Lives above the fold,
+          impossible to miss. Mini chat below acts as a secondary preview. */}
+      <button
+        onClick={onStart}
+        className="mt-5 lg:mt-7 inline-flex items-center gap-2 bg-red text-paper-cool border-2 border-ink rounded-2xl px-6 lg:px-8 py-3 lg:py-4 font-sans text-base lg:text-lg font-bold tracking-tight shadow-hard hover:shadow-hard-lg hover:-translate-y-0.5 transition-all"
+      >
+        find someone awake
+        <span aria-hidden>→</span>
+      </button>
+
+      <p className="mt-2.5 font-display text-sm lg:text-base text-ink-mute">
+        no signup · takes 5 seconds
       </p>
     </section>
   );
@@ -153,23 +167,17 @@ function MiniChat({ onTap }: { onTap: () => void }) {
           </div>
         </div>
 
-        <div
+        <button
           onClick={onTap}
-          className="flex gap-1.5 items-center bg-paper border-[1.5px] border-ink rounded-xl p-[3px] cursor-pointer"
+          className="w-full flex items-center justify-between gap-2 bg-ink text-paper-cool border-[1.5px] border-ink rounded-xl px-4 py-2.5 cursor-pointer hover:opacity-90 transition-opacity"
         >
-          <input
-            readOnly
-            placeholder="say literally anything…"
-            className="flex-1 bg-transparent border-none px-1.5 py-2 font-serif italic text-[13px] text-ink-mute outline-none min-w-0 cursor-pointer"
-            onClick={onTap}
-          />
-          <button
-            onClick={onTap}
-            className="bg-ink text-paper border-none rounded-[9px] px-2.5 py-[7px] font-sans text-[11.5px] font-bold tracking-tight"
-          >
-            send ↵
-          </button>
-        </div>
+          <span className="font-sans text-[13px] font-bold tracking-tight">
+            join the chat →
+          </span>
+          <span className="font-display text-[13px] text-paper-cool/70">
+            tap to start
+          </span>
+        </button>
 
         <p className="text-center mt-2 font-display text-[13px] text-ink-mute">
           ⚠ AI persona ·{" "}
