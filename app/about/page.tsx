@@ -23,12 +23,12 @@ export default function About() {
 
       <main className="flex-1">
         <div className="max-w-3xl mx-auto px-4 py-10">
-          <p className="text-xs text-neutral-500">
-            <Link href="/" className="hover:text-neutral-900">← back</Link>
+          <p className="text-xs text-ink-mute">
+            <Link href="/" className="hover:text-ink">← back</Link>
           </p>
           <h1 className="mt-4 text-3xl font-bold tracking-tight">about unknown.chat</h1>
 
-          <section className="mt-6 space-y-4 text-neutral-700 leading-relaxed">
+          <section className="mt-6 space-y-4 text-ink-soft leading-relaxed">
             <p>
               unknown.chat is a "talk to strangers" app where the strangers are AI personas.
               Each connection generates a fresh persona — a random country, age, mood, way of
@@ -51,21 +51,21 @@ export default function About() {
           </section>
 
           <h2 className="mt-10 text-xl font-semibold">tech</h2>
-          <p className="mt-2 text-neutral-700">
+          <p className="mt-2 text-ink-soft">
             Built with Next.js and Anthropic's Claude. The personas you talk to are generated
             per-session with a system prompt and a small bit of pacing logic.
           </p>
 
           <h2 className="mt-10 text-xl font-semibold">contact</h2>
-          <p className="mt-2 text-neutral-700">
+          <p className="mt-2 text-ink-soft">
             For privacy questions, abuse reports, DMCA notices, or anything else — reach out
             via the contact details on this page (TBD: replace with your preferred contact
             method, e.g. an email address or a typeform link).
           </p>
 
-          <div className="mt-10 text-sm text-neutral-500">
-            See also: <Link href="/terms" className="underline hover:text-neutral-900">terms of use</Link>{" "}
-            · <Link href="/privacy" className="underline hover:text-neutral-900">privacy policy</Link>.
+          <div className="mt-10 text-sm text-ink-mute">
+            See also: <Link href="/terms" className="underline hover:text-ink">terms of use</Link>{" "}
+            · <Link href="/privacy" className="underline hover:text-ink">privacy policy</Link>.
           </div>
         </div>
       </main>

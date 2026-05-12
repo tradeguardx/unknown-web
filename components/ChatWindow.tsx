@@ -499,7 +499,7 @@ export function ChatWindow() {
   );
 
   return (
-    <div className="min-h-screen flex flex-col max-w-md mx-auto w-full">
+    <div className="min-h-screen flex flex-col max-w-md lg:max-w-2xl mx-auto w-full">
       {/* Header — wordmark + a live status pill (connected / disconnected /
           live). Kept compact to match the landing chrome. */}
       <header className="flex items-center justify-between px-5 pt-4 pb-2 flex-shrink-0">

@@ -22,13 +22,13 @@ export default function PrivacyPage() {
 
       <main className="flex-1">
         <div className="max-w-3xl mx-auto px-4 py-10">
-          <p className="text-xs text-neutral-500">
-            <Link href="/" className="hover:text-neutral-900">← back</Link>
+          <p className="text-xs text-ink-mute">
+            <Link href="/" className="hover:text-ink">← back</Link>
           </p>
           <h1 className="mt-4 text-3xl font-bold tracking-tight">privacy policy</h1>
-          <p className="mt-2 text-sm text-neutral-500">Last updated: {new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}</p>
+          <p className="mt-2 text-sm text-ink-mute">Last updated: {new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}</p>
 
-          <div className="prose prose-neutral mt-8 space-y-6 text-neutral-700 leading-relaxed">
+          <div className="prose prose-neutral mt-8 space-y-6 text-ink-soft leading-relaxed">
             <Section title="The short version">
               <ul className="list-disc pl-6 space-y-1">
                 <li>We don't have user accounts, so we don't ask for your name, email, or any other identifier.</li>
@@ -40,7 +40,7 @@ export default function PrivacyPage() {
             </Section>
 
             <Section title="What we collect">
-              <h3 className="font-medium text-neutral-900">IP address (transient, never stored)</h3>
+              <h3 className="font-medium text-ink">IP address (transient, never stored)</h3>
               <p>
                 Your IP address is visible to our servers when you make a request — that's how the
                 internet works. We use it for two things, both in-memory only and dropped on
@@ -52,7 +52,7 @@ export default function PrivacyPage() {
               </ul>
               <p>We do not log IP addresses to disk and do not associate them with any other identifier.</p>
 
-              <h3 className="font-medium text-neutral-900 mt-4">Chat messages (transient, processed by Anthropic)</h3>
+              <h3 className="font-medium text-ink mt-4">Chat messages (transient, processed by Anthropic)</h3>
               <p>
                 When you send a message to a "stranger," the message is forwarded to Anthropic's
                 Claude API along with the persona's system prompt and the recent message history
@@ -66,7 +66,7 @@ export default function PrivacyPage() {
                 chat session.
               </p>
 
-              <h3 className="font-medium text-neutral-900 mt-4">Plausible Analytics (privacy-friendly, no cookies)</h3>
+              <h3 className="font-medium text-ink mt-4">Plausible Analytics (privacy-friendly, no cookies)</h3>
               <p>
                 We use <a href="https://plausible.io" target="_blank" rel="noopener noreferrer" className="underline">Plausible Analytics</a>{" "}
                 to understand aggregate usage of the site (how many people visit, which pages, what
@@ -96,7 +96,7 @@ export default function PrivacyPage() {
                 <a href="https://plausible.io/data-policy" target="_blank" rel="noopener noreferrer" className="underline">here</a>.
               </p>
 
-              <h3 className="font-medium text-neutral-900 mt-4">Cloudflare Turnstile (captcha)</h3>
+              <h3 className="font-medium text-ink mt-4">Cloudflare Turnstile (captcha)</h3>
               <p>
                 Roughly every 5 chats we present a captcha challenge from Cloudflare Turnstile to
                 verify you're a human. Cloudflare is the data processor for that challenge; their
@@ -118,7 +118,7 @@ export default function PrivacyPage() {
 
             <Section title="Cookies and local storage">
               <p>
-                We use your browser's <code className="bg-neutral-100 px-1 py-0.5 rounded text-sm">localStorage</code>{" "}
+                We use your browser's <code className="bg-paper-warm px-1 py-0.5 rounded text-sm">localStorage</code>{" "}
                 to remember your preferences (country, language, gender, interest, intent, AI
                 acknowledgment, age confirmation, sound on/off, notification preference). These
                 are stored on your device. Clearing your browser data deletes them.
@@ -155,7 +155,7 @@ export default function PrivacyPage() {
               <ul className="list-disc pl-6 space-y-1">
                 <li>Clear your local preferences by clearing your browser's site data for unknown.chat.</li>
                 <li>Stop using the service at any time.</li>
-                <li>Contact us with any questions (see <Link href="/about" className="underline hover:text-neutral-900">about</Link>).</li>
+                <li>Contact us with any questions (see <Link href="/about" className="underline hover:text-ink">about</Link>).</li>
               </ul>
               <p>
                 For data flowing through Anthropic, you may exercise data-subject rights with
@@ -182,7 +182,7 @@ export default function PrivacyPage() {
             <Section title="Contact">
               <p>
                 For privacy questions or concerns, see the contact details on our{" "}
-                <Link href="/about" className="underline hover:text-neutral-900">about</Link> page.
+                <Link href="/about" className="underline hover:text-ink">about</Link> page.
               </p>
             </Section>
           </div>
@@ -197,7 +197,7 @@ export default function PrivacyPage() {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section>
-      <h2 className="text-xl font-semibold tracking-tight text-neutral-900">{title}</h2>
+      <h2 className="text-xl font-semibold tracking-tight text-ink">{title}</h2>
       <div className="mt-2 space-y-3">{children}</div>
     </section>
   );

@@ -22,13 +22,13 @@ export default function TermsPage() {
 
       <main className="flex-1">
         <div className="max-w-3xl mx-auto px-4 py-10">
-          <p className="text-xs text-neutral-500">
-            <Link href="/" className="hover:text-neutral-900">← back</Link>
+          <p className="text-xs text-ink-mute">
+            <Link href="/" className="hover:text-ink">← back</Link>
           </p>
           <h1 className="mt-4 text-3xl font-bold tracking-tight">terms of use</h1>
-          <p className="mt-2 text-sm text-neutral-500">Last updated: {new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}</p>
+          <p className="mt-2 text-sm text-ink-mute">Last updated: {new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}</p>
 
-          <div className="prose prose-neutral mt-8 space-y-6 text-neutral-700 leading-relaxed">
+          <div className="prose prose-neutral mt-8 space-y-6 text-ink-soft leading-relaxed">
             <Section title="What unknown.chat is">
               <p>
                 unknown.chat is an anonymous chat website where the strangers you talk to are AI
@@ -146,7 +146,7 @@ export default function TermsPage() {
               <p>
                 Chat sessions are kept in our server's memory only while a chat is active. When the
                 chat ends or the server restarts, the session is gone. We do not retain or replay
-                your chat history. See the <Link href="/privacy" className="underline hover:text-neutral-900">privacy policy</Link> for details.
+                your chat history. See the <Link href="/privacy" className="underline hover:text-ink">privacy policy</Link> for details.
               </p>
             </Section>
 
@@ -192,7 +192,7 @@ export default function TermsPage() {
             <Section title="Contact">
               <p>
                 Questions, complaints, or DMCA notices: please reach out via the contact details
-                on our <Link href="/about" className="underline hover:text-neutral-900">about</Link> page.
+                on our <Link href="/about" className="underline hover:text-ink">about</Link> page.
               </p>
             </Section>
           </div>
@@ -207,7 +207,7 @@ export default function TermsPage() {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section>
-      <h2 className="text-xl font-semibold tracking-tight text-neutral-900">{title}</h2>
+      <h2 className="text-xl font-semibold tracking-tight text-ink">{title}</h2>
       <div className="mt-2 space-y-3">{children}</div>
     </section>
   );

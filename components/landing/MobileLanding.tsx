@@ -22,12 +22,18 @@ export function MobileLanding() {
     <div className="min-h-screen flex flex-col">
       <Header onMenu={() => setMenuOpen(true)} />
 
-      <main className="flex-1 px-5 pb-10 relative max-w-md mx-auto w-full">
-        <DoodleSquiggle className="absolute top-16 -left-2 w-14 -rotate-[15deg] opacity-75" />
-        <DoodleArc className="absolute top-24 -right-3 w-16 rotate-[20deg] opacity-75" />
+      <main className="flex-1 px-5 lg:px-10 pb-10 lg:pb-20 relative max-w-md lg:max-w-5xl mx-auto w-full">
+        <DoodleSquiggle className="absolute top-16 -left-2 w-14 lg:w-20 lg:top-24 lg:-left-4 -rotate-[15deg] opacity-75" />
+        <DoodleArc className="absolute top-24 -right-3 w-16 lg:w-24 lg:top-32 lg:-right-4 rotate-[20deg] opacity-75" />
 
-        <Hero />
-        <MiniChat onTap={() => setSheetOpen(true)} />
+        {/* Hero + mini chat stack on mobile, sit side-by-side on lg+ so the
+            desktop landing actually fills the viewport instead of feeling like
+            a phone frame floating in white space. */}
+        <section className="lg:grid lg:grid-cols-2 lg:gap-14 lg:items-center lg:pt-8">
+          <Hero />
+          <MiniChat onTap={() => setSheetOpen(true)} />
+        </section>
+
         <OverheardSection />
         <WhyPostits />
         <Footer />
@@ -43,12 +49,12 @@ export function MobileLanding() {
 
 function Header({ onMenu }: { onMenu: () => void }) {
   return (
-    <header className="flex items-center justify-between px-5 pt-4 pb-2 max-w-md mx-auto w-full">
+    <header className="flex items-center justify-between px-5 lg:px-10 pt-4 lg:pt-6 pb-2 max-w-md lg:max-w-5xl mx-auto w-full">
       <Wordmark size="sm" />
-      <div className="flex items-center gap-2.5">
+      <div className="flex items-center gap-2.5 lg:gap-4">
         <LiveCounter />
-        <button onClick={onMenu} className="p-1 text-ink-soft" aria-label="menu">
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+        <button onClick={onMenu} className="p-1 text-ink-soft hover:text-ink" aria-label="menu">
+          <svg className="w-5 h-5 lg:w-6 lg:h-6" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <path d="M3 6h14M3 10h14M3 14h14" />
           </svg>
         </button>
@@ -60,7 +66,7 @@ function Header({ onMenu }: { onMenu: () => void }) {
 function Wordmark({ size = "sm" }: { size?: "sm" | "lg" }) {
   if (size === "lg") {
     return (
-      <h1 className="inline-block relative font-sans font-bold text-5xl leading-[0.9] tracking-[-0.05em] text-ink mb-3.5">
+      <h1 className="inline-block relative font-sans font-bold text-5xl lg:text-7xl xl:text-8xl leading-[0.9] tracking-[-0.05em] text-ink mb-3.5 lg:mb-5">
         unknown
         <span className="text-red text-[0.65em] inline-block -translate-y-[0.12em]">.</span>
         chat
@@ -70,9 +76,9 @@ function Wordmark({ size = "sm" }: { size?: "sm" | "lg" }) {
   return (
     <Link
       href="/"
-      className="wordmark-underline font-sans font-bold text-base tracking-[-0.025em] text-ink inline-flex items-baseline relative no-underline"
+      className="wordmark-underline font-sans font-bold text-base lg:text-lg tracking-[-0.025em] text-ink inline-flex items-baseline relative no-underline"
     >
-      unknown<span className="text-red text-[19px] -translate-y-[2px]">.</span>chat
+      unknown<span className="text-red text-[19px] lg:text-[22px] -translate-y-[2px]">.</span>chat
     </Link>
   );
 }
@@ -90,22 +96,22 @@ function LiveCounter() {
 
 function Hero() {
   return (
-    <section className="pt-4 pb-6 text-center relative">
-      <div className="inline-flex items-center gap-[7px] font-display text-lg text-red font-semibold mb-2.5 -rotate-2 before:content-[''] before:w-[18px] before:h-[1.5px] before:bg-red before:rounded after:content-[''] after:w-[18px] after:h-[1.5px] after:bg-red after:rounded">
+    <section className="pt-4 lg:pt-0 pb-6 lg:pb-0 text-center lg:text-left relative">
+      <div className="inline-flex items-center gap-[7px] font-display text-lg lg:text-xl text-red font-semibold mb-2.5 lg:mb-4 -rotate-2 before:content-[''] before:w-[18px] before:h-[1.5px] before:bg-red before:rounded after:content-[''] after:w-[18px] after:h-[1.5px] after:bg-red after:rounded">
         talk to a stranger · no signup
       </div>
 
       <div className="relative inline-block py-2">
-        <span className="absolute top-6 left-2.5 z-[5] bg-yellow border-[1.5px] border-ink rounded-full px-2.5 py-1 font-display text-sm font-bold text-ink shadow-hard-xs -rotate-[10deg] whitespace-nowrap">
+        <span className="absolute top-6 left-2.5 lg:top-8 lg:left-4 z-[5] bg-yellow border-[1.5px] border-ink rounded-full px-2.5 py-1 font-display text-sm lg:text-base font-bold text-ink shadow-hard-xs -rotate-[10deg] whitespace-nowrap">
           3am ✦
         </span>
-        <span className="absolute top-8 right-2 z-[5] bg-lilac border-[1.5px] border-ink rounded-full px-2.5 py-1 font-display text-sm font-bold text-ink shadow-hard-xs rotate-[8deg] whitespace-nowrap">
+        <span className="absolute top-8 right-2 lg:top-12 lg:-right-4 z-[5] bg-lilac border-[1.5px] border-ink rounded-full px-2.5 py-1 font-display text-sm lg:text-base font-bold text-ink shadow-hard-xs rotate-[8deg] whitespace-nowrap">
           just AI ♡
         </span>
         <Wordmark size="lg" />
       </div>
 
-      <p className="font-serif italic text-[17px] text-ink-soft leading-[1.25] max-w-[280px] mx-auto">
+      <p className="font-serif italic text-[17px] lg:text-2xl xl:text-[26px] text-ink-soft leading-[1.25] max-w-[280px] lg:max-w-[480px] mx-auto lg:mx-0">
         for when it&apos;s <span className="bg-yellow px-1.5">3am</span>
         <br />and you wanna talk but
         <br />
@@ -120,12 +126,12 @@ function Hero() {
 
 function MiniChat({ onTap }: { onTap: () => void }) {
   return (
-    <div className="relative mt-4">
+    <div className="relative mt-4 lg:mt-0 lg:max-w-md lg:ml-auto w-full">
       <span
         className="absolute -top-1.5 left-6 w-[60px] h-[14px] bg-lilac border border-ink -rotate-[4deg] opacity-85 tape-stripe z-10"
         aria-hidden
       />
-      <div className="bg-paper-cool border-2 border-ink rounded-2xl p-3.5 shadow-hard -rotate-[0.5deg]">
+      <div className="bg-paper-cool border-2 border-ink rounded-2xl p-3.5 lg:p-5 shadow-hard -rotate-[0.5deg]">
         <div className="flex items-center gap-1.5 font-display text-[15px] font-semibold text-ink mb-2.5 pb-2 border-b-[1.5px] border-dashed border-paper-deep">
           <span className="stranger-blob">
             <span className="w-[4px] h-[4px] rounded-full bg-paper-cool inline-block mr-1" />
@@ -237,15 +243,15 @@ const OVERHEARD_SAMPLES = [
 
 function OverheardSection() {
   return (
-    <section className="mt-8">
-      <div className="text-center mb-4">
-        <h3 className="font-sans font-bold text-2xl tracking-[-0.035em]">
+    <section className="mt-8 lg:mt-20">
+      <div className="text-center mb-4 lg:mb-8">
+        <h3 className="font-sans font-bold text-2xl lg:text-4xl xl:text-5xl tracking-[-0.035em]">
           overheard <span className="font-serif italic text-red font-normal">tonight</span>
         </h3>
-        <span className="block font-display text-sm text-ink-mute mt-0.5 -rotate-2">↙ swipe to read more</span>
+        <span className="block font-display text-sm lg:text-lg text-ink-mute mt-0.5 -rotate-2">↙ swipe to read more</span>
       </div>
 
-      <div className="flex gap-3 overflow-x-auto overflow-y-visible py-3.5 -mx-5 px-5 scrollbar-none">
+      <div className="flex gap-3 lg:gap-6 overflow-x-auto overflow-y-visible py-3.5 lg:py-6 -mx-5 px-5 lg:-mx-10 lg:px-10 scrollbar-none">
         {OVERHEARD_SAMPLES.map((sample, i) => (
           <OverheardCard key={i} idx={i} {...sample} />
         ))}
@@ -273,7 +279,7 @@ function OverheardCard({ sticker, loc, time, lines, ended, idx }: OverheardCardP
 
   return (
     <div
-      className={`relative flex-shrink-0 w-[220px] bg-paper-cool border-[1.5px] border-ink rounded-xl p-3 shadow-hard ${tilts[idx % 4]} ${offsets[idx % 4]}`}
+      className={`relative flex-shrink-0 w-[220px] lg:w-[280px] bg-paper-cool border-[1.5px] border-ink rounded-xl p-3 lg:p-4 shadow-hard ${tilts[idx % 4]} ${offsets[idx % 4]}`}
     >
       <span
         className={`absolute -top-2 -right-1 ${stickerColor} border border-ink rounded-full px-1.5 py-[2px] font-display text-xs font-bold rotate-[8deg] shadow-hard-xs`}
@@ -315,24 +321,24 @@ const POSTITS = [
 
 function WhyPostits() {
   return (
-    <section className="mt-7 text-center">
-      <h3 className="font-serif italic text-[22px] text-ink leading-tight mb-5">
+    <section className="mt-7 lg:mt-20 text-center">
+      <h3 className="font-serif italic text-[22px] lg:text-3xl xl:text-4xl text-ink leading-tight mb-5 lg:mb-10 max-w-3xl mx-auto">
         it&apos;s like talking to a stranger at <span className="bg-yellow px-1.5">3am</span>, except they&apos;re actually available.
       </h3>
-      <div className="flex flex-col gap-3.5">
+      <div className="flex flex-col lg:flex-row gap-3.5 lg:gap-6 lg:max-w-4xl lg:mx-auto">
         {POSTITS.map((p, i) => (
           <div
             key={p.num}
-            className={`${POSTIT_BG[i]} ${POSTIT_TILTS[i]} border-[1.5px] border-ink rounded-t rounded-b-xl px-3.5 pt-3.5 pb-[18px] shadow-hard text-left relative`}
+            className={`${POSTIT_BG[i]} ${POSTIT_TILTS[i]} flex-1 border-[1.5px] border-ink rounded-t rounded-b-xl px-3.5 lg:px-5 pt-3.5 lg:pt-6 pb-[18px] lg:pb-7 shadow-hard text-left relative`}
           >
             {/* washi tape stripe at top */}
             <span
               className="absolute -top-1.5 left-1/2 -translate-x-1/2 -rotate-3 w-12 h-3 bg-white/50 border border-ink tape-stripe"
               aria-hidden
             />
-            <div className="font-display text-xl font-bold text-red leading-none mb-1.5">{p.num}</div>
-            <div className="font-sans text-sm font-bold text-ink tracking-[-0.015em] mb-1">{p.title}</div>
-            <p className="font-display text-[15px] leading-[1.35] text-ink-soft font-medium">{p.body}</p>
+            <div className="font-display text-xl lg:text-3xl font-bold text-red leading-none mb-1.5 lg:mb-3">{p.num}</div>
+            <div className="font-sans text-sm lg:text-lg font-bold text-ink tracking-[-0.015em] mb-1 lg:mb-2">{p.title}</div>
+            <p className="font-display text-[15px] lg:text-lg leading-[1.35] text-ink-soft font-medium">{p.body}</p>
           </div>
         ))}
       </div>
@@ -344,8 +350,8 @@ function WhyPostits() {
 
 function Footer() {
   return (
-    <div className="mt-7 pt-5 border-t-[1.5px] border-dashed border-paper-deep text-center font-display text-sm text-ink-mute">
-      <div className="flex flex-wrap justify-center gap-x-3 gap-y-1 mb-2 font-sans text-xs">
+    <div className="mt-7 lg:mt-20 pt-5 lg:pt-8 border-t-[1.5px] border-dashed border-paper-deep text-center font-display text-sm lg:text-base text-ink-mute">
+      <div className="flex flex-wrap justify-center gap-x-3 gap-y-1 mb-2 font-sans text-xs lg:text-sm">
         <Link href="/about" className="text-ink-mute hover:text-ink">about</Link>
         <span aria-hidden>·</span>
         <Link href="/terms" className="text-ink-mute hover:text-ink">terms</Link>
