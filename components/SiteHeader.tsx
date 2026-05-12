@@ -1,23 +1,41 @@
-// Top navigation bar shown on landing + info pages (about/terms/privacy).
-// Not rendered on /chat — that page is a focused interactive surface, intentionally chrome-free.
+"use client";
+
+// Top navigation bar for non-chat pages (about / terms / privacy). Matches
+// the landing header — wordmark + menu hamburger that opens the MenuDrawer.
+//
+// The inline link row (home/about/terms/privacy) is gone — those live in the
+// drawer now, where they don't compete with the page's actual content.
 
 import Link from "next/link";
-import { Logo } from "./Logo";
+import { useState } from "react";
+import { MenuDrawer } from "./landing/MenuDrawer";
 
 export function SiteHeader() {
+  const [menuOpen, setMenuOpen] = useState(false);
+
   return (
-    <header className="border-b border-neutral-200 bg-white">
-      <nav className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
-        <Link href="/" aria-label="unknown.chat home" className="hover:opacity-80 transition-opacity">
-          <Logo size="sm" />
+    <>
+      <header className="px-5 pt-4 pb-3 max-w-md mx-auto w-full flex items-center justify-between">
+        <Link
+          href="/"
+          aria-label="unknown.chat home"
+          className="wordmark-underline font-sans font-bold text-base tracking-[-0.025em] text-ink inline-flex items-baseline relative no-underline"
+        >
+          unknown
+          <span className="text-red text-[19px] -translate-y-[2px]">.</span>
+          chat
         </Link>
-        <div className="flex gap-4 text-xs text-neutral-500">
-          <Link href="/" className="hover:text-neutral-900">home</Link>
-          <Link href="/about" className="hover:text-neutral-900">about</Link>
-          <Link href="/terms" className="hover:text-neutral-900">terms</Link>
-          <Link href="/privacy" className="hover:text-neutral-900">privacy</Link>
-        </div>
-      </nav>
-    </header>
+        <button
+          onClick={() => setMenuOpen(true)}
+          className="p-1 text-ink-soft hover:text-ink"
+          aria-label="menu"
+        >
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <path d="M3 6h14M3 10h14M3 14h14" />
+          </svg>
+        </button>
+      </header>
+      <MenuDrawer open={menuOpen} onClose={() => setMenuOpen(false)} />
+    </>
   );
 }
