@@ -6,6 +6,7 @@ import { MessageBubble } from "./MessageBubble";
 import { TypingIndicator } from "./TypingIndicator";
 import { CaptchaModal } from "./CaptchaModal";
 import { LookingView } from "./landing/LookingView";
+import { MenuDrawer } from "./landing/MenuDrawer";
 import { loadPrefs } from "@/lib/clientPrefs";
 
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "";
@@ -58,6 +59,7 @@ export function ChatWindow() {
   const [input, setInput] = useState("");
   const [ended, setEnded] = useState(false);
   const [captchaOpen, setCaptchaOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   // Unread counter — increments when a stranger message arrives while the tab is
   // hidden (user switched apps/tabs). Reflected in document.title so the user can
   // see "(2) unknown.chat" in their tab bar without needing OS notification permission.
@@ -532,6 +534,15 @@ export function ChatWindow() {
               {notifyActive ? "🔔" : "🔕"}
             </button>
           )}
+          <button
+            onClick={() => setMenuOpen(true)}
+            className="p-1 text-ink-soft hover:text-ink"
+            aria-label="menu"
+          >
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M3 6h14M3 10h14M3 14h14" />
+            </svg>
+          </button>
         </div>
       </header>
 
@@ -624,6 +635,8 @@ export function ChatWindow() {
           onCancel={onCaptchaCancel}
         />
       )}
+
+      <MenuDrawer open={menuOpen} onClose={() => setMenuOpen(false)} />
     </div>
   );
 }

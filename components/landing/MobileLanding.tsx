@@ -12,13 +12,15 @@
 import Link from "next/link";
 import { useState } from "react";
 import { PrefsSheet } from "./PrefsSheet";
+import { MenuDrawer } from "./MenuDrawer";
 
 export function MobileLanding() {
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Header onMenu={() => { /* batch 5: open menu drawer */ }} />
+      <Header onMenu={() => setMenuOpen(true)} />
 
       <main className="flex-1 px-5 pb-10 relative max-w-md mx-auto w-full">
         <DoodleSquiggle className="absolute top-16 -left-2 w-14 -rotate-[15deg] opacity-75" />
@@ -32,6 +34,7 @@ export function MobileLanding() {
       </main>
 
       <PrefsSheet open={sheetOpen} onClose={() => setSheetOpen(false)} />
+      <MenuDrawer open={menuOpen} onClose={() => setMenuOpen(false)} />
     </div>
   );
 }
