@@ -5,6 +5,7 @@ import Link from "next/link";
 import { MessageBubble } from "./MessageBubble";
 import { TypingIndicator } from "./TypingIndicator";
 import { CaptchaModal } from "./CaptchaModal";
+import { LookingView } from "./landing/LookingView";
 import { loadPrefs } from "@/lib/clientPrefs";
 
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "";
@@ -485,67 +486,136 @@ export function ChatWindow() {
     setEnded(true);
   }
 
+  // Show the "finding someone awake" view only while we're between sessions
+  // (no sessionId yet, not ended). The existing connect() flow seeds a
+  // system "looking for a stranger…" message — we suppress that during the
+  // looking state since the dedicated view replaces it.
+  const looking = !sessionId && !ended;
+  // Skip the seeded system message when rendering the actual chat thread.
+  const threadMessages = messages.filter(
+    m => !(m.role === "system" && m.text === "looking for a stranger..."),
+  );
+
   return (
-    <div className="min-h-screen flex flex-col">
-      <header className="px-4 py-3 border-b border-neutral-200 flex items-center justify-between">
-        <Link href="/" className="font-semibold tracking-tight">unknown.chat</Link>
-        <div className="text-xs text-neutral-400 flex items-center gap-3">
+    <div className="min-h-screen flex flex-col max-w-md mx-auto w-full">
+      {/* Header — wordmark + a live status pill (connected / disconnected /
+          live). Kept compact to match the landing chrome. */}
+      <header className="flex items-center justify-between px-5 pt-4 pb-2 flex-shrink-0">
+        <Link
+          href="/"
+          className="wordmark-underline font-sans font-bold text-base tracking-[-0.025em] text-ink inline-flex items-baseline relative no-underline"
+        >
+          unknown
+          <span className="text-red text-[19px] -translate-y-[2px]">.</span>
+          chat
+        </Link>
+        <div className="flex items-center gap-2.5">
+          {ended ? (
+            <span className="bg-paper-warm text-ink-mute px-2 py-[2px] rounded-full font-sans text-[10px] font-bold border border-ink-faint uppercase tracking-wider">
+              disconnected
+            </span>
+          ) : sessionId ? (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-[3px] bg-yellow border-[1.5px] border-ink rounded-full font-display text-[13px] text-ink font-bold -rotate-2 shadow-hard-xs">
+              <span className="w-[5px] h-[5px] rounded-full bg-red live-blink" />
+              connected
+            </span>
+          ) : null}
           {notifyShow && (
             <button
               type="button"
               onClick={toggleNotify}
               title={notifyTitle}
               disabled={notifyPerm === "denied"}
-              className="hover:text-neutral-600 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="text-ink-soft hover:text-ink disabled:opacity-40 disabled:cursor-not-allowed text-base"
               aria-pressed={notifyActive}
             >
               {notifyActive ? "🔔" : "🔕"}
             </button>
           )}
-          <Link href="/" className="hover:text-neutral-600">prefs</Link>
-          <Link href="/about" className="hover:text-neutral-600">about</Link>
         </div>
       </header>
 
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 max-w-2xl w-full mx-auto font-mono text-sm">
-        {messages.map((m, i) => (
-          <MessageBubble key={i} role={m.role} text={m.text} />
-        ))}
-        {typing && <TypingIndicator />}
-      </div>
+      {looking ? (
+        <LookingView />
+      ) : (
+        <>
+          {/* Context strip — stranger blob + connection age + (vibes pill
+              when connected). Hidden during a chat that already ended;
+              replaced with a simple "stranger left" line. */}
+          <div className="flex items-center justify-between px-5 py-2.5 border-b-[1.5px] border-dashed border-paper-deep flex-shrink-0">
+            <div className="flex items-center gap-2 font-display text-sm font-semibold text-ink">
+              {ended ? (
+                <span className="text-ink-mute">stranger left.</span>
+              ) : (
+                <>
+                  <span className="inline-flex items-center gap-1 bg-red text-paper-cool px-2 py-[1px] rounded-full font-sans text-[10px] font-bold -rotate-2">
+                    <span className="w-[4px] h-[4px] rounded-full bg-paper-cool" />
+                    stranger
+                  </span>
+                  just now
+                </>
+              )}
+            </div>
+            {!ended && (
+              <Link
+                href="/"
+                className="bg-transparent border-[1.2px] border-ink px-2.5 py-[3px] rounded-full font-display text-[13px] font-bold text-ink"
+                title="change your vibe"
+              >
+                vibes
+              </Link>
+            )}
+          </div>
 
-      <div className="border-t border-neutral-200 px-4 py-3 max-w-2xl w-full mx-auto">
-        <div className="flex gap-2">
-          <button
-            onClick={skip}
-            className="px-3 py-2 text-sm rounded-lg border border-neutral-300 hover:bg-neutral-100"
-            title={ended ? "find another stranger" : "skip and find another"}
-          >
-            {ended ? "new" : "skip"}
-          </button>
-          <input
-            type="text"
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={e => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                send();
-              }
-            }}
-            disabled={ended || !sessionId}
-            placeholder={ended ? "this chat ended. hit 'new' to start another." : "say something..."}
-            className="flex-1 rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ink/20 disabled:bg-neutral-50 disabled:text-neutral-400"
-          />
-          <button
-            onClick={send}
-            disabled={ended || !input.trim() || !sessionId}
-            className="px-4 py-2 text-sm rounded-lg bg-ink text-paper disabled:opacity-40"
-          >
-            send
-          </button>
-        </div>
-      </div>
+          {/* Thread */}
+          <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-4 font-mono text-[13.5px] leading-[1.7]">
+            {threadMessages.map((m, i) => (
+              <MessageBubble key={i} role={m.role} text={m.text} />
+            ))}
+            {typing && <TypingIndicator />}
+          </div>
+
+          {/* Input bar */}
+          <div className="px-4 pt-3 pb-5 flex-shrink-0">
+            <div className={`flex gap-1.5 items-center bg-paper-cool border-2 border-ink rounded-2xl p-[3px] shadow-hard-sm ${ended ? "" : ""}`}>
+              <button
+                onClick={skip}
+                className={
+                  ended
+                    ? "bg-red text-paper-cool border-none rounded-[9px] px-3 py-2 font-sans text-xs font-bold tracking-tight shadow-hard-sm flex-shrink-0"
+                    : "bg-transparent border-none px-2.5 py-2 rounded-[9px] font-display text-base font-bold text-ink-mute flex-shrink-0"
+                }
+                title={ended ? "find another stranger" : "skip and find another"}
+              >
+                {ended ? "find another" : "new"}
+              </button>
+              <input
+                type="text"
+                value={input}
+                onChange={e => setInput(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    send();
+                  }
+                }}
+                disabled={ended || !sessionId}
+                placeholder={ended ? "they left. tap 'find another'" : "type something…"}
+                className="flex-1 bg-transparent border-none px-1 py-2 font-mono text-[13px] text-ink outline-none min-w-0 placeholder:font-serif placeholder:italic placeholder:text-ink-mute disabled:opacity-50"
+              />
+              {!ended && (
+                <button
+                  onClick={send}
+                  disabled={!input.trim() || !sessionId}
+                  className="bg-ink text-paper border-none rounded-[10px] px-3.5 py-2 font-sans text-xs font-bold tracking-tight flex-shrink-0 disabled:opacity-40"
+                >
+                  send
+                </button>
+              )}
+            </div>
+          </div>
+        </>
+      )}
 
       {captchaOpen && TURNSTILE_SITE_KEY && (
         <CaptchaModal
