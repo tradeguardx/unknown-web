@@ -60,6 +60,12 @@ export function ChatWindow() {
   const [ended, setEnded] = useState(false);
   const [captchaOpen, setCaptchaOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  // Last time the stranger was "active" — used by the context strip's last-seen
+  // label. Updates when the typing indicator turns on or a new assistant message
+  // arrives. Combined with the now-tick state below, the label drifts
+  // "online" → "active 30s ago" → "active 2m ago" naturally over time.
+  const [lastSeenAt, setLastSeenAt] = useState<number | null>(null);
+  const [, setNowTick] = useState(0);
   // Unread counter — increments when a stranger message arrives while the tab is
   // hidden (user switched apps/tabs). Reflected in document.title so the user can
   // see "(2) unknown.chat" in their tab bar without needing OS notification permission.
@@ -88,6 +94,29 @@ export function ChatWindow() {
 
   useEffect(() => { sessionIdRef.current = sessionId; }, [sessionId]);
   useEffect(() => { endedRef.current = ended; }, [ended]);
+
+  // Re-render every 10s while the chat is live so the last-seen label drifts
+  // naturally ("just now" → "30s ago" → "2m ago"). Stops when the session
+  // ends — the "stranger left" line is shown by separate branch and doesn't
+  // need to keep ticking.
+  useEffect(() => {
+    if (ended || !sessionId) return;
+    const id = window.setInterval(() => setNowTick(t => t + 1), 10_000);
+    return () => window.clearInterval(id);
+  }, [ended, sessionId]);
+
+  // Bump lastSeenAt whenever the persona is "active" — typing indicator turns
+  // on, or a new assistant message lands in the thread. These two signals
+  // cover every moment the stranger is doing something, so the label resets
+  // to "online" and starts drifting again.
+  useEffect(() => {
+    if (typing) setLastSeenAt(Date.now());
+  }, [typing]);
+
+  const assistantCount = messages.filter(m => m.role === "assistant").length;
+  useEffect(() => {
+    if (assistantCount > 0) setLastSeenAt(Date.now());
+  }, [assistantCount]);
 
   // Sync the unread count into the tab title.
   useEffect(() => {
@@ -563,7 +592,7 @@ export function ChatWindow() {
                     <span className="w-[4px] h-[4px] rounded-full bg-paper-cool" />
                     stranger
                   </span>
-                  just now
+                  <LastSeenLabel typing={typing} lastSeenAt={lastSeenAt} />
                 </>
               )}
             </div>
@@ -639,4 +668,34 @@ export function ChatWindow() {
       <MenuDrawer open={menuOpen} onClose={() => setMenuOpen(false)} />
     </div>
   );
+}
+
+// Tiny live-status label rendered in the chat context strip. Three states:
+//   - typing → "typing…" (italic)
+//   - within 10s of last activity → "online" (green dot accent)
+//   - older → "active 30s ago" / "active 2m ago"
+// Parent re-renders this on a 10s tick so the time-ago label stays accurate.
+function LastSeenLabel({ typing, lastSeenAt }: { typing: boolean; lastSeenAt: number | null }) {
+  if (typing) {
+    return <span className="text-ink-soft italic font-serif">typing…</span>;
+  }
+  if (!lastSeenAt) {
+    return <span className="text-ink-mute">online</span>;
+  }
+  const ageMs = Date.now() - lastSeenAt;
+  if (ageMs < 10_000) {
+    return (
+      <span className="inline-flex items-center gap-1 text-you font-semibold">
+        <span className="w-[5px] h-[5px] rounded-full bg-you" />
+        online
+      </span>
+    );
+  }
+  return <span className="text-ink-mute font-normal">active {formatAge(ageMs)} ago</span>;
+}
+
+function formatAge(ms: number): string {
+  if (ms < 60_000) return `${Math.floor(ms / 1000)}s`;
+  if (ms < 3_600_000) return `${Math.floor(ms / 60_000)}m`;
+  return `${Math.floor(ms / 3_600_000)}h`;
 }
