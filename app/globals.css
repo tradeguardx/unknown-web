@@ -70,9 +70,31 @@ body {
   animation: live-blink 1.4s infinite;
 }
 
+/* Attention pulse for the primary CTA — runs ~6 cycles (~10s) on page load,
+   then stops naturally. Briefly lifts the button + grows its hard shadow so
+   first-time visitors notice it. Stops on hover/focus (the button becomes
+   active state instead) and respects reduced-motion. */
+@keyframes attention-pulse {
+  0%, 100% {
+    transform: translateY(0);
+    box-shadow: 3px 3px 0 #1a1610;
+  }
+  40% {
+    transform: translateY(-3px);
+    box-shadow: 6px 6px 0 #1a1610;
+  }
+}
+.attention-pulse {
+  animation: attention-pulse 1.6s ease-in-out 6;
+}
+.attention-pulse:hover,
+.attention-pulse:focus {
+  animation: none;
+}
+
 /* Respect a11y motion preference for every keyframe animation. */
 @media (prefers-reduced-motion: reduce) {
-  .logo-cursor, .pulse-dot, .live-blink { animation: none; opacity: 1; }
+  .logo-cursor, .pulse-dot, .live-blink, .attention-pulse { animation: none; opacity: 1; }
 }
 
 /* Striped tape — the bit of "washi" that runs across postit tops. Used inline. */

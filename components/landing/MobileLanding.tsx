@@ -120,10 +120,13 @@ function Hero({ onStart }: { onStart: () => void }) {
       </p>
 
       {/* Primary CTA — the unambiguous start path. Lives above the fold,
-          impossible to miss. Mini chat below acts as a secondary preview. */}
+          impossible to miss. Mini chat below acts as a secondary preview.
+          attention-pulse runs ~6 cycles on mount so first-time visitors
+          notice it; pause on hover/focus so it doesn't fight the active
+          state. Respects prefers-reduced-motion via globals.css. */}
       <button
         onClick={onStart}
-        className="mt-5 lg:mt-7 inline-flex items-center gap-2 bg-red text-paper-cool border-2 border-ink rounded-2xl px-6 lg:px-8 py-3 lg:py-4 font-sans text-base lg:text-lg font-bold tracking-tight shadow-hard hover:shadow-hard-lg hover:-translate-y-0.5 transition-all"
+        className="attention-pulse mt-5 lg:mt-7 inline-flex items-center gap-2 bg-red text-paper-cool border-2 border-ink rounded-2xl px-6 lg:px-8 py-3 lg:py-4 font-sans text-base lg:text-lg font-bold tracking-tight shadow-hard hover:shadow-hard-lg hover:-translate-y-0.5 transition-all"
       >
         find someone awake
         <span aria-hidden>→</span>
