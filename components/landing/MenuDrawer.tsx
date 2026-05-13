@@ -51,12 +51,14 @@ export function MenuDrawer({ open, onClose }: Props) {
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
-  // Lock body scroll while the drawer is open.
+  // Lock body scroll while the drawer is open. Always reset to empty on
+  // cleanup (not the captured value) — restoring a stale "hidden" was
+  // leaving body locked on iOS during fast navigation, which then prevented
+  // the chat input from focusing on the next page.
   useEffect(() => {
     if (!open) return;
-    const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = prev; };
+    return () => { document.body.style.overflow = ""; };
   }, [open]);
 
   const toggleNotify = useCallback(async () => {

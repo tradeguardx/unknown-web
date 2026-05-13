@@ -95,6 +95,19 @@ export function ChatWindow() {
   useEffect(() => { sessionIdRef.current = sessionId; }, [sessionId]);
   useEffect(() => { endedRef.current = ended; }, [ended]);
 
+  // Defensive iOS Safari fix.
+  // The PrefsSheet / MenuDrawer modals lock body.overflow = 'hidden' while
+  // open and restore it on close. If the page navigates while a modal is
+  // open (e.g. PrefsSheet → /chat) the cleanup *should* run on unmount, but
+  // there are corner cases (back/forward cache restore, fast double-tap of
+  // "save & start") where the body stays locked. On iOS this prevents the
+  // input from triggering the keyboard — tapping the field does nothing.
+  // Unconditionally reset on every /chat mount + on every send/skip cycle.
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  useEffect(() => {
+    document.body.style.overflow = "";
+  }, []);
+
   // Re-render every 10s while the chat is live so the last-seen label drifts
   // naturally ("just now" → "30s ago" → "2m ago"). Stops when the session
   // ends — the "stranger left" line is shown by separate branch and doesn't
@@ -617,9 +630,18 @@ export function ChatWindow() {
 
           {/* Input bar */}
           <div className="px-4 pt-3 pb-5 flex-shrink-0">
-            <div className={`flex gap-1.5 items-center bg-paper-cool border-2 border-ink rounded-2xl p-[3px] shadow-hard-sm ${ended ? "" : ""}`}>
+            <div
+              // Tapping anywhere in the row focuses the actual input — fixes
+              // an iOS bug where the first tap occasionally lands on the
+              // wrapper rather than the input and the keyboard fails to open.
+              onClick={() => {
+                if (!ended && sessionId) inputRef.current?.focus();
+              }}
+              className="flex gap-1.5 items-center bg-paper-cool border-2 border-ink rounded-2xl p-[3px] shadow-hard-sm"
+              style={{ touchAction: "manipulation" }}
+            >
               <button
-                onClick={skip}
+                onClick={e => { e.stopPropagation(); skip(); }}
                 className={
                   ended
                     ? "bg-red text-paper-cool border-none rounded-[9px] px-3 py-2 font-sans text-xs font-bold tracking-tight shadow-hard-sm flex-shrink-0"
@@ -630,7 +652,18 @@ export function ChatWindow() {
                 {ended ? "find another" : "new"}
               </button>
               <input
+                ref={inputRef}
                 type="text"
+                // iOS-friendly attribute set. enterKeyHint makes the keyboard's
+                // return key read "send" on mobile; autoComplete off keeps
+                // browser/autofill chrome out of the way; autoCapitalize and
+                // autoCorrect match casual chat typing.
+                enterKeyHint="send"
+                inputMode="text"
+                autoComplete="off"
+                autoCapitalize="sentences"
+                autoCorrect="on"
+                spellCheck="true"
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={e => {
@@ -645,7 +678,7 @@ export function ChatWindow() {
               />
               {!ended && (
                 <button
-                  onClick={send}
+                  onClick={e => { e.stopPropagation(); send(); }}
                   disabled={!input.trim() || !sessionId}
                   className="bg-ink text-paper border-none rounded-[10px] px-3.5 py-2 font-sans text-xs font-bold tracking-tight flex-shrink-0 disabled:opacity-40"
                 >

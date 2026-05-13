@@ -47,12 +47,14 @@ export function PrefsSheet({ open, onClose }: Props) {
   }, [open, onClose]);
 
   // Lock body scroll while the sheet is open so the underlying page doesn't
-  // scroll under the user's finger when they drag the modal.
+  // scroll under the user's finger when they drag the modal. Always reset to
+  // empty string on cleanup (not the previously captured value) — restoring
+  // a stale "hidden" value was leaving the body locked on iOS in some
+  // navigation timings, which then prevented the chat input from focusing.
   useEffect(() => {
     if (!open) return;
-    const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = prev; };
+    return () => { document.body.style.overflow = ""; };
   }, [open]);
 
   function update<K extends keyof UserPrefs>(key: K, value: UserPrefs[K]) {
@@ -64,6 +66,12 @@ export function PrefsSheet({ open, onClose }: Props) {
     // acknowledges the disclosure shown above the button + on the landing.
     const merged: UserPrefs = { ...prefs, aiAcknowledged: true };
     savePrefs(merged);
+    // Close the sheet BEFORE routing so the body-overflow lock unwinds
+    // cleanly. Unmount cleanup also runs, but on iOS the timing of router
+    // navigation + effect cleanup occasionally left the body still locked,
+    // which prevented the chat input from focusing on the next page.
+    onClose();
+    document.body.style.overflow = "";
     router.push("/chat");
   }
 
