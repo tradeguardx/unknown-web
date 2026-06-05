@@ -125,6 +125,15 @@ export function countryFrom(req: Request): string | undefined {
   return c;
 }
 
+// Coarse device class from the User-Agent — enough to compare mobile vs desktop
+// UX without a UA-parsing dependency.
+export function deviceFrom(req: Request): "mobile" | "tablet" | "desktop" {
+  const ua = (req.headers.get("user-agent") || "").toLowerCase();
+  if (/ipad|tablet|(android(?!.*mobile))|kindle|silk|playbook/.test(ua)) return "tablet";
+  if (/mobi|iphone|ipod|android.*mobile|phone|blackberry|opera mini|iemobile/.test(ua)) return "mobile";
+  return "desktop";
+}
+
 // Classify a referrer into a low-cardinality origin label plus the raw ref
 // (kept only for external referrers, for the dashboard's "top sources" view).
 export function originFrom(
@@ -207,6 +216,7 @@ export function emitPageview(
     origin,
     ref: keptRef,
     ua: req.headers.get("user-agent") || undefined,
+    props: { device: deviceFrom(req) },
   });
 }
 
@@ -251,7 +261,7 @@ export function emitChatEnded(
 export function emitChatSummary(
   req: Request,
   session: Session,
-  summary: string,
+  insight: import("./chatSummary").ChatInsight,
   reason: string,
 ): Promise<void> {
   const durationMs = Math.max(0, Date.now() - session.createdAt);
@@ -260,7 +270,14 @@ export function emitChatSummary(
     sessionId: session.id,
     country: countryFrom(req),
     props: {
-      summary,
+      summary: insight.summary,
+      // Structured persona-improvement signals.
+      engagement: insight.engagement,
+      user_sentiment: insight.userSentiment,
+      persona_realism: insight.personaRealism,
+      end_trigger: insight.endTrigger,
+      topics: insight.topics.join(","),
+      improvement: insight.improvement,
       end_reason: reason,
       duration_ms: durationMs,
       message_count: session.messages.length,
