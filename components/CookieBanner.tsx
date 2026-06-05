@@ -6,11 +6,13 @@
 // posture for EU/UK traffic. Dismissed state itself is stored in localStorage.
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
 const FLAG_KEY = "unknownchat:storageNotice:v1";
 
 export function CookieBanner() {
+  const pathname = usePathname();
   // Don't render anything during SSR — we don't know yet whether the user
   // has dismissed. Mounting on client avoids hydration mismatch.
   const [mounted, setMounted] = useState(false);
@@ -29,6 +31,13 @@ export function CookieBanner() {
     setDismissed(true);
     try { localStorage.setItem(FLAG_KEY, "1"); } catch { /* ignore */ }
   }
+
+  // Hide on /chat — the banner is fixed-positioned at the bottom of the
+  // viewport and on mobile its element overlaps the chat input bar, which
+  // captures taps and prevents the keyboard from opening. The user has also
+  // already given implicit consent by accepting prefs to start a chat, so
+  // the legal posture is fine without it on this surface.
+  if (pathname?.startsWith("/chat")) return null;
 
   if (!mounted || dismissed) return null;
 

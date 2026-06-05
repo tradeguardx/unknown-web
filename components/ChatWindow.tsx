@@ -628,8 +628,10 @@ export function ChatWindow() {
             {typing && <TypingIndicator />}
           </div>
 
-          {/* Input bar */}
-          <div className="px-4 pt-3 pb-5 flex-shrink-0">
+          {/* Input bar. z-50 ensures no fixed-positioned overlay (e.g. the
+              global CookieBanner, which on mobile spans the bottom of the
+              viewport) can sit on top and steal the user's taps. */}
+          <div className="px-4 pt-3 pb-5 flex-shrink-0 relative z-50">
             <div
               // Tapping anywhere in the row focuses the actual input — fixes
               // an iOS bug where the first tap occasionally lands on the
