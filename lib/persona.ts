@@ -263,13 +263,91 @@ function pickName(countryCode: string, gender: Gender): string {
   return pick(bucket);
 }
 
-// Persona's local hour at session start. Weighted toward awake hours so most
-// chats happen with a persona that's ostensibly conscious — but late-night and
-// early-morning slots are kept around because that's also where insomniac /
-// "couldn't sleep" / "just woke up" energy comes from naturally.
-function pickLocalHour(): number {
+// Mapping: country code → representative IANA timezone. Used so a persona
+// from Mumbai actually knows it's 2pm IST when the user starts a chat at 2pm
+// IST, instead of randomly claiming it's 3am. For countries that span many
+// zones (US, RU, AU, BR), we use the most-populated city's zone as default
+// and override per-city below.
+const TIMEZONE_BY_COUNTRY: Record<string, string> = {
+  US: "America/New_York",
+  IN: "Asia/Kolkata",
+  GB: "Europe/London",
+  DE: "Europe/Berlin",
+  BR: "America/Sao_Paulo",
+  CA: "America/Toronto",
+  PH: "Asia/Manila",
+  AU: "Australia/Sydney",
+  FR: "Europe/Paris",
+  MX: "America/Mexico_City",
+  JP: "Asia/Tokyo",
+  TR: "Europe/Istanbul",
+  ID: "Asia/Jakarta",
+  NG: "Africa/Lagos",
+  PL: "Europe/Warsaw",
+  EG: "Africa/Cairo",
+  ES: "Europe/Madrid",
+  RU: "Europe/Moscow",
+  KR: "Asia/Seoul",
+  AR: "America/Argentina/Buenos_Aires",
+};
+
+// Per-city overrides for countries that span multiple zones. Looked up before
+// the country-level fallback above. Extend as needed.
+const TIMEZONE_BY_CITY: Record<string, string> = {
+  // US
+  "New York": "America/New_York",
+  "Chicago": "America/Chicago",
+  "Austin": "America/Chicago",
+  "Seattle": "America/Los_Angeles",
+  "LA": "America/Los_Angeles",
+  // Canada
+  "Toronto": "America/Toronto",
+  "Montreal": "America/Toronto",
+  "Vancouver": "America/Vancouver",
+  // Australia
+  "Sydney": "Australia/Sydney",
+  "Melbourne": "Australia/Melbourne",
+  // Brazil
+  "São Paulo": "America/Sao_Paulo",
+  "Rio": "America/Sao_Paulo",
+  "Curitiba": "America/Sao_Paulo",
+  // Russia
+  "Moscow": "Europe/Moscow",
+  "St. Petersburg": "Europe/Moscow",
+};
+
+// Persona's local hour at session start — the REAL current hour in their
+// stated country / city. A Mumbai persona reading 14 means it's 2pm IST,
+// because that's actually what time it is in Mumbai right now. Falls back to
+// a random awake-hour roll only when the country code has no timezone mapping
+// (shouldn't happen for any country in COUNTRIES).
+function pickLocalHour(countryCode: string, city?: string): number {
+  const tz =
+    (city && TIMEZONE_BY_CITY[city]) ||
+    TIMEZONE_BY_COUNTRY[countryCode] ||
+    null;
+
+  if (tz) {
+    try {
+      const parts = new Intl.DateTimeFormat("en-US", {
+        timeZone: tz,
+        hour: "numeric",
+        hour12: false,
+      }).formatToParts(new Date());
+      const hourPart = parts.find(p => p.type === "hour");
+      if (hourPart) {
+        const h = parseInt(hourPart.value, 10);
+        // Intl can return "24" for midnight in some locale outputs — normalize.
+        if (!Number.isNaN(h)) return h % 24;
+      }
+    } catch {
+      // Fall through to random — Intl can throw on misconfigured runtimes.
+    }
+  }
+
+  // Fallback: legacy awake-weighted roll. Only used if we don't have a
+  // timezone mapping at all (defensive).
   const r = Math.random();
-  // 60% daytime/evening (10am-11pm), 25% late night (11pm-3am), 15% early/morning grog.
   if (r < 0.6) return 10 + Math.floor(Math.random() * 14);
   if (r < 0.85) return (23 + Math.floor(Math.random() * 4)) % 24;
   return 5 + Math.floor(Math.random() * 5);
@@ -1141,7 +1219,7 @@ export function generatePersona(prefs?: UserPrefs): Persona {
     city,
     age,
     gender,
-    localHour: pickLocalHour(),
+    localHour: pickLocalHour(country.code, city),
     vibeArc: pickVibeArc(),
     interests,
     mood,
