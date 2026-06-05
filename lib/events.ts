@@ -1,0 +1,283 @@
+// Custom analytics event pipeline — PRODUCER side.
+//
+// Fire-and-forget emitter that POSTs typed events to the analytics service's
+// HTTP ingest endpoint; an ingest Lambda there publishes them to SQS, which a
+// consumer drains into DynamoDB (see ../../analytics-service). The app needs NO
+// AWS credentials — just the ingest URL + a shared key.
+//
+// This runs ALONGSIDE Plausible (lib/analytics.ts): Plausible gives quick web
+// stats, this gives rich, owned, queryable analytics + chat summaries.
+//
+// Everything here is best-effort and non-blocking. If ANALYTICS_INGEST_URL is
+// unset (local dev) every emit is a silent no-op, and failures are swallowed
+// with a warning. NEVER await these on a request's critical path — always
+// `void emit...(...)`.
+
+import { createHash } from "crypto";
+import { nanoid } from "nanoid";
+import type { Session } from "./sessions";
+
+const INGEST_URL = process.env.ANALYTICS_INGEST_URL;
+const INGEST_KEY = process.env.ANALYTICS_INGEST_KEY;
+// Salt for the daily visitor hash. Set to a private value in prod so the hash
+// can't be reversed by brute-forcing IP+UA. Rotating it daily (built in below)
+// makes the visitor id non-persistent across days — same privacy stance as
+// Plausible's salt-per-day model.
+const VISITOR_SALT = process.env.ANALYTICS_VISITOR_SALT || "unknown-chat";
+
+export function isAnalyticsEnabled(): boolean {
+  return !!INGEST_URL;
+}
+
+// ---------------------------------------------------------------------------
+// Event contract (kept in sync with analytics-service/src/events/types.ts)
+// ---------------------------------------------------------------------------
+
+export type AnalyticsEventType =
+  | "pageview"
+  | "chat_started"
+  | "chat_ended"
+  | "chat_summary"
+  | "content_filter";
+
+type PropValue = string | number | boolean;
+
+export interface AnalyticsEnvelope {
+  // Stable per-event id. Used by the consumer for at-least-once dedup, so it
+  // MUST be unique per logical event (not regenerated on retry).
+  id: string;
+  type: AnalyticsEventType;
+  ts: number; // epoch ms
+  date: string; // YYYY-MM-DD (UTC) — the partition key suffix the consumer uses
+  sessionId?: string;
+  visitorId?: string; // daily-salted hash of ip+ua — approximate unique visitor
+  country?: string; // ISO-2, from an upstream geo header (see countryFrom)
+  origin?: string; // "direct" | "internal" | referrer hostname
+  ref?: string; // raw referrer (external only)
+  ua?: string;
+  path?: string; // page path, for pageview
+  props?: Record<string, PropValue>;
+}
+
+// ---------------------------------------------------------------------------
+// Request-derived helpers
+// ---------------------------------------------------------------------------
+
+export function utcDate(ts: number = Date.now()): string {
+  return new Date(ts).toISOString().slice(0, 10);
+}
+
+function visitorIp(req: Request): string {
+  return (
+    req.headers.get("fly-client-ip") ||
+    req.headers.get("x-forwarded-for")?.split(",")[0].trim() ||
+    req.headers.get("x-real-ip") ||
+    ""
+  );
+}
+
+// Daily-rotating, salted, one-way hash of IP+UA. Same visitor → same id within
+// a UTC day, different id the next day. Lets the consumer approximate unique
+// visitor counts without ever storing an IP.
+export function visitorId(req: Request): string {
+  const ip = visitorIp(req);
+  const ua = req.headers.get("user-agent") || "";
+  return createHash("sha256")
+    .update(`${VISITOR_SALT}|${utcDate()}|${ip}|${ua}`)
+    .digest("hex")
+    .slice(0, 24);
+}
+
+// Best-effort visitor country from whatever edge/CDN sits in front of the app.
+// Cloudflare → cf-ipcountry; Vercel → x-vercel-ip-country. Fly.io does NOT add
+// a user-country header by default (Fly-Region is the datacenter, not the user),
+// so country stays undefined unless you front the app with Cloudflare or set a
+// geo header upstream. See README.
+export function countryFrom(req: Request): string | undefined {
+  const c = (
+    req.headers.get("cf-ipcountry") ||
+    req.headers.get("x-vercel-ip-country") ||
+    req.headers.get("x-geo-country") ||
+    ""
+  )
+    .trim()
+    .toUpperCase();
+  // Cloudflare emits XX/T1 for unknown / Tor — treat as no-country.
+  if (!c || c === "XX" || c === "T1") return undefined;
+  return c;
+}
+
+// Classify a referrer into a low-cardinality origin label plus the raw ref
+// (kept only for external referrers, for the dashboard's "top sources" view).
+export function originFrom(
+  ref: string | null | undefined,
+  req: Request,
+): { origin: string; ref?: string } {
+  if (!ref) return { origin: "direct" };
+  try {
+    const u = new URL(ref);
+    const selfHost = (req.headers.get("host") || "").toLowerCase();
+    if (u.host.toLowerCase() === selfHost) return { origin: "internal" };
+    return { origin: u.hostname.replace(/^www\./, ""), ref };
+  } catch {
+    return { origin: "direct" };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Core emit
+// ---------------------------------------------------------------------------
+
+export async function emitEvent(
+  partial: Omit<AnalyticsEnvelope, "id" | "ts" | "date"> &
+    Partial<Pick<AnalyticsEnvelope, "id" | "ts" | "date">>,
+): Promise<void> {
+  if (!INGEST_URL) return;
+
+  const ts = partial.ts ?? Date.now();
+  const cleanProps: Record<string, PropValue> = {};
+  if (partial.props) {
+    for (const [k, v] of Object.entries(partial.props)) {
+      if (v === undefined || v === null) continue;
+      if (typeof v === "string" && v.length === 0) continue;
+      cleanProps[k] = v;
+    }
+  }
+
+  const event: AnalyticsEnvelope = {
+    ...partial,
+    id: partial.id ?? nanoid(21),
+    ts,
+    date: partial.date ?? utcDate(ts),
+    props: Object.keys(cleanProps).length ? cleanProps : undefined,
+  };
+
+  try {
+    await fetch(INGEST_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(INGEST_KEY ? { "x-ingest-key": INGEST_KEY } : {}),
+      },
+      body: JSON.stringify(event),
+    });
+  } catch (err) {
+    console.warn(
+      "[events] ingest failed:",
+      err instanceof Error ? err.message : String(err),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Typed emit helpers — one per event the app produces
+// ---------------------------------------------------------------------------
+
+export function emitPageview(
+  req: Request,
+  path: string,
+  ref?: string | null,
+): Promise<void> {
+  const { origin, ref: keptRef } = originFrom(ref, req);
+  return emitEvent({
+    type: "pageview",
+    path,
+    visitorId: visitorId(req),
+    country: countryFrom(req),
+    origin,
+    ref: keptRef,
+    ua: req.headers.get("user-agent") || undefined,
+  });
+}
+
+export function emitChatStarted(req: Request, session: Session): Promise<void> {
+  return emitEvent({
+    type: "chat_started",
+    sessionId: session.id,
+    visitorId: visitorId(req),
+    country: countryFrom(req),
+    props: {
+      intent: session.prefs?.intent ?? "unset",
+      gender: session.prefs?.gender ?? "unset",
+      interested_in: session.prefs?.interestedIn ?? "unset",
+      pref_country: session.prefs?.country ?? "unset",
+      language: session.prefs?.language ?? "unset",
+      provider: session.provider,
+    },
+  });
+}
+
+export function emitChatEnded(
+  req: Request,
+  session: Session,
+  reason: string,
+): Promise<void> {
+  const durationMs = Math.max(0, Date.now() - session.createdAt);
+  return emitEvent({
+    type: "chat_ended",
+    sessionId: session.id,
+    visitorId: visitorId(req),
+    country: countryFrom(req),
+    props: {
+      reason,
+      duration_ms: durationMs,
+      message_count: session.messages.length,
+      intent: session.prefs?.intent ?? "unset",
+      provider: session.provider,
+    },
+  });
+}
+
+export function emitChatSummary(
+  req: Request,
+  session: Session,
+  summary: string,
+  reason: string,
+): Promise<void> {
+  const durationMs = Math.max(0, Date.now() - session.createdAt);
+  return emitEvent({
+    type: "chat_summary",
+    sessionId: session.id,
+    country: countryFrom(req),
+    props: {
+      summary,
+      end_reason: reason,
+      duration_ms: durationMs,
+      message_count: session.messages.length,
+      // Filter / prefs snapshot — what the user picked before chatting.
+      intent: session.prefs?.intent ?? "unset",
+      gender: session.prefs?.gender ?? "unset",
+      interested_in: session.prefs?.interestedIn ?? "unset",
+      language: session.prefs?.language ?? "unset",
+      pref_country: session.prefs?.country ?? "unset",
+      provider: session.provider,
+      // Persona snapshot — useful for spotting which persona shapes go well/badly.
+      persona_country: session.persona.country,
+      persona_age: session.persona.age,
+      persona_gender: session.persona.gender,
+      persona_mood: session.persona.mood,
+      persona_archetype: session.persona.archetype,
+      persona_typing_style: session.persona.typingStyle,
+    },
+  });
+}
+
+export function emitContentFilter(
+  req: Request,
+  session: Session,
+  action: "warn" | "close",
+  reason: string,
+  warningCount: number,
+): Promise<void> {
+  return emitEvent({
+    type: "content_filter",
+    sessionId: session.id,
+    country: countryFrom(req),
+    props: {
+      action,
+      reason,
+      warning_count: warningCount,
+      intent: session.prefs?.intent ?? "unset",
+    },
+  });
+}

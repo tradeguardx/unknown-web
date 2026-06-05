@@ -15,7 +15,7 @@ import {
 import { parseReply, type PacedMessage } from "@/lib/replyParser";
 import { callLLM, trimHistory } from "@/lib/llmProvider";
 import { clientIp, rateLimit } from "@/lib/rateLimit";
-import { trackChatEnded } from "@/lib/analytics";
+import { onChatEnded } from "@/lib/chatClose";
 
 // Cap on consecutive idle pings before we force the persona to leave. Real
 // strangers don't keep poking; after 2 unanswered pings, the chat is over.
@@ -104,7 +104,7 @@ export async function POST(req: Request) {
   }
   if (parsed.stay && forceLeave) {
     endSession(sessionId, "silent");
-    void trackChatEnded(req, session, "silent");
+    onChatEnded(req, session, "silent");
     return NextResponse.json({
       messages: [] as PacedMessage[],
       left: true,
@@ -128,7 +128,7 @@ export async function POST(req: Request) {
   const leaveReason = parsed.leaveReason || "silent";
   if (shouldEnd) {
     endSession(sessionId, leaveReason);
-    void trackChatEnded(req, session, leaveReason);
+    onChatEnded(req, session, leaveReason);
   }
 
   return NextResponse.json({

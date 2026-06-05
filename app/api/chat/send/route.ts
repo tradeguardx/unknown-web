@@ -20,10 +20,11 @@ import { clientIp, rateLimit } from "@/lib/rateLimit";
 import { checkContent, getCloseText } from "@/lib/contentFilter";
 import { refreshUserMemory, shouldRefreshMemory } from "@/lib/userMemory";
 import {
-  trackChatEnded,
   trackContentFilterClosed,
   trackContentFilterWarned,
 } from "@/lib/analytics";
+import { emitContentFilter } from "@/lib/events";
+import { onChatEnded } from "@/lib/chatClose";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -61,7 +62,7 @@ export async function POST(req: Request) {
 
   if (session.messages.length >= 200) {
     endSession(sessionId, "too long");
-    void trackChatEnded(req, session, "too_long");
+    onChatEnded(req, session, "too_long");
     return NextResponse.json({ error: "session ended", reason: "too long" }, { status: 410 });
   }
   if (message.length > 2000) {
@@ -92,7 +93,8 @@ export async function POST(req: Request) {
     );
     endSession(sessionId, filter.reason || "policy");
     void trackContentFilterClosed(req, session, filter.reason || "unknown");
-    void trackChatEnded(req, session, `policy:${filter.reason || "unknown"}`);
+    void emitContentFilter(req, session, "close", filter.reason || "unknown", session.warningCount);
+    onChatEnded(req, session, `policy:${filter.reason || "unknown"}`);
     return NextResponse.json(
       {
         error: "content policy violation",
@@ -116,6 +118,7 @@ export async function POST(req: Request) {
       }),
     );
     void trackContentFilterWarned(req, session, filter.reason || "unknown", newCount);
+    void emitContentFilter(req, session, "warn", filter.reason || "unknown", newCount);
     // Warning is delivered as a synthetic system message — UI renders distinctly.
     // We do NOT append it to session.messages or send it to the LLM; this is purely
     // a server→client signal so the chat does not break flow with the persona.
@@ -138,7 +141,7 @@ export async function POST(req: Request) {
   // Random "stranger ghosted before reading" outcome — small chance the user just gets dropped.
   if (Math.random() < session.persona.randomLeaveProbability * 0.4) {
     endSession(sessionId, "ghosted");
-    void trackChatEnded(req, session, "ghosted");
+    onChatEnded(req, session, "ghosted");
     return NextResponse.json({
       messages: [] as PacedMessage[],
       left: true,
@@ -199,7 +202,7 @@ export async function POST(req: Request) {
 
   if (parsed.left) {
     endSession(sessionId, parsed.leaveReason || "left");
-    void trackChatEnded(req, session, parsed.leaveReason || "left");
+    onChatEnded(req, session, parsed.leaveReason || "left");
   }
 
   // Fire-and-forget rolling memory refresh. Runs every Nth message (default 10),

@@ -55,6 +55,9 @@ export interface Session {
   // Once true, no further messages from the persona — they "left".
   ended: boolean;
   endReason?: string;
+  // Guard so analytics (chat_ended + summary) fire exactly once per session,
+  // even though several code paths can end a chat. Set by lib/chatClose.ts.
+  closeRecorded?: boolean;
   createdAt: number;
 }
 

@@ -16,6 +16,7 @@ import {
   resetAfterCaptcha,
 } from "@/lib/captchaCounter";
 import { trackChatStarted } from "@/lib/analytics";
+import { emitChatStarted } from "@/lib/events";
 
 export const runtime = "nodejs";
 
@@ -85,6 +86,8 @@ export async function POST(req: Request) {
   // Fire-and-forget Plausible event so we can see the funnel:
   // pageview → chat_started → chat_ended (with reason + duration).
   void trackChatStarted(req, session);
+  // Owned pipeline: same funnel, richer dimensions, lands in DynamoDB.
+  void emitChatStarted(req, session);
 
   // Whether the persona starts is determined by the persona's mood (set in the generator).
   // chatty/flirty open often, shy/grumpy rarely. This makes "user types first" actually common.

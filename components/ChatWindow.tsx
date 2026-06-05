@@ -345,6 +345,45 @@ export function ChatWindow() {
     }, delay);
   }, [playPacedMessages, pushMsg, schedule]);
 
+  // Tell the server a chat ended from the client side (user skipped, or left the
+  // page) so duration + summary analytics capture user-initiated exits — the
+  // server otherwise only knows about ends it drives itself. Uses sendBeacon on
+  // unload (survives teardown), falls back to fetch+keepalive. Safe to call
+  // repeatedly; the server de-dupes per session.
+  const notifyServerEnd = useCallback((reason: "skip" | "page_leave") => {
+    const sid = sessionIdRef.current;
+    if (!sid) return;
+    const payload = JSON.stringify({ sessionId: sid, reason });
+    try {
+      if (typeof navigator !== "undefined" && navigator.sendBeacon) {
+        navigator.sendBeacon(
+          "/api/chat/end",
+          new Blob([payload], { type: "application/json" }),
+        );
+        return;
+      }
+    } catch {
+      /* fall through to fetch */
+    }
+    fetch("/api/chat/end", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: payload,
+      keepalive: true,
+    }).catch(() => {
+      /* analytics must never break the UI */
+    });
+  }, []);
+
+  // Beacon a chat-end when the user navigates away / closes the tab mid-chat.
+  useEffect(() => {
+    const onLeave = () => {
+      if (sessionIdRef.current && !endedRef.current) notifyServerEnd("page_leave");
+    };
+    window.addEventListener("pagehide", onLeave);
+    return () => window.removeEventListener("pagehide", onLeave);
+  }, [notifyServerEnd]);
+
   const connect = useCallback(async (captchaToken?: string) => {
     clearAllTimeouts();
     setMessages([{ role: "system", text: "looking for a stranger..." }]);
@@ -512,6 +551,8 @@ export function ChatWindow() {
         const ok = window.confirm("are you sure you want to skip this stranger?");
         if (!ok) return;
       }
+      // Record the abandoned session before we spin up a new one.
+      notifyServerEnd("skip");
       pushMsg({ role: "system", text: "you skipped." });
     }
     clearAllTimeouts();

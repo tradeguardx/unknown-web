@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from "next";
 import { Space_Grotesk, Instrument_Serif, Caveat, Geist_Mono } from "next/font/google";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { CookieBanner } from "@/components/CookieBanner";
+import { PageViewTracker } from "@/components/PageViewTracker";
 
 // The four typefaces that anchor the design language. Loaded via next/font so
 // Next inlines them as preloaded WOFF2 + scoped CSS variables — no CLS, no
@@ -141,6 +142,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     >
       <body>
         {children}
+        <PageViewTracker />
         <CookieBanner />
         {PLAUSIBLE_SCRIPT_URL && (
           <>
