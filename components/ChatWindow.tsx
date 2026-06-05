@@ -375,6 +375,25 @@ export function ChatWindow() {
     });
   }, []);
 
+  // Live presence: while a chat is open, ping the server every ~20s so the
+  // analytics dashboard can show "people chatting now". Fully async / non-blocking.
+  useEffect(() => {
+    if (!sessionId || ended) return;
+    const beat = () => {
+      fetch("/api/chat/heartbeat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId }),
+        keepalive: true,
+      }).catch(() => {
+        /* presence is best-effort */
+      });
+    };
+    beat(); // immediate, so a fresh chat shows up right away
+    const id = window.setInterval(beat, 20_000);
+    return () => window.clearInterval(id);
+  }, [sessionId, ended]);
+
   // Beacon a chat-end when the user navigates away / closes the tab mid-chat.
   useEffect(() => {
     const onLeave = () => {

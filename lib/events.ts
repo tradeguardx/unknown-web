@@ -19,6 +19,10 @@ import type { Session } from "./sessions";
 
 const INGEST_URL = process.env.ANALYTICS_INGEST_URL;
 const INGEST_KEY = process.env.ANALYTICS_INGEST_KEY;
+// Presence endpoint sits next to /ingest on the same service.
+const PRESENCE_URL = INGEST_URL
+  ? INGEST_URL.replace(/\/ingest\/?$/, "/presence")
+  : undefined;
 // Salt for the daily visitor hash. Set to a private value in prod so the hash
 // can't be reversed by brute-forcing IP+UA. Rotating it daily (built in below)
 // makes the visitor id non-persistent across days — same privacy stance as
@@ -50,7 +54,13 @@ export interface AnalyticsEnvelope {
   ts: number; // epoch ms
   date: string; // YYYY-MM-DD (UTC) — the partition key suffix the consumer uses
   sessionId?: string;
-  visitorId?: string; // daily-salted hash of ip+ua — approximate unique visitor
+  // Persistent first-party visitor id (uc_vid cookie). Stable across days /
+  // networks — THE user identity, used for unique-visitor and new/returning.
+  vid?: string;
+  // True if this is the visitor's first-ever visit (cookie was just minted).
+  isNew?: boolean;
+  // Daily-salted hash of the IP only — counts distinct networks/IPs per day.
+  ipHash?: string;
   country?: string; // ISO-2, from an upstream geo header (see countryFrom)
   origin?: string; // "direct" | "internal" | referrer hostname
   ref?: string; // raw referrer (external only)
@@ -76,14 +86,22 @@ function visitorIp(req: Request): string {
   );
 }
 
-// Daily-rotating, salted, one-way hash of IP+UA. Same visitor → same id within
-// a UTC day, different id the next day. Lets the consumer approximate unique
-// visitor counts without ever storing an IP.
-export function visitorId(req: Request): string {
-  const ip = visitorIp(req);
-  const ua = req.headers.get("user-agent") || "";
+// Persistent visitor id, injected by middleware.ts from the uc_vid cookie.
+export function visitorVid(req: Request): string | undefined {
+  return req.headers.get("x-uc-vid") || undefined;
+}
+
+// Whether middleware just minted the cookie → first-ever visit.
+export function visitorIsNew(req: Request): boolean {
+  return req.headers.get("x-uc-vid-new") === "1";
+}
+
+// Daily-rotating, salted, one-way hash of the IP only. Counts distinct
+// networks/IPs per day without ever storing an IP. Comparing this against the
+// unique-visitor (cookie) count reveals NAT / shared-IP vs multi-IP users.
+export function ipHashDaily(req: Request): string {
   return createHash("sha256")
-    .update(`${VISITOR_SALT}|${utcDate()}|${ip}|${ua}`)
+    .update(`${VISITOR_SALT}|ip|${utcDate()}|${visitorIp(req)}`)
     .digest("hex")
     .slice(0, 24);
 }
@@ -182,7 +200,9 @@ export function emitPageview(
   return emitEvent({
     type: "pageview",
     path,
-    visitorId: visitorId(req),
+    vid: visitorVid(req),
+    isNew: visitorIsNew(req),
+    ipHash: ipHashDaily(req),
     country: countryFrom(req),
     origin,
     ref: keptRef,
@@ -194,7 +214,7 @@ export function emitChatStarted(req: Request, session: Session): Promise<void> {
   return emitEvent({
     type: "chat_started",
     sessionId: session.id,
-    visitorId: visitorId(req),
+    vid: visitorVid(req),
     country: countryFrom(req),
     props: {
       intent: session.prefs?.intent ?? "unset",
@@ -216,7 +236,7 @@ export function emitChatEnded(
   return emitEvent({
     type: "chat_ended",
     sessionId: session.id,
-    visitorId: visitorId(req),
+    vid: visitorVid(req),
     country: countryFrom(req),
     props: {
       reason,
@@ -260,6 +280,25 @@ export function emitChatSummary(
       persona_typing_style: session.persona.typingStyle,
     },
   });
+}
+
+// Live presence heartbeat for an active chat. Fire-and-forget, server-side, so
+// the persistent visitor id + ingest key never touch the browser. Drives the
+// dashboard's "people chatting now" count.
+export async function sendPresence(req: Request, sessionId: string): Promise<void> {
+  if (!PRESENCE_URL) return;
+  try {
+    await fetch(PRESENCE_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(INGEST_KEY ? { "x-ingest-key": INGEST_KEY } : {}),
+      },
+      body: JSON.stringify({ sessionId, vid: visitorVid(req) }),
+    });
+  } catch {
+    /* presence is best-effort */
+  }
 }
 
 export function emitContentFilter(
