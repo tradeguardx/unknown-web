@@ -625,6 +625,19 @@ export function ChatWindow() {
       }
       // Record the abandoned session before we spin up a new one.
       notifyServerEnd("skip");
+
+      // If this was a real (≥5min) chat we can still ask about, end HERE and show
+      // the feedback prompt instead of jumping straight to a new stranger. The
+      // user taps "find another" afterwards. Short chats skip straight through.
+      const lasted =
+        chatStartRef.current > 0 && Date.now() - chatStartRef.current >= FEEDBACK_MIN_MS;
+      if (lasted && feedbackAllowed()) {
+        clearAllTimeouts();
+        pushMsg({ role: "system", text: "you skipped." });
+        setEnded(true); // triggers the feedback prompt via the ended effect
+        return;
+      }
+
       pushMsg({ role: "system", text: "you skipped." });
     }
     clearAllTimeouts();
