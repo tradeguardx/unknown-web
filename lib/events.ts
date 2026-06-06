@@ -74,8 +74,13 @@ export interface AnalyticsEnvelope {
 // Request-derived helpers
 // ---------------------------------------------------------------------------
 
+// The analytics "day" is IST (UTC+5:30, no DST) — so daily buckets, the date
+// picker, and unique-per-day dedup all align to an India-local calendar day.
+// Event timestamps (ts) stay absolute epoch-ms; only the date key is localized.
+const ANALYTICS_TZ_OFFSET_MIN = 330;
+
 export function utcDate(ts: number = Date.now()): string {
-  return new Date(ts).toISOString().slice(0, 10);
+  return new Date(ts + ANALYTICS_TZ_OFFSET_MIN * 60_000).toISOString().slice(0, 10);
 }
 
 function visitorIp(req: Request): string {
