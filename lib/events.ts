@@ -42,7 +42,8 @@ export type AnalyticsEventType =
   | "chat_started"
   | "chat_ended"
   | "chat_summary"
-  | "content_filter";
+  | "content_filter"
+  | "feedback";
 
 type PropValue = string | number | boolean;
 
@@ -316,6 +317,38 @@ export async function sendPresence(req: Request, sessionId: string): Promise<voi
   } catch {
     /* presence is best-effort */
   }
+}
+
+// User feedback — emoji rating (1-5) + optional written review. `kind` is
+// "chat_rating" (after a chat) or "app_review" (general). Session is optional;
+// when present we attach context so we can see which chats/personas get rated.
+export function emitFeedback(
+  req: Request,
+  session: Session | undefined,
+  data: { kind: "chat_rating" | "app_review"; rating: number; text?: string },
+): Promise<void> {
+  const props: Record<string, string | number | boolean> = {
+    kind: data.kind,
+    rating: data.rating,
+  };
+  if (data.text) props.text = data.text;
+  if (session) {
+    props.session_id = session.id;
+    props.duration_ms = Math.max(0, Date.now() - session.createdAt);
+    props.message_count = session.messages.length;
+    props.intent = session.prefs?.intent ?? "unset";
+    props.language = session.prefs?.language ?? "unset";
+    props.persona_country = session.persona.country;
+    props.persona_archetype = session.persona.archetype;
+    props.persona_mood = session.persona.mood;
+  }
+  return emitEvent({
+    type: "feedback",
+    sessionId: session?.id,
+    vid: visitorVid(req),
+    country: countryFrom(req),
+    props,
+  });
 }
 
 export function emitContentFilter(

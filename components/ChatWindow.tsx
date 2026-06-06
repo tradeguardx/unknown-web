@@ -8,6 +8,29 @@ import { CaptchaModal } from "./CaptchaModal";
 import { LookingView } from "./landing/LookingView";
 import { MenuDrawer } from "./landing/MenuDrawer";
 import { loadPrefs } from "@/lib/clientPrefs";
+import { FeedbackPrompt } from "./FeedbackPrompt";
+
+// Show the post-chat feedback prompt only for chats ≥ this long.
+const FEEDBACK_MIN_MS = 5 * 60_000;
+// Don't nudge again within this window after a submit/skip.
+const FEEDBACK_COOLDOWN_MS = 7 * 24 * 60 * 60_000;
+const FEEDBACK_KEY = "unknownchat:feedback:v1";
+
+function feedbackAllowed(): boolean {
+  try {
+    const ts = Number(localStorage.getItem(FEEDBACK_KEY) || 0);
+    return !ts || Date.now() - ts > FEEDBACK_COOLDOWN_MS;
+  } catch {
+    return false;
+  }
+}
+function markFeedbackShown() {
+  try {
+    localStorage.setItem(FEEDBACK_KEY, String(Date.now()));
+  } catch {
+    /* ignore */
+  }
+}
 
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "";
 
@@ -58,6 +81,8 @@ export function ChatWindow() {
   const [typing, setTyping] = useState(false);
   const [input, setInput] = useState("");
   const [ended, setEnded] = useState(false);
+  const [showFeedback, setShowFeedback] = useState(false);
+  const chatStartRef = useRef<number>(0);
   const [captchaOpen, setCaptchaOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   // Last time the stranger was "active" — used by the context strip's last-seen
@@ -94,6 +119,32 @@ export function ChatWindow() {
 
   useEffect(() => { sessionIdRef.current = sessionId; }, [sessionId]);
   useEffect(() => { endedRef.current = ended; }, [ended]);
+
+  // When a chat ends, ask for feedback if it was a real (≥5min) conversation and
+  // we haven't nudged this visitor recently.
+  useEffect(() => {
+    if (!ended) return;
+    const lasted = chatStartRef.current > 0 && Date.now() - chatStartRef.current >= FEEDBACK_MIN_MS;
+    if (lasted && feedbackAllowed()) setShowFeedback(true);
+  }, [ended]);
+
+  const submitFeedback = useCallback((rating: number, text: string) => {
+    markFeedbackShown();
+    const sid = sessionIdRef.current;
+    fetch("/api/chat/feedback", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sessionId: sid, kind: "chat_rating", rating, text }),
+      keepalive: true,
+    }).catch(() => {
+      /* feedback is best-effort */
+    });
+  }, []);
+
+  const skipFeedback = useCallback(() => {
+    markFeedbackShown(); // also suppress for the cooldown so we don't nag
+    setShowFeedback(false);
+  }, []);
 
   // Defensive iOS Safari fix.
   // The PrefsSheet / MenuDrawer modals lock body.overflow = 'hidden' while
@@ -435,6 +486,8 @@ export function ChatWindow() {
       if (!res.ok) throw new Error("failed to start");
       const data = (await res.json()) as StartResponse;
       setSessionId(data.sessionId);
+      chatStartRef.current = Date.now();
+      setShowFeedback(false);
       pushMsg({ role: "system", text: "you're now chatting with a random stranger." });
 
       let openerEnd = 0;
@@ -687,6 +740,11 @@ export function ChatWindow() {
             ))}
             {typing && <TypingIndicator />}
           </div>
+
+          {/* Post-chat feedback — only after a real (≥5min) conversation. */}
+          {ended && showFeedback && (
+            <FeedbackPrompt onSubmit={submitFeedback} onSkip={skipFeedback} />
+          )}
 
           {/* Input bar. z-50 ensures no fixed-positioned overlay (e.g. the
               global CookieBanner, which on mobile spans the bottom of the
