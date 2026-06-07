@@ -49,8 +49,9 @@ export default function PrivacyPage() {
               <ul className="list-disc pl-6 space-y-1">
                 <li>Rate limiting (per-IP cap on how many chats you can start per minute, to prevent abuse).</li>
                 <li>Captcha gating (counter of how many chats you've started since your last captcha verification).</li>
+                <li>Approximate <strong>country</strong> lookup for aggregate analytics (e.g. "visitors by country"). We derive only the country code and discard the IP — we never store your IP alongside it.</li>
               </ul>
-              <p>We do not log IP addresses to disk and do not associate them with any other identifier.</p>
+              <p>We do not log IP addresses to disk and do not associate them with any other identifier. Country is derived locally using GeoLite2 data created by MaxMind (<a href="https://www.maxmind.com" target="_blank" rel="noopener noreferrer" className="underline">maxmind.com</a>).</p>
 
               <h3 className="font-medium text-ink mt-4">Chat messages (transient, processed by Anthropic)</h3>
               <p>

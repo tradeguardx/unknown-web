@@ -15,6 +15,7 @@
 
 import { createHash } from "crypto";
 import { nanoid } from "nanoid";
+import geoip from "geoip-lite";
 import type { Session } from "./sessions";
 
 const INGEST_URL = process.env.ANALYTICS_INGEST_URL;
@@ -113,11 +114,10 @@ export function ipHashDaily(req: Request): string {
     .slice(0, 24);
 }
 
-// Best-effort visitor country from whatever edge/CDN sits in front of the app.
-// Cloudflare → cf-ipcountry; Vercel → x-vercel-ip-country. Fly.io does NOT add
-// a user-country header by default (Fly-Region is the datacenter, not the user),
-// so country stays undefined unless you front the app with Cloudflare or set a
-// geo header upstream. See README.
+// Best-effort visitor country (ISO-2). First an upstream geo header (Cloudflare
+// cf-ipcountry / Vercel), then a local GeoIP lookup on the IP — so it works on
+// Fly even with no edge geo header. We derive country only; the IP isn't stored.
+// IP geolocation by GeoLite2 data created by MaxMind (https://www.maxmind.com).
 export function countryFrom(req: Request): string | undefined {
   const c = (
     req.headers.get("cf-ipcountry") ||
@@ -128,8 +128,19 @@ export function countryFrom(req: Request): string | undefined {
     .trim()
     .toUpperCase();
   // Cloudflare emits XX/T1 for unknown / Tor — treat as no-country.
-  if (!c || c === "XX" || c === "T1") return undefined;
-  return c;
+  if (c && c !== "XX" && c !== "T1") return c;
+
+  // Fallback: local GeoIP lookup (no external call, no IP stored).
+  try {
+    const ip = visitorIp(req);
+    if (ip) {
+      const geo = geoip.lookup(ip);
+      if (geo?.country) return geo.country.toUpperCase();
+    }
+  } catch {
+    /* geoip unavailable → no country */
+  }
+  return undefined;
 }
 
 // Coarse device class from the User-Agent — enough to compare mobile vs desktop
