@@ -12,9 +12,13 @@
 // matters because a few routes both endSession() and report in overlapping paths.
 
 import { trackChatEnded } from "./analytics";
-import { emitChatEnded, emitChatSummary } from "./events";
+import { emitChatEnded, emitChatSummary, emitTranscript } from "./events";
 import { summarizeChat } from "./chatSummary";
 import { getSession, type Session } from "./sessions";
+
+// Fraction of chats whose (redacted) transcript we keep for QA. Privacy stance:
+// sample a small slice, never everyone. Service TTLs them after ~30 days.
+const TRANSCRIPT_SAMPLE_RATE = Number(process.env.ANALYTICS_TRANSCRIPT_SAMPLE) || 0.03;
 
 export function onChatEnded(req: Request, session: Session, reason: string): void {
   // De-dupe: only record a given session's close once.
@@ -24,6 +28,11 @@ export function onChatEnded(req: Request, session: Session, reason: string): voi
   // 1 + 2: lightweight events, fired immediately.
   void trackChatEnded(req, session, reason);
   void emitChatEnded(req, session, reason);
+
+  // 2b: keep a redacted transcript for a small random sample (real chats only).
+  if (session.messages.length >= 2 && Math.random() < TRANSCRIPT_SAMPLE_RATE) {
+    void emitTranscript(req, session, reason);
+  }
 
   // 3: summary is an LLM round-trip — never block the request path on it.
   setImmediate(() => {

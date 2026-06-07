@@ -33,7 +33,7 @@ export default function PrivacyPage() {
               <ul className="list-disc pl-6 space-y-1">
                 <li>We don't have user accounts, so we don't ask for your name, email, or any other identifier.</li>
                 <li>We use <a href="https://plausible.io/data-policy" target="_blank" rel="noopener noreferrer" className="underline">Plausible Analytics</a> — a privacy-friendly, cookie-free analytics service. No advertising, no third-party trackers.</li>
-                <li>We don't store your chat messages anywhere persistent. Sessions live in our server's memory and are gone when the chat ends or the server restarts.</li>
+                <li>We don't store your full chats by default — live sessions are in-memory and gone when the chat ends. For quality, we keep a short AI-generated summary of each chat, and a redacted transcript from a small random sample (~3%) of chats, all de-identified and auto-deleted after ~30 days.</li>
                 <li>Your chat messages <em>are</em> sent to Anthropic's Claude API for processing — that's how the AI personas work. Their privacy policy applies for that data flow.</li>
                 <li>Your local preferences (country, language, intent, age confirmation, sound, notification permission) are stored in your browser's local storage on your device. We don't have a copy.</li>
               </ul>
@@ -62,9 +62,14 @@ export default function PrivacyPage() {
                 and you should review it.
               </p>
               <p>
-                We do not retain chat messages on our servers beyond the lifetime of the active
-                chat session.
+                We do not retain your full chat by default beyond the active session. To improve
+                the AI personas, two things are kept in our own analytics store and{" "}
+                <strong>auto-deleted after about 30 days</strong>:
               </p>
+              <ul className="list-disc pl-6 space-y-1">
+                <li>A short, AI-generated <strong>summary</strong> of each chat (what it was about, how it went) — not the raw messages.</li>
+                <li>A <strong>redacted transcript</strong> from a small random sample (~3%) of chats. Before storage we strip obvious identifiers like emails and phone numbers. We never store who you are alongside it.</li>
+              </ul>
 
               <h3 className="font-medium text-ink mt-4">Plausible Analytics (privacy-friendly, no cookies)</h3>
               <p>

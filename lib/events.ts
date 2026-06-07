@@ -43,7 +43,8 @@ export type AnalyticsEventType =
   | "chat_ended"
   | "chat_summary"
   | "content_filter"
-  | "feedback";
+  | "feedback"
+  | "chat_transcript";
 
 type PropValue = string | number | boolean;
 
@@ -353,6 +354,41 @@ export function emitFeedback(
     vid: visitorVid(req),
     country: countryFrom(req),
     props,
+  });
+}
+
+// Light PII redaction before any transcript leaves the app.
+function redact(s: string): string {
+  return s
+    .replace(/\b[\w.+-]+@[\w-]+\.[\w.-]+\b/g, "[email]")
+    .replace(/\b\+?\d[\d\s().-]{7,}\d\b/g, "[number]");
+}
+
+// Sampled raw transcript — stored for only a small % of chats (the caller
+// decides whether to sample), redacted + capped, with a short TTL on the
+// service side. For QA: understanding how real conversations actually go.
+export function emitTranscript(req: Request, session: Session, reason: string): Promise<void> {
+  // Compact + cap: last 80 turns, each ≤1000 chars, to stay well under limits.
+  const messages = session.messages.slice(-80).map((m) => ({
+    r: m.role === "user" ? "u" : "a",
+    t: redact(m.content).slice(0, 1000),
+  }));
+  return emitEvent({
+    type: "chat_transcript",
+    sessionId: session.id,
+    country: countryFrom(req),
+    props: {
+      transcript: JSON.stringify(messages),
+      message_count: session.messages.length,
+      end_reason: reason,
+      duration_ms: Math.max(0, Date.now() - session.createdAt),
+      intent: session.prefs?.intent ?? "unset",
+      language: session.prefs?.language ?? "unset",
+      persona_country: session.persona.country,
+      persona_age: session.persona.age,
+      persona_gender: session.persona.gender,
+      persona_archetype: session.persona.archetype,
+    },
   });
 }
 
