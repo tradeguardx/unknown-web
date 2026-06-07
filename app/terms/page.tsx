@@ -144,9 +144,12 @@ export default function TermsPage() {
                 our servers.
               </p>
               <p>
-                Chat sessions are kept in our server's memory only while a chat is active. When the
-                chat ends or the server restarts, the session is gone. We do not retain or replay
-                your chat history. See the <Link href="/privacy" className="underline hover:text-ink">privacy policy</Link> for details.
+                Chat sessions are kept in our server's memory only while a chat is active, and we
+                don't store your full chat history. To improve the personas we do keep — in
+                de-identified form, auto-deleted after about 30 days — a short AI-generated summary
+                of each chat and a redacted transcript from a small random sample (~3%) of chats.
+                We never tie these to your identity. See the{" "}
+                <Link href="/privacy" className="underline hover:text-ink">privacy policy</Link> for full details.
               </p>
             </Section>
 
