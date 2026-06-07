@@ -114,10 +114,11 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     creator: "@unknownchat",
   },
-  icons: {
-    icon: "/icon.svg",
-    apple: "/icon.svg",
-  },
+  // Icons come from the app/ file convention now:
+  //   app/favicon.ico  → Google Search favicon (raster 16/32/48)
+  //   app/icon.svg     → crisp modern-browser favicon
+  //   app/apple-icon.png → iOS home-screen icon
+  // (manifest references the 192/512 PNGs for PWA / install.)
   manifest: "/manifest.webmanifest",
   // Google Search Console domain ownership verification.
   verification: {
