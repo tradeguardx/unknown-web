@@ -6,3 +6,15 @@ export const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") || "https://unknown.chat";
 
 export const SITE_NAME = "unknown.chat";
+
+// Social profiles we invite people to follow. Add Twitter/X here later and it
+// shows up everywhere <SocialFollow /> is rendered — no other change needed.
+// Set `url` to "" to hide a platform without deleting the entry.
+export const SOCIALS: { name: string; handle: string; url: string }[] = [
+  {
+    name: "Instagram",
+    handle: "@unknown__chat__",
+    url: "https://www.instagram.com/unknown__chat__/",
+  },
+  // { name: "Twitter", handle: "@unknownchat", url: "" }, // coming soon
+];

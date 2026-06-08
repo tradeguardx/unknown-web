@@ -14,6 +14,7 @@ import { useState } from "react";
 import { PrefsSheet } from "./PrefsSheet";
 import { MenuDrawer } from "./MenuDrawer";
 import { Testimonials } from "./Testimonials";
+import { SocialFollow } from "@/components/SocialFollow";
 import type { TestimonialsData } from "@/lib/testimonials";
 
 export function MobileLanding({ testimonials }: { testimonials?: TestimonialsData | null }) {
@@ -372,6 +373,7 @@ function Footer() {
         <span aria-hidden>·</span>
         <Link href="/privacy" className="text-ink-mute hover:text-ink">privacy</Link>
       </div>
+      <SocialFollow className="mb-4" />
       <div>made for the strange &amp; sleepless ♡</div>
     </div>
   );
