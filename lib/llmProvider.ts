@@ -35,9 +35,19 @@ function getEnvConfig(): LLMProviderConfig {
 // Called at session creation. For "mixed" mode, rolls a coin so each session
 // commits to one provider for its lifetime — keeps a chat coherent (no
 // mid-conversation switch from Claude voice to DeepSeek voice).
+//
+// In "mixed" mode the split is weighted by MIXED_DEEPSEEK_SHARE (0..1) — the
+// fraction of sessions sent to DeepSeek, the rest to Anthropic/Claude. Default
+// 0.5 (even). e.g. 0.7 → 70% DeepSeek / 30% Claude.
+function deepseekShare(): number {
+  const raw = Number(process.env.MIXED_DEEPSEEK_SHARE);
+  if (!Number.isFinite(raw)) return 0.5;
+  return Math.min(1, Math.max(0, raw));
+}
+
 export function pickProviderForSession(): LLMProvider {
   const cfg = getEnvConfig();
-  if (cfg === "mixed") return Math.random() < 0.5 ? "anthropic" : "deepseek";
+  if (cfg === "mixed") return Math.random() < deepseekShare() ? "deepseek" : "anthropic";
   return cfg;
 }
 
