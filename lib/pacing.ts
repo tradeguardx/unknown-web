@@ -24,24 +24,49 @@ export interface PacingResult {
 
 export type SpeedMode = "fast" | "normal" | "slow" | "on_read";
 
-// Per-reply speed roll. Keep most chats in "normal" so the chat feels coherent,
-// sprinkle the others so timing isn't predictable.
+// Per-reply speed roll. LENGTH is the primary driver of typing time (handled in
+// computePacing); the mode only adds human variance to the *thinking* pause and
+// nudges typing speed. Keep most replies snappy — the rare slow/on_read modes
+// are what used to make chats feel randomly "too slow", so they're now rarer
+// and gentler.
 function rollSpeed(): SpeedMode {
   const r = Math.random();
-  if (r < 0.25) return "fast";    // 25% — instant-ish
-  if (r < 0.75) return "normal";  // 50% — current behavior
-  if (r < 0.90) return "slow";    // 15% — thinking longer / multitasking
-  return "on_read";               // 10% — "left you on read, came back later"
+  if (r < 0.30) return "fast";    // 30% — reflex reply, barely a pause
+  if (r < 0.88) return "normal";  // 58% — normal thinking pause
+  if (r < 0.97) return "slow";    // 9%  — thinking longer / multitasking
+  return "on_read";               // 3%  — "left you on read, came back"
 }
 
 // Absolute ceiling so the UX never feels permanently broken on a worst roll.
-const MAX_TOTAL_MS = 90_000;
+const MAX_TOTAL_MS = 60_000;
+// Floor on the WHOLE response. Instant replies are the #1 "this is a bot" tell —
+// users have called it out — so even a reflex reply takes a human beat to land.
+const MIN_TOTAL_MS = 1_600;
+// Typing-time guardrails. A 1–2 word reply still shows a brief, believable type;
+// a long reply never drags past this.
+const MIN_TYPING_MS = 600;
+const MAX_TYPING_MS = 11_000;
 
 export function computePacing(persona: Persona, replyText: string): PacingResult {
-  const charCount = replyText.length;
-  // Avg ~5 chars/word. Convert WPM to ms-per-char.
-  const msPerChar = (60_000 / (persona.wpm * 5));
-  const baseTypingMs = Math.round(charCount * msPerChar);
+  const text = replyText.trim();
+  const charCount = text.length;
+  const wordCount = text.split(/\s+/).filter(Boolean).length || 1;
+
+  // Texting cadence (chars/min). Real chat typing is burstier and faster than
+  // prose WPM — people fire off short texts. We derive a per-char cost from the
+  // persona's wpm in this texting register so LENGTH drives the time: few words
+  // → quick to send, many words → visibly longer.
+  const charsPerMin = persona.wpm * 11;            // wpm 35 → ~385cpm, wpm 50 → ~550cpm
+  const msPerChar = 60_000 / charsPerMin;          // wpm 35 → ~156ms, wpm 50 → ~109ms
+  // Length-driven typing time, clamped at both ends.
+  const baseTypingMs = Math.min(
+    MAX_TYPING_MS,
+    Math.max(MIN_TYPING_MS, Math.round(charCount * msPerChar)),
+  );
+
+  // Think time scales gently with length too — a one-liner barely needs a pause,
+  // a longer reply implies a beat of composing first.
+  const lengthThink = Math.min(2_000, wordCount * 120);
 
   const mode = rollSpeed();
 
@@ -51,44 +76,44 @@ export function computePacing(persona: Persona, replyText: string): PacingResult
 
   switch (mode) {
     case "fast": {
-      // Glance + reflex reply. Almost no thinking, type fast.
-      preTypingMs = 200 + Math.floor(Math.random() * 1_500);
-      // Speed up typing too — they didn't think, they just blurted.
-      typingMs = Math.round(baseTypingMs * 0.7);
+      // Glance + reflex reply. Quick, but NOT instant — a real person still
+      // takes ~1s to read and start typing. Types a touch quicker but stays
+      // proportional to length (a long "fast" reply isn't instant).
+      preTypingMs = 500 + Math.floor(Math.random() * 1_200);
+      typingMs = Math.round(baseTypingMs * 0.85);
       break;
     }
     case "normal": {
-      // Existing behavior: 0.5–4s think, scaled slightly by reply length.
-      const thinkBase = 500 + Math.random() * 1500;
-      const thinkScale = Math.min(2500, charCount * 8);
-      preTypingMs = Math.round(thinkBase + Math.random() * thinkScale);
+      // Short, length-aware think pause.
+      const thinkBase = 400 + Math.random() * 1_200;
+      preTypingMs = Math.round(thinkBase + Math.random() * lengthThink);
       break;
     }
     case "slow": {
-      // Thinking longer / multitasking / they got pulled away briefly.
-      // 15–30s silent pause, then normal typing.
-      preTypingMs = 15_000 + Math.floor(Math.random() * 15_000);
+      // Thinking longer / multitasking / briefly pulled away. Gentler than
+      // before (used to be 15–30s, which read as "broken").
+      preTypingMs = 6_000 + Math.floor(Math.random() * 8_000);
       break;
     }
     case "on_read": {
-      // "Left you on read." Long silent pause with NO typing indicator,
-      // then a short typing burst, then a (usually short) reply. Client uses
-      // the mode flag to decide whether to suppress the typing indicator for
-      // most of preTypingMs.
-      preTypingMs = 40_000 + Math.floor(Math.random() * 20_000);
-      // After being on read, typing is brief (~3–8s).
-      typingMs = Math.min(baseTypingMs, 3_000 + Math.floor(Math.random() * 5_000));
+      // "Left you on read." A silent pause with NO typing indicator, then a
+      // short typing burst. Trimmed from 40–60s to keep it human, not dead.
+      preTypingMs = 16_000 + Math.floor(Math.random() * 16_000);
+      typingMs = Math.min(baseTypingMs, 2_500 + Math.floor(Math.random() * 4_000));
       break;
     }
   }
 
-  // Persona-level "got distracted by something else" — kept as an additive layer
-  // on top of the speed mode for normal/fast (slow/on_read already model this).
+  // Persona-level "got distracted by something else" — an occasional additive
+  // pause on otherwise-snappy replies (slow/on_read already model this).
   if (!ghosted && Math.random() < persona.ghostPauseProbability) {
     ghosted = true;
-    preTypingMs += 8_000 + Math.floor(Math.random() * 17_000);
+    preTypingMs += 6_000 + Math.floor(Math.random() * 12_000);
   }
 
-  const totalMs = Math.min(preTypingMs + typingMs, MAX_TOTAL_MS);
+  const totalMs = Math.min(
+    Math.max(preTypingMs + typingMs, MIN_TOTAL_MS),
+    MAX_TOTAL_MS,
+  );
   return { totalMs, preTypingMs: Math.min(preTypingMs, totalMs), ghosted, mode };
 }

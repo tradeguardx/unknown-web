@@ -151,6 +151,10 @@ const CLOSE_TEXTS: Record<string, string> = {
     "this chat has been ended. drug solicitation isn't allowed.",
   self_harm_incite:
     "this chat has been ended. encouraging self-harm isn't allowed.",
+  abuse:
+    "the stranger skipped you. abusive language ends the chat here.",
+  slur:
+    "the stranger skipped you. slurs end the chat here.",
   spam:
     "this chat has been ended due to spam.",
   warned_repeat:
@@ -185,11 +189,15 @@ export function checkContent(ctx: FilterContext): FilterResult {
   // Spam
   if (isSpam(text, recentUserMessages)) return { severity: "close", reason: "spam" };
 
+  // Direct abuse / slurs → skip immediately (no warning). A real stranger would
+  // just disconnect on being insulted, and product direction is zero-tolerance:
+  // abusive language ends the chat on the spot.
+  if (ABUSE_PATTERNS.some(p => p.test(text))) return { severity: "close", reason: "abuse" };
+  if (SLUR_PATTERNS.some(p => p.test(text))) return { severity: "close", reason: "slur" };
+
   // Warn-first categories — close on second offense
   const warnHit =
     SEXUAL_DEMAND_PATTERNS.some(p => p.test(text)) ? "sexual_demand"
-  : SLUR_PATTERNS.some(p => p.test(text)) ? "slur"
-  : ABUSE_PATTERNS.some(p => p.test(text)) ? "abuse"
   : null;
 
   if (warnHit) {
