@@ -11,6 +11,14 @@ import { SITE_URL, SITE_NAME } from "@/lib/site";
 //
 // Description keeps under ~155 chars so Google doesn't truncate.
 
+// Regenerate the landing at RUNTIME (ISR). Without this the page is fully
+// static-prerendered at build time, where ANALYTICS_INGEST_URL (a Fly runtime
+// secret) is absent — so getTestimonials() short-circuits to null and the
+// reviews section never appears. ISR re-renders on the running server where the
+// secret exists, so testimonials show up (and stay fresh). Kept short so a
+// fresh deploy reflects reviews within a couple minutes rather than 10.
+export const revalidate = 120;
+
 export const metadata: Metadata = {
   title: "Talk to a stranger at 3am — anonymous AI chat, no signup",
   description:
