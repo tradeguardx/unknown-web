@@ -16,7 +16,7 @@ import {
   resetAfterCaptcha,
 } from "@/lib/captchaCounter";
 import { trackChatStarted } from "@/lib/analytics";
-import { emitChatStarted } from "@/lib/events";
+import { emitChatStarted, countryFrom, visitorVid } from "@/lib/events";
 
 export const runtime = "nodejs";
 
@@ -82,6 +82,10 @@ export async function POST(req: Request) {
   recordChatStart(ip);
 
   const session = createSession(body.prefs);
+  // Snapshot analytics context so the reaper can close + summarize this chat
+  // later without an HTTP request (if the user just closes the tab).
+  session.country = countryFrom(req);
+  session.vid = visitorVid(req);
 
   // Fire-and-forget Plausible event so we can see the funnel:
   // pageview → chat_started → chat_ended (with reason + duration).

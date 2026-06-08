@@ -13,6 +13,7 @@ import {
   getSession,
   incrementWarning,
   resetSilentPing,
+  touchSession,
 } from "@/lib/sessions";
 import { parseReply, type PacedMessage } from "@/lib/replyParser";
 import { callLLM, trimHistory } from "@/lib/llmProvider";
@@ -134,6 +135,7 @@ export async function POST(req: Request) {
   }
 
   appendMessage(sessionId, { role: "user", content: message, ts: Date.now() });
+  touchSession(sessionId); // alive — don't let the reaper close it
   // User just spoke — reset the impatience counter so the persona's next idle
   // poll starts fresh from "ping" instead of "force-leave".
   resetSilentPing(sessionId);

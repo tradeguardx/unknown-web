@@ -11,6 +11,7 @@ import {
   endSession,
   getSession,
   incrementSilentPing,
+  touchSession,
 } from "@/lib/sessions";
 import { parseReply, type PacedMessage } from "@/lib/replyParser";
 import { callLLM, trimHistory } from "@/lib/llmProvider";
@@ -50,6 +51,7 @@ export async function POST(req: Request) {
   const session = getSession(sessionId);
   if (!session) return NextResponse.json({ error: "session not found" }, { status: 404 });
   if (session.ended) return NextResponse.json({ error: "session ended", reason: session.endReason }, { status: 410 });
+  touchSession(sessionId); // client is still polling → chat is alive
 
   // Increment the impatience counter BEFORE we ask the LLM what to do. The
   // marker we inject tells the model how many times the user has already

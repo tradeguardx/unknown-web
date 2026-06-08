@@ -7,7 +7,7 @@
 // response returns immediately and never blocks the chat UI.
 
 import { NextResponse } from "next/server";
-import { getSession } from "@/lib/sessions";
+import { getSession, touchSession } from "@/lib/sessions";
 import { sendPresence } from "@/lib/events";
 import { clientIp, rateLimit } from "@/lib/rateLimit";
 
@@ -28,6 +28,7 @@ export async function POST(req: Request) {
   const session = getSession(body.sessionId);
   // Only count genuinely active chats.
   if (session && !session.ended) {
+    touchSession(session.id); // keeps the reaper from closing a live chat
     void sendPresence(req, session.id);
   }
   return NextResponse.json({ ok: true });

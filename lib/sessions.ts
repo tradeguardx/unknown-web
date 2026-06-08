@@ -59,6 +59,13 @@ export interface Session {
   // even though several code paths can end a chat. Set by lib/chatClose.ts.
   closeRecorded?: boolean;
   createdAt: number;
+  // Last sign of life (message / idle poll / heartbeat). The reaper closes chats
+  // that go silent past a threshold (user closed the tab without a clean exit).
+  lastActivityAt: number;
+  // Analytics context snapshotted at creation so the reaper can emit chat_ended
+  // + summary without a request object. country = geo at start, vid = visitor id.
+  country?: string;
+  vid?: string;
 }
 
 // Stash the session map on globalThis so Next.js dev-mode hot reloads (which
@@ -92,9 +99,22 @@ export function createSession(prefs?: UserPrefs): Session {
     silentPingCount: 0,
     ended: false,
     createdAt: Date.now(),
+    lastActivityAt: Date.now(),
   };
   SESSIONS.set(session.id, session);
   return session;
+}
+
+// Mark a session as "still alive" — called on every user message, idle poll,
+// and heartbeat so the reaper only closes genuinely-abandoned chats.
+export function touchSession(id: string): void {
+  const s = SESSIONS.get(id);
+  if (s) s.lastActivityAt = Date.now();
+}
+
+// Snapshot of all live sessions (for the reaper to scan).
+export function allSessions(): Session[] {
+  return [...SESSIONS.values()];
 }
 
 export function getSession(id: string): Session | undefined {
