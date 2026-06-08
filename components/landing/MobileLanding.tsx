@@ -13,8 +13,10 @@ import Link from "next/link";
 import { useState } from "react";
 import { PrefsSheet } from "./PrefsSheet";
 import { MenuDrawer } from "./MenuDrawer";
+import { Testimonials } from "./Testimonials";
+import type { TestimonialsData } from "@/lib/testimonials";
 
-export function MobileLanding() {
+export function MobileLanding({ testimonials }: { testimonials?: TestimonialsData | null }) {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -35,6 +37,7 @@ export function MobileLanding() {
         </section>
 
         <OverheardSection />
+        <Testimonials data={testimonials ?? null} />
         <WhyPostits />
         <Footer />
       </main>

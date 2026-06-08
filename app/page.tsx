@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { MobileLanding } from "@/components/landing/MobileLanding";
+import { getTestimonials } from "@/lib/testimonials";
 import { SITE_URL, SITE_NAME } from "@/lib/site";
 
 // Landing-page metadata.
@@ -93,14 +94,35 @@ const jsonLd = {
   ],
 };
 
-export default function Landing() {
+export default async function Landing() {
+  const testimonials = await getTestimonials();
+
+  // Back the JSON-LD aggregateRating with REAL numbers once we have enough
+  // ratings (and they're genuinely shown on the page) — eligible for review
+  // stars in Google results.
+  const ld = JSON.parse(JSON.stringify(jsonLd));
+  if (testimonials && testimonials.count >= 5) {
+    const app = (ld["@graph"] as Array<Record<string, unknown>>).find(
+      (n) => n["@type"] === "WebApplication",
+    );
+    if (app) {
+      app.aggregateRating = {
+        "@type": "AggregateRating",
+        ratingValue: testimonials.avgRating,
+        reviewCount: testimonials.count,
+        bestRating: 5,
+        worstRating: 1,
+      };
+    }
+  }
+
   return (
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(ld) }}
       />
-      <MobileLanding />
+      <MobileLanding testimonials={testimonials} />
     </>
   );
 }
