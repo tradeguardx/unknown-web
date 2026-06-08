@@ -782,7 +782,7 @@ export function ChatWindow() {
                 }
                 title={ended ? "find another stranger" : "skip and find another"}
               >
-                {ended ? "find another" : "new"}
+                {ended ? "find another" : "skip"}
               </button>
               <input
                 ref={inputRef}
