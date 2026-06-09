@@ -19,6 +19,14 @@ primary_region = 'ams'
     # data-sitekey attribute). The matching SECRET key stays in Fly secrets
     # via `fly secrets set TURNSTILE_SECRET_KEY=...`.
     NEXT_PUBLIC_TURNSTILE_SITE_KEY = '0x4AAAAAADMu8IXXDJC0QmtQ'
+    # Sentry — DSN is public (ships in the client bundle). Org/project are used
+    # only to upload source maps at build time. The matching SENTRY_AUTH_TOKEN
+    # is a secret and is passed by CI as a --build-arg (see .github/workflows),
+    # never committed here. Fill these in from sentry.io after creating the
+    # Next.js project.
+    NEXT_PUBLIC_SENTRY_DSN = 'https://13224c6e43545ca6f3fecc9c7fd9a2e0@o4511279556919296.ingest.de.sentry.io/4511536155328592'
+    SENTRY_ORG = 'rdx'
+    SENTRY_PROJECT = 'unknown-nextjs'
 
 [env]
   NODE_ENV = 'production'

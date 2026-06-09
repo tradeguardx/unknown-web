@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
+    "@sentry/nextjs": "^10.56.0",
     "geoip-lite": "^2.0.2",
     "nanoid": "^5.0.9",
     "next": "^15.1.0",
