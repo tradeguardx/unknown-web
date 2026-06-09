@@ -70,7 +70,7 @@ const FAQS: FAQ[] = [
   },
   {
     q: "What languages are supported?",
-    a: "English, Hindi, Hinglish, Spanish, Portuguese, French, German, Italian, Russian, Turkish, Arabic, Indonesian, Japanese, Korean, and Tagalog/Filipino. Each persona types natively in your chosen language.",
+    a: "English, Hindi, Hinglish, Punjabi, Spanish, Portuguese, French, German, Italian, Russian, Turkish, Arabic, Indonesian, Japanese, Korean, and Tagalog/Filipino. Each persona types natively in your chosen language.",
   },
   {
     q: "Is it anonymous?",

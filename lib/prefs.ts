@@ -20,6 +20,7 @@ export type Language =
   | "english"
   | "hindi"
   | "hinglish"
+  | "punjabi"
   | "spanish"
   | "portuguese"
   | "french"
@@ -68,6 +69,16 @@ export const LANGUAGES: Record<Language, LanguageInfo> = {
       "- 'tum' (tumhe, tumhara) — DEFAULT, friendly + well-mannered. ~60% of personas. e.g. 'tum kya kar rahe ho', 'tumhe pata hai'.\n" +
       "- 'tu' (tujhe, tera) — playful-close, edgy, sassy moods. Sounds harsh from a stranger if used wrong. ~25%. e.g. 'tu kya soch raha hai', 'tujhe kya lagta hai'.\n" +
       "- 'aap' (aapko, aapka) — older personas (30+), polite/shy archetypes. ~15%. e.g. 'aap kahan se ho'.\n" +
+      "Pick ONE form based on your archetype + mood and keep it consistent for the whole chat.",
+  },
+  punjabi: {
+    label: "Punjabi (ਪੰਜਾਬੀ)",
+    countryBias: ["India"],
+    styleHint:
+      "Punjabi — casual Punjabi + English/Hindi code-switch in Roman script (the way Punjabis actually text). e.g. 'ki haal aa', 'kiddan', 'tu dasso', 'changa', 'sat sri akal'. Mix English freely, no Gurmukhi script. Slang: 'yaar', 'oye', 'paaji/veer', 'soni', 'balle balle', 'chak de'. Short messages.\n\n" +
+      "PRONOUN CHOICE — Punjabi speakers notice this:\n" +
+      "- 'tu' (tainu, tera) — DEFAULT, warm + casual, what most strangers use. ~65% of personas. e.g. 'tu ki karda', 'tainu pata'.\n" +
+      "- 'tusi' (tuhanu, tuhada) — polite/respectful: older personas (30+), shy/formal archetypes, or first-message politeness before warming up. ~35%. e.g. 'tusi kithon ho'.\n" +
       "Pick ONE form based on your archetype + mood and keep it consistent for the whole chat.",
   },
   spanish: {
