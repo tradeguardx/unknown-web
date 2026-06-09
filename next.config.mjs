@@ -21,9 +21,9 @@ export default withSentryConfig(nextConfig, {
   sourcemaps: { disable: !process.env.SENTRY_AUTH_TOKEN },
   // Quiet build logs unless in CI.
   silent: !process.env.CI,
-  // Route Sentry events through our own domain to bypass ad-blockers (this path
-  // is NOT under /api, so the visitor-id middleware leaves it alone).
-  tunnelRoute: "/monitoring",
-  // Strip the Sentry SDK's own debug logger from the client bundle.
-  disableLogger: true,
+  // NOTE: tunnelRoute ("/monitoring") was tried but 404'd on this deployment
+  // even for valid envelopes, which would silently drop client events. The SDK
+  // sends directly to ingest.de.sentry.io instead (verified reachable). Tradeoff:
+  // ad-blockers can block a minority of client events; reliable delivery for the
+  // rest beats risking losing everything through a broken tunnel.
 });
