@@ -61,7 +61,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "session ended", reason: session.endReason }, { status: 410 });
   }
 
-  if (session.messages.length >= 200) {
+  // Max conversation length before we force-close. Counts total stored messages,
+  // which includes the persona's burst bubbles (one reply → several stored msgs),
+  // so 500 ≈ ~60-125 real exchanges depending on how much the persona bursts.
+  if (session.messages.length >= 500) {
     endSession(sessionId, "too long");
     onChatEnded(req, session, "too_long");
     return NextResponse.json({ error: "session ended", reason: "too long" }, { status: 410 });
