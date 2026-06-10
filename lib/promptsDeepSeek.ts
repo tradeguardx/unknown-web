@@ -20,7 +20,7 @@ import type {
 import { ARCHETYPE_HINTS, ROMANTIC_HINTS } from "./persona";
 import { IMPERFECTION_SECTION } from "./imperfection";
 import { humanTextureSection } from "./humanTexture";
-import { LANGUAGES, type UserPrefs } from "./prefs";
+import { LANGUAGES, isLanguage, type UserPrefs } from "./prefs";
 import type { UserMemory } from "./sessions";
 import { socialDynamicHints } from "./socialDynamics";
 
@@ -231,7 +231,10 @@ export function buildSystemPromptDeepSeek(persona: Persona, prefs?: UserPrefs, u
   const memCtx = memorySection(userMemory);
   const styleHint = STYLE_HINTS[persona.typingStyle];
 
-  const lang = prefs?.language && prefs.language !== "english" ? prefs.language : null;
+  const lang =
+    prefs?.language && prefs.language !== "english" && isLanguage(prefs.language)
+      ? prefs.language
+      : null;
   const languageSection = lang
     ? `
 

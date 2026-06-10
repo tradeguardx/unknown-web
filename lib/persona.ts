@@ -1113,7 +1113,7 @@ function startsProbForMood(mood: Mood): number {
 // that language is natively spoken (with a small fallback). Without this, you'd get a
 // Brazilian persona answering in Hindi, which breaks immersion.
 function pickCountryForLanguage(language?: Language) {
-  if (!language || language === "english") return weightedPick(COUNTRIES);
+  if (!language || language === "english" || !LANGUAGES[language]) return weightedPick(COUNTRIES);
   const biasNames = LANGUAGES[language].countryBias;
   if (!biasNames.length) return weightedPick(COUNTRIES);
 

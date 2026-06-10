@@ -66,11 +66,11 @@ const FAQS: FAQ[] = [
   },
   {
     q: "Can I chat in Hindi or Hinglish?",
-    a: "Yes. You can pick Hindi (Devanagari) or Hinglish (Hindi + English code-switch in Roman script) from the preferences. The AI persona will type natively in that language — including the casual register real Indian strangers use, with appropriate pronoun choice (tum / tu / aap).",
+    a: "Yes — pick Hinglish (Hindi + English code-switch in Roman script, the way most Indians actually text) from the preferences, and Punjabi is available too. The AI persona types natively in it — the casual register real Indian strangers use, with appropriate pronoun choice (tum / tu / aap).",
   },
   {
     q: "What languages are supported?",
-    a: "English, Hindi, Hinglish, Punjabi, Spanish, Portuguese, French, German, Italian, Russian, Turkish, Arabic, Indonesian, Japanese, Korean, and Tagalog/Filipino. Each persona types natively in your chosen language.",
+    a: "English, Hinglish, Punjabi, Spanish, Portuguese, French, German, Italian, Russian, Turkish, Arabic, Indonesian, Japanese, Korean, and Tagalog/Filipino. Each persona types natively in your chosen language.",
   },
   {
     q: "Is it anonymous?",

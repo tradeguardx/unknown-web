@@ -82,7 +82,7 @@ const jsonLd = {
         "no signup required",
         "no chat history stored",
         "AI personas with mood, quirks, and life context",
-        "multi-language (English, Hinglish, Hindi, Spanish, and more)",
+        "multi-language (English, Hinglish, Punjabi, Spanish, and more)",
         "skip / find another stranger anytime",
       ],
       audience: {

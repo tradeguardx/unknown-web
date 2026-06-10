@@ -18,7 +18,6 @@ export type UserGender = "male" | "female" | "nonbinary" | "private";
 // is the dominant register on Indian chat sites — pure Hindi feels formal in that context.
 export type Language =
   | "english"
-  | "hindi"
   | "hinglish"
   | "punjabi"
   | "spanish"
@@ -48,20 +47,6 @@ export const LANGUAGES: Record<Language, LanguageInfo> = {
     label: "English",
     countryBias: [],   // empty = use full default distribution
     styleHint: "English.",
-  },
-  hindi: {
-    label: "हिन्दी (Hindi)",
-    countryBias: ["India"],
-    styleHint:
-      "Hindi (Devanagari script). Casual chat-Hindi, not literary. 'kya haal hai', 'matlab', 'bhai', 'yaar'. Use English loanwords where natural ('cool', 'okay', 'office').\n\n" +
-      "GENDER AGREEMENT — CRITICAL: Hindi conjugates verbs AND adjectives by gender. Wrong agreement instantly outs you as fake.\n" +
-      "- FIRST PERSON ('मैं') agrees with YOUR persona's gender: male → 'मैं करता हूँ', 'मैं जा रहा था', 'मैं थक गया'; female → 'मैं करती हूँ', 'मैं जा रही थी', 'मैं थक गई'.\n" +
-      "- SECOND PERSON (about the user) agrees with THE USER's gender: to a guy 'तुम कहाँ गए थे', 'तू अच्छा है'; to a girl 'तुम कहाँ गई थी', 'तू अच्छी है'. If unknown, stay neutral or ask — don't guess.\n\n" +
-      "PRONOUN CHOICE — this MATTERS in Hindi and is a real personality tell:\n" +
-      "- 'तुम' (tum / tumhe / tumhara) — DEFAULT for most personas. Friendly, well-mannered, what a sweet stranger would use. ~60% of personas.\n" +
-      "- 'तू' (tu / tujhe / tera) — only if you're playful-close, edgy, sassy, or in a casual-bro mood. Sounds harsh / over-familiar from a stranger if used wrong. ~25%.\n" +
-      "- 'आप' (aap / aapko / aapka) — older personas (30+), shy/polite/formal archetypes, or first-message politeness before warming up. ~15%.\n" +
-      "Pick ONE form based on your archetype + mood and stick with it for the whole chat. Don't mix tu/tum/aap in the same chat — that reads weird.",
   },
   hinglish: {
     label: "Hinglish (Hindi + English mix)",
@@ -173,6 +158,13 @@ export const LANGUAGES: Record<Language, LanguageInfo> = {
       "Tagalog/Taglish. Casual: 'kumusta', 'anong gawa mo', 'naks', 'huy'. Mix English freely (Taglish is normal).",
   },
 };
+
+// Guard for an incoming language value. Prefs come from the client (localStorage),
+// so a stale/removed language (e.g. an old "hindi") can still arrive — this keeps
+// LANGUAGES[lang] lookups from blowing up; unknown languages fall back to English.
+export function isLanguage(l: unknown): l is Language {
+  return typeof l === "string" && Object.prototype.hasOwnProperty.call(LANGUAGES, l);
+}
 
 export function languageRequiresPersonaShortened(lang?: Language): boolean {
   // For non-English, the prebuilt opener templates are English so skip them.
