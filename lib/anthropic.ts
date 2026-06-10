@@ -13,19 +13,23 @@ export function getAnthropic(): Anthropic {
 
 export const MODEL = "claude-haiku-4-5-20251001";
 
-// Wrap the system prompt for prompt caching. The system prompt for any one
-// session is identical across every turn (same persona) — so caching it makes
-// every turn after the first cost ~10% of normal input pricing for that prefix.
+// Build the system blocks for prompt caching. The STATIC persona prompt is the
+// same on every turn within a session, so the cache breakpoint goes at the end
+// of it → cached reads cost ~10% of normal input pricing.
 //
-// Default ephemeral cache TTL is 5 min, which comfortably covers the gap
-// between active turns. If the user goes silent past 5 min, the next call
-// rewrites the cache (one-time premium of 1.25x normal).
-export function cachedSystem(text: string) {
-  return [
-    {
-      type: "text" as const,
-      text,
-      cache_control: { type: "ephemeral" as const },
-    },
+// The optional DYNAMIC block (rolling user-memory, which refreshes ~every 10
+// messages) is appended AFTER the breakpoint and is NOT cached — so when memory
+// changes it doesn't invalidate the big cached persona prefix.
+//
+// Ephemeral TTL is ~5 min, covering the gap between active turns; a longer
+// silence rewrites the cache once (1.25x premium).
+type SysBlock = { type: "text"; text: string; cache_control?: { type: "ephemeral" } };
+export function cachedSystem(staticText: string, dynamicText?: string): SysBlock[] {
+  const blocks: SysBlock[] = [
+    { type: "text", text: staticText, cache_control: { type: "ephemeral" } },
   ];
+  if (dynamicText && dynamicText.trim()) {
+    blocks.push({ type: "text", text: dynamicText });
+  }
+  return blocks;
 }

@@ -17,7 +17,7 @@
 import type { Persona } from "./persona";
 import { isLanguage, type UserPrefs } from "./prefs";
 import type { UserMemory } from "./sessions";
-import { buildSystemPrompt } from "./prompts";
+import { buildSystemPrompt, memorySection } from "./prompts";
 import { buildSystemPromptDeepSeek } from "./promptsDeepSeek";
 import { cachedSystem, getAnthropic, MODEL } from "./anthropic";
 import { deepseekChat } from "./deepseek";
@@ -102,12 +102,15 @@ export async function callLLM(req: LLMRequest): Promise<string> {
     });
   }
 
-  // anthropic (default) — preserved verbatim from original route handlers
-  const system = buildSystemPrompt(req.persona, req.prefs, req.userMemory);
+  // anthropic — static persona prompt is cached; rolling memory is appended as a
+  // separate (uncached) block after the cache breakpoint so memory refreshes
+  // don't invalidate the cached persona prefix.
+  const staticPrompt = buildSystemPrompt(req.persona, req.prefs);
+  const memory = memorySection(req.userMemory);
   const resp = await getAnthropic().messages.create({
     model: MODEL,
     max_tokens: req.maxTokens,
-    system: cachedSystem(system),
+    system: cachedSystem(staticPrompt, memory),
     messages: req.messages,
   });
   const block = resp.content.find(b => b.type === "text");

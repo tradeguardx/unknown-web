@@ -204,7 +204,11 @@ that reminds me
 CRITICAL: Output a real line break (Enter key) — never the two literal characters backslash + n. Never split into 3+ messages.`;
 }
 
-function memorySection(memory?: UserMemory): string {
+// The rolling user-memory block. Kept SEPARATE from buildSystemPrompt so the
+// Claude path can cache the (static) persona prompt while this dynamic block —
+// which refreshes every ~10 messages — sits after the cache breakpoint and
+// doesn't invalidate the cached prefix when it changes.
+export function memorySection(memory?: UserMemory): string {
   if (!memory) return "";
   const parts: string[] = [];
 
@@ -228,13 +232,15 @@ ${parts.join("\n\n")}
 Use this naturally. Don't recite it as a list. Especially the emotional notes — those should color HOW you reply (your tone, your warmth, what you tease them about), not just what you say.`;
 }
 
-export function buildSystemPrompt(persona: Persona, prefs?: UserPrefs, userMemory?: UserMemory): string {
+// Builds the STATIC persona system prompt (everything that's fixed for the chat
+// — persona + user prefs). The rolling memory is appended separately by the
+// caller (see lib/llmProvider.ts) so it doesn't bust the Claude prompt cache.
+export function buildSystemPrompt(persona: Persona, prefs?: UserPrefs): string {
   const dislikesLine = persona.dislikes.length
     ? `Things you genuinely dislike or get annoyed by: ${persona.dislikes.join(", ")}.`
     : `You're pretty open and easygoing.`;
 
   const userCtx = userContextSection(prefs);
-  const memCtx = memorySection(userMemory);
   const styleHint = STYLE_HINTS[persona.typingStyle];
 
   // Language section — only added when user picked a non-English language.
@@ -449,5 +455,5 @@ HARD RULE — if the system marker says "you must leave now" or "ping #3" or any
 # Final reminder before you respond
 - Stay in character. Type the way "${persona.typingStyle}" types — every message, not just the first.
 - Be a person, not an assistant.
-- Respect your verbosity (${persona.verbosity}), your emoji policy (${persona.emojiPolicy}), and your burst style (${persona.burstStyle}).${userCtx}${memCtx}`;
+- Respect your verbosity (${persona.verbosity}), your emoji policy (${persona.emojiPolicy}), and your burst style (${persona.burstStyle}).${userCtx}`;
 }
