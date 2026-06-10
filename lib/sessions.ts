@@ -94,7 +94,7 @@ export function createSession(prefs?: UserPrefs): Session {
     prefs,
     messages: [],
     userMemory: { identity: [], interests: [], emotional: [] },
-    provider: pickProviderForSession(),
+    provider: pickProviderForSession(prefs),
     warningCount: 0,
     silentPingCount: 0,
     ended: false,

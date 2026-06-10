@@ -15,7 +15,7 @@
 // so the downstream parser works for either.
 
 import type { Persona } from "./persona";
-import type { UserPrefs } from "./prefs";
+import { isLanguage, type UserPrefs } from "./prefs";
 import type { UserMemory } from "./sessions";
 import { buildSystemPrompt } from "./prompts";
 import { buildSystemPromptDeepSeek } from "./promptsDeepSeek";
@@ -32,23 +32,19 @@ function getEnvConfig(): LLMProviderConfig {
   return "anthropic";
 }
 
-// Called at session creation. For "mixed" mode, rolls a coin so each session
-// commits to one provider for its lifetime — keeps a chat coherent (no
-// mid-conversation switch from Claude voice to DeepSeek voice).
+// Called at session creation. The provider is fixed for the chat's lifetime
+// (no mid-conversation voice switch).
 //
-// In "mixed" mode the split is weighted by MIXED_DEEPSEEK_SHARE (0..1) — the
-// fraction of sessions sent to DeepSeek, the rest to Anthropic/Claude. Default
-// 0.5 (even). e.g. 0.7 → 70% DeepSeek / 30% Claude.
-function deepseekShare(): number {
-  const raw = Number(process.env.MIXED_DEEPSEEK_SHARE);
-  if (!Number.isFinite(raw)) return 0.5;
-  return Math.min(1, Math.max(0, raw));
-}
-
-export function pickProviderForSession(): LLMProvider {
+// In "mixed" mode we route by LANGUAGE: English (or unset) chats go to DeepSeek
+// (cheap, and plenty good at English — the bulk of traffic), while non-English
+// chats go to Claude/Anthropic for its stronger multilingual quality. A stale/
+// unknown language counts as English (it falls back to English in the prompt).
+export function pickProviderForSession(prefs?: UserPrefs): LLMProvider {
   const cfg = getEnvConfig();
-  if (cfg === "mixed") return Math.random() < deepseekShare() ? "deepseek" : "anthropic";
-  return cfg;
+  if (cfg !== "mixed") return cfg; // forced single-provider mode
+  const lang = prefs?.language;
+  const nonEnglish = !!lang && lang !== "english" && isLanguage(lang);
+  return nonEnglish ? "anthropic" : "deepseek";
 }
 
 // Back-compat default picker. If "mixed" mode is on and this is called outside
