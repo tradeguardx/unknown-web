@@ -689,6 +689,16 @@ export function ChatWindow() {
         return;
       }
 
+      // Short chat → nudge an Instagram follow instead of jumping straight to a
+      // new stranger. End HERE so the ended effect shows the follow card; the
+      // user taps "find another" afterwards.
+      if (!lasted && followAllowed()) {
+        clearAllTimeouts();
+        pushMsg({ role: "system", text: "you skipped." });
+        setEnded(true); // triggers the follow prompt via the ended effect
+        return;
+      }
+
       pushMsg({ role: "system", text: "you skipped." });
     }
     clearAllTimeouts();
