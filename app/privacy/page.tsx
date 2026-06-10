@@ -33,7 +33,7 @@ export default function PrivacyPage() {
               <ul className="list-disc pl-6 space-y-1">
                 <li>We don't have user accounts, so we don't ask for your name, email, or any other identifier.</li>
                 <li>We run our own privacy-friendly, aggregate analytics — no advertising, no third-party trackers, no selling of data. We record coarse, de-identified usage (page views, chat events, approximate country) to understand how the site is used.</li>
-                <li>We don't store your full chats by default — live sessions are in-memory and gone when the chat ends. For quality, we keep a short AI-generated summary of each chat, and a redacted transcript from a random sample of chats, all de-identified and auto-deleted after ~30 days.</li>
+                <li>Live sessions are in-memory and gone when the chat ends. For quality, we keep a short AI-generated summary of each chat and a redacted transcript of each chat — all de-identified and auto-deleted after ~30 days.</li>
                 <li>Your chat messages <em>are</em> sent to Anthropic's Claude API for processing — that's how the AI personas work. Their privacy policy applies for that data flow.</li>
                 <li>Your local preferences (country, language, intent, age confirmation, sound, notification permission) are stored in your browser's local storage on your device. We don't have a copy.</li>
               </ul>
@@ -69,7 +69,7 @@ export default function PrivacyPage() {
               </p>
               <ul className="list-disc pl-6 space-y-1">
                 <li>A short, AI-generated <strong>summary</strong> of each chat (what it was about, how it went) — not the raw messages.</li>
-                <li>A <strong>redacted transcript</strong> from a random sample of chats. Before storage we strip obvious identifiers like emails and phone numbers. We never store who you are alongside it.</li>
+                <li>A <strong>redacted transcript</strong> of each chat. Before storage we strip obvious identifiers like emails and phone numbers, and keep only the most recent part of the conversation. We never store who you are alongside it.</li>
               </ul>
 
               <h3 className="font-medium text-ink mt-4">Our own privacy-friendly analytics</h3>

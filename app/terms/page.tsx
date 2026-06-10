@@ -147,7 +147,7 @@ export default function TermsPage() {
                 Chat sessions are kept in our server's memory only while a chat is active, and we
                 don't store your full chat history. To improve the personas we do keep — in
                 de-identified form, auto-deleted after about 30 days — a short AI-generated summary
-                of each chat and a redacted transcript from a random sample of chats.
+                of each chat and a redacted transcript of each chat.
                 We never tie these to your identity. See the{" "}
                 <Link href="/privacy" className="underline hover:text-ink">privacy policy</Link> for full details.
               </p>
