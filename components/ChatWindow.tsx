@@ -9,6 +9,7 @@ import { LookingView } from "./landing/LookingView";
 import { MenuDrawer } from "./landing/MenuDrawer";
 import { loadPrefs } from "@/lib/clientPrefs";
 import { FeedbackPrompt } from "./FeedbackPrompt";
+import { FollowPrompt } from "./FollowPrompt";
 
 // Show the post-chat feedback prompt only for chats ≥ this long.
 const FEEDBACK_MIN_MS = 5 * 60_000;
@@ -27,6 +28,39 @@ function feedbackAllowed(): boolean {
 function markFeedbackShown() {
   try {
     localStorage.setItem(FEEDBACK_KEY, String(Date.now()));
+  } catch {
+    /* ignore */
+  }
+}
+
+// Instagram follow nudge — shown after SHORT (<5min) chats, i.e. the ones that
+// don't get the feedback prompt. Two suppression states:
+//   - "done"  → they clicked Follow. We can't actually read IG follow status
+//               (no API), so a click is our best proxy: never ask again.
+//   - "ts"    → they dismissed ("maybe later"). Re-ask after a short cooldown.
+const FOLLOW_DONE_KEY = "unknownchat:follow:done:v1";
+const FOLLOW_TS_KEY = "unknownchat:follow:ts:v1";
+const FOLLOW_COOLDOWN_MS = 3 * 24 * 60 * 60_000; // 3 days between dismissals
+
+function followAllowed(): boolean {
+  try {
+    if (localStorage.getItem(FOLLOW_DONE_KEY) === "1") return false; // already followed/clicked
+    const ts = Number(localStorage.getItem(FOLLOW_TS_KEY) || 0);
+    return !ts || Date.now() - ts > FOLLOW_COOLDOWN_MS;
+  } catch {
+    return false;
+  }
+}
+function markFollowClicked() {
+  try {
+    localStorage.setItem(FOLLOW_DONE_KEY, "1"); // permanent — don't ask a follower again
+  } catch {
+    /* ignore */
+  }
+}
+function markFollowDismissed() {
+  try {
+    localStorage.setItem(FOLLOW_TS_KEY, String(Date.now()));
   } catch {
     /* ignore */
   }
@@ -82,6 +116,7 @@ export function ChatWindow() {
   const [input, setInput] = useState("");
   const [ended, setEnded] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
+  const [showFollow, setShowFollow] = useState(false);
   const chatStartRef = useRef<number>(0);
   const [captchaOpen, setCaptchaOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -124,8 +159,15 @@ export function ChatWindow() {
   // we haven't nudged this visitor recently.
   useEffect(() => {
     if (!ended) return;
-    const lasted = chatStartRef.current > 0 && Date.now() - chatStartRef.current >= FEEDBACK_MIN_MS;
-    if (lasted && feedbackAllowed()) setShowFeedback(true);
+    if (chatStartRef.current <= 0) return; // no real chat happened
+    const lasted = Date.now() - chatStartRef.current >= FEEDBACK_MIN_MS;
+    if (lasted) {
+      // Long enough chat → ask for a rating.
+      if (feedbackAllowed()) setShowFeedback(true);
+    } else if (followAllowed()) {
+      // Short chat → no rating; nudge an Instagram follow instead.
+      setShowFollow(true);
+    }
   }, [ended]);
 
   const submitFeedback = useCallback((rating: number, text: string) => {
@@ -144,6 +186,15 @@ export function ChatWindow() {
   const skipFeedback = useCallback(() => {
     markFeedbackShown(); // also suppress for the cooldown so we don't nag
     setShowFeedback(false);
+  }, []);
+
+  const followClicked = useCallback(() => {
+    markFollowClicked(); // they clicked Follow → never nudge again on this browser
+    setShowFollow(false);
+  }, []);
+  const dismissFollow = useCallback(() => {
+    markFollowDismissed(); // "maybe later" → re-ask after the cooldown
+    setShowFollow(false);
   }, []);
 
   // Defensive iOS Safari fix.
@@ -757,6 +808,12 @@ export function ChatWindow() {
           {/* Post-chat feedback — only after a real (≥5min) conversation. */}
           {ended && showFeedback && (
             <FeedbackPrompt onSubmit={submitFeedback} onSkip={skipFeedback} />
+          )}
+
+          {/* Short (<5min) chat → Instagram follow nudge instead of feedback.
+              The link opens in a new tab, so the user stays on the chat page. */}
+          {ended && showFollow && !showFeedback && (
+            <FollowPrompt onFollow={followClicked} onDismiss={dismissFollow} />
           )}
 
           {/* Input bar. z-50 ensures no fixed-positioned overlay (e.g. the
