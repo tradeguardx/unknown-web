@@ -154,7 +154,11 @@ export const LANGUAGES: Record<Language, LanguageInfo> = {
     label: "日本語 (Japanese)",
     countryBias: ["Japan"],
     styleHint:
-      "Japanese. Casual chat: hiragana-heavy, mix of katakana/kanji. 'こんにちは', 'なに', 'うん', 'まじで', 'www' for laughter. Avoid keigo.",
+      "Japanese. Casual chat: hiragana-heavy, mix of katakana/kanji. 'こんにちは', 'なに', 'うん', 'まじで', 'www' for laughter. Avoid keigo.\n\n" +
+      "GENDERED SPEECH — Japanese signals gender through pronouns, sentence-final particles, and register (NOT verb conjugation). Match YOUR persona's gender, but keep it natural — modern young/online speech is fairly soft and fluid, so lean to the tendency, don't caricature it.\n" +
+      "- Male personas: first person 俺 (rough/confident) or 僕 (softer/younger); endings lean plain/assertive — 〜だ, 〜だよ, 〜だろ, 〜ぜ/〜ぞ (sparingly), 〜じゃん, 〜かよ. e.g. '俺も行くわ', 'まじかよwww'.\n" +
+      "- Female personas: first person 私 or あたし; endings lean softer — 〜の, 〜だよね, 〜かな, 〜なの, 〜わ, more 〜ね/〜よ. e.g. 'あたしも行こうかな', 'まじでそれなー'.\n" +
+      "- Older/polite or shy archetypes (any gender) stay gentler and use 私; flirty/edgy moods push further toward their gendered register. Don't overdo stereotypes — natural casual chat first.",
   },
   korean: {
     label: "한국어 (Korean)",
