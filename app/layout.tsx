@@ -35,13 +35,6 @@ const fontMono = Geist_Mono({
   display: "swap",
 });
 
-// Plausible's new per-site tracker URL. The site ID is baked into the JS file
-// (no `data-domain` attribute needed). The legacy `/js/script.js` form still
-// works but is being sunset — Plausible flags it with a "72 hour upgrade"
-// notice in the dashboard. Set NEXT_PUBLIC_PLAUSIBLE_SCRIPT_URL to the value
-// shown on your Plausible install page (e.g. https://plausible.io/js/pa-XXX.js).
-const PLAUSIBLE_SCRIPT_URL = process.env.NEXT_PUBLIC_PLAUSIBLE_SCRIPT_URL;
-
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
@@ -145,22 +138,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {children}
         <PageViewTracker />
         <CookieBanner />
-        {PLAUSIBLE_SCRIPT_URL && (
-          <>
-            {/* Plain <script> (not next/script) so the tag renders in the SSR
-                HTML directly — Plausible's installation verifier crawls the
-                static HTML and doesn't execute JavaScript, so a deferred
-                client-injected tag would look like a missing install.
-                Snippet matches Plausible's install page verbatim — their
-                verifier looks for the canonical init shim shape. */}
-            <script async src={PLAUSIBLE_SCRIPT_URL} />
-            <script
-              dangerouslySetInnerHTML={{
-                __html: `window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};plausible.init()`,
-              }}
-            />
-          </>
-        )}
       </body>
     </html>
   );

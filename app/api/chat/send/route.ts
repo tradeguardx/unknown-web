@@ -20,10 +20,6 @@ import { callLLM, trimHistory } from "@/lib/llmProvider";
 import { clientIp, rateLimit } from "@/lib/rateLimit";
 import { checkContent, getCloseText } from "@/lib/contentFilter";
 import { refreshUserMemory, shouldRefreshMemory } from "@/lib/userMemory";
-import {
-  trackContentFilterClosed,
-  trackContentFilterWarned,
-} from "@/lib/analytics";
 import { emitContentFilter } from "@/lib/events";
 import { onChatEnded } from "@/lib/chatClose";
 
@@ -96,7 +92,6 @@ export async function POST(req: Request) {
       }),
     );
     endSession(sessionId, filter.reason || "policy");
-    void trackContentFilterClosed(req, session, filter.reason || "unknown");
     void emitContentFilter(req, session, "close", filter.reason || "unknown", session.warningCount);
     onChatEnded(req, session, `policy:${filter.reason || "unknown"}`);
     return NextResponse.json(
@@ -121,7 +116,6 @@ export async function POST(req: Request) {
         sample: message.slice(0, 80),
       }),
     );
-    void trackContentFilterWarned(req, session, filter.reason || "unknown", newCount);
     void emitContentFilter(req, session, "warn", filter.reason || "unknown", newCount);
     // Warning is delivered as a synthetic system message — UI renders distinctly.
     // We do NOT append it to session.messages or send it to the LLM; this is purely

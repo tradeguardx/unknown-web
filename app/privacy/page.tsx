@@ -32,7 +32,7 @@ export default function PrivacyPage() {
             <Section title="The short version">
               <ul className="list-disc pl-6 space-y-1">
                 <li>We don't have user accounts, so we don't ask for your name, email, or any other identifier.</li>
-                <li>We use <a href="https://plausible.io/data-policy" target="_blank" rel="noopener noreferrer" className="underline">Plausible Analytics</a> — a privacy-friendly, cookie-free analytics service. No advertising, no third-party trackers.</li>
+                <li>We run our own privacy-friendly, aggregate analytics — no advertising, no third-party trackers, no selling of data. We record coarse, de-identified usage (page views, chat events, approximate country) to understand how the site is used.</li>
                 <li>We don't store your full chats by default — live sessions are in-memory and gone when the chat ends. For quality, we keep a short AI-generated summary of each chat, and a redacted transcript from a random sample of chats, all de-identified and auto-deleted after ~30 days.</li>
                 <li>Your chat messages <em>are</em> sent to Anthropic's Claude API for processing — that's how the AI personas work. Their privacy policy applies for that data flow.</li>
                 <li>Your local preferences (country, language, intent, age confirmation, sound, notification permission) are stored in your browser's local storage on your device. We don't have a copy.</li>
@@ -72,34 +72,29 @@ export default function PrivacyPage() {
                 <li>A <strong>redacted transcript</strong> from a random sample of chats. Before storage we strip obvious identifiers like emails and phone numbers. We never store who you are alongside it.</li>
               </ul>
 
-              <h3 className="font-medium text-ink mt-4">Plausible Analytics (privacy-friendly, no cookies)</h3>
+              <h3 className="font-medium text-ink mt-4">Our own privacy-friendly analytics</h3>
               <p>
-                We use <a href="https://plausible.io" target="_blank" rel="noopener noreferrer" className="underline">Plausible Analytics</a>{" "}
-                to understand aggregate usage of the site (how many people visit, which pages, what
-                country, what device — never anything tied to you). Plausible:
+                We run our own lightweight analytics to understand aggregate usage of the site
+                (how many people visit, which pages, approximate country, device type) — never
+                anything that personally identifies you. We do not use advertising networks or
+                third-party trackers, and we never sell data.
               </p>
               <ul className="list-disc pl-6 space-y-1">
-                <li>Does not use cookies and does not collect any persistent identifiers.</li>
-                <li>Does not track you across other sites.</li>
-                <li>Stores all data in the EU and is fully GDPR / CCPA / PECR compliant.</li>
                 <li>
-                  Generates a per-day, per-site visitor hash from your IP + User-Agent + a
-                  daily-rotating salt. The hash cannot be reversed back to your IP. The salt
-                  rotates every 24 hours so even the hash is forgotten.
+                  To tell apart new vs. returning visitors we set a single first-party identifier
+                  and derive a per-day, salted hash of your IP + device. The salt rotates every
+                  24 hours, so these cannot be tied back to you over time.
+                </li>
+                <li>We do not track you across other websites.</li>
+                <li>
+                  We record coarse, aggregate events — a page view, a chat starting and ending
+                  (with the reason and a rough duration), and when our content filter blocks a
+                  message. These contain no message content, no name, and no stored raw IP address.
                 </li>
               </ul>
               <p>
-                We also send a small number of <strong>aggregate</strong> server-side events to
-                Plausible — when a chat is started, when a chat ends (with the reason and a coarse
-                duration bucket), and when our content filter blocks a message. These events
-                contain no message content, no user identifier, and no IP address (Plausible
-                hashes IPs as described above). They exist so we can see whether the product is
-                working — funnel conversion, average chat length, abuse rates — not to track
-                individuals.
-              </p>
-              <p>
-                You can read Plausible's full data policy{" "}
-                <a href="https://plausible.io/data-policy" target="_blank" rel="noopener noreferrer" className="underline">here</a>.
+                These exist so we can see whether the product is working — funnel conversion,
+                average chat length, abuse rates — not to track individuals.
               </p>
 
               <h3 className="font-medium text-ink mt-4">Cloudflare Turnstile (captcha)</h3>
@@ -118,7 +113,7 @@ export default function PrivacyPage() {
                 <li>No accounts, names, emails, or phone numbers.</li>
                 <li>No Google Analytics, no Mixpanel, no Facebook Pixel, no advertising trackers, no third-party fingerprinting.</li>
                 <li>No persistent server-side history of your chats.</li>
-                <li>No tracking cookies. (Plausible Analytics does not use cookies; see above.)</li>
+                <li>No advertising or cross-site tracking cookies — only the first-party identifier described in the analytics note above.</li>
               </ul>
             </Section>
 

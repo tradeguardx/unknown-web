@@ -15,7 +15,6 @@ import {
   recordChatStart,
   resetAfterCaptcha,
 } from "@/lib/captchaCounter";
-import { trackChatStarted } from "@/lib/analytics";
 import { emitChatStarted, countryFrom, visitorVid } from "@/lib/events";
 
 export const runtime = "nodejs";
@@ -87,10 +86,8 @@ export async function POST(req: Request) {
   session.country = countryFrom(req);
   session.vid = visitorVid(req);
 
-  // Fire-and-forget Plausible event so we can see the funnel:
-  // pageview → chat_started → chat_ended (with reason + duration).
-  void trackChatStarted(req, session);
-  // Owned pipeline: same funnel, richer dimensions, lands in DynamoDB.
+  // Owned analytics pipeline: funnel (chat_started → chat_ended) with rich
+  // dimensions, lands in our own store.
   void emitChatStarted(req, session);
 
   // Whether the persona starts is determined by the persona's mood (set in the generator).

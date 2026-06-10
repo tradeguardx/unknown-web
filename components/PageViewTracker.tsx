@@ -4,8 +4,8 @@
 // route change. The server enriches it with visitor hash + geo + origin, so all
 // we send is the path and (on the first hit) the external referrer.
 //
-// This is intentionally tiny and dependency-free. It coexists with Plausible's
-// auto-pageview tracking; this one feeds our owned DynamoDB pipeline.
+// This is intentionally tiny and dependency-free — it feeds our own analytics
+// pipeline (HTTP ingest → SQS → store).
 
 import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";

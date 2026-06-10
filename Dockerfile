@@ -11,11 +11,7 @@ RUN npm ci
 # Build-time public env vars. NEXT_PUBLIC_* must be present during `next build`
 # because Next.js inlines them into the client bundle at compile time —
 # runtime Fly secrets won't apply to the static JS chunks.
-ARG NEXT_PUBLIC_PLAUSIBLE_DOMAIN
-ARG NEXT_PUBLIC_PLAUSIBLE_SCRIPT_URL
 ARG NEXT_PUBLIC_TURNSTILE_SITE_KEY
-ENV NEXT_PUBLIC_PLAUSIBLE_DOMAIN=$NEXT_PUBLIC_PLAUSIBLE_DOMAIN
-ENV NEXT_PUBLIC_PLAUSIBLE_SCRIPT_URL=$NEXT_PUBLIC_PLAUSIBLE_SCRIPT_URL
 ENV NEXT_PUBLIC_TURNSTILE_SITE_KEY=$NEXT_PUBLIC_TURNSTILE_SITE_KEY
 
 # Sentry. The DSN is public (ships to the browser) and comes from fly.toml
