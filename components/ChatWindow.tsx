@@ -850,9 +850,11 @@ export function ChatWindow() {
             {typing && <TypingIndicator />}
           </div>
 
-          {/* Post-chat feedback — only after a real (≥5min) conversation. */}
+          {/* Post-chat feedback — only after a real (≥5min) conversation.
+              onFollow → markFollowClicked: a follow via the review cross-sell also
+              satisfies the short-chat follow gate, so we never double-nudge. */}
           {ended && showFeedback && (
-            <FeedbackPrompt onSubmit={submitFeedback} onSkip={skipFeedback} />
+            <FeedbackPrompt onSubmit={submitFeedback} onSkip={skipFeedback} onFollow={markFollowClicked} />
           )}
 
           {/* Short (<5min) chat → Instagram follow nudge instead of feedback.

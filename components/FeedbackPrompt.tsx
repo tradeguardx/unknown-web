@@ -1,6 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { SOCIALS } from "@/lib/site";
+
+// Cross-sell target: right after a happy (4–5★) review is the highest-converting
+// moment to nudge an Instagram follow.
+const IG = SOCIALS.find((s) => s.name === "Instagram" && s.url);
 
 const FACES: { value: number; emoji: string; label: string }[] = [
   { value: 1, emoji: "😡", label: "awful" },
@@ -15,18 +20,41 @@ const FACES: { value: number; emoji: string; label: string }[] = [
 export function FeedbackPrompt({
   onSubmit,
   onSkip,
+  onFollow,
 }: {
   onSubmit: (rating: number, text: string) => void;
   onSkip: () => void;
+  // Called when the user taps the post-review follow CTA — lets the parent mark
+  // follow as done so the separate short-chat follow gate never nags them again.
+  onFollow?: () => void;
 }) {
   const [rating, setRating] = useState<number | null>(null);
   const [text, setText] = useState("");
   const [sent, setSent] = useState(false);
 
   if (sent) {
+    const happy = rating !== null && rating >= 4;
     return (
       <div className="mx-5 my-3 rounded-2xl border-2 border-ink bg-yellow px-4 py-3 text-center shadow-hard-sm">
-        <span className="font-display text-base font-bold text-ink">thanks for the feedback! 💛</span>
+        <span className="block font-display text-base font-bold text-ink">
+          {happy ? "🙌 glad you vibed!" : "thanks for the feedback! 💛"}
+        </span>
+        {happy && IG && (
+          <a
+            href={IG.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={onFollow}
+            className="mt-2.5 inline-flex items-center gap-1.5 rounded-xl border-2 border-ink bg-red px-3.5 py-1.5 font-sans text-xs font-bold tracking-tight text-paper-cool shadow-hard-xs transition-transform hover:-translate-y-0.5"
+          >
+            <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" aria-hidden>
+              <rect x="3" y="3" width="18" height="18" rx="5" stroke="currentColor" strokeWidth="2" />
+              <circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="2" />
+              <circle cx="17.5" cy="6.5" r="1.2" fill="currentColor" />
+            </svg>
+            follow {IG.handle} for more
+          </a>
+        )}
       </div>
     );
   }
