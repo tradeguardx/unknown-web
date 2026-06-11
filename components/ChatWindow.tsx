@@ -80,10 +80,6 @@ function followBypassCount(): number {
     return 0;
   }
 }
-// 2nd+ showing → gate the next chat behind a Follow click.
-function followGatedNow(): boolean {
-  return followBypassCount() >= 1;
-}
 function markFollowClicked() {
   try {
     localStorage.setItem(FOLLOW_DONE_KEY, "1"); // permanent — don't ask a follower again
@@ -151,7 +147,8 @@ export function ChatWindow() {
   const [showFeedback, setShowFeedback] = useState(false);
   const [showFollow, setShowFollow] = useState(false);
   // When true, the follow prompt is gated: the next chat is locked until they
-  // click Follow (2nd+ nudge).
+  // click Follow. Follow is gated whenever it's shown — i.e. from the 1st skip
+  // of a <5min chat (or a long chat after a review), while they're not following.
   const [followGated, setFollowGated] = useState(false);
   // When true, the review prompt is gated: the next chat is locked until they
   // submit a rating (2nd+ long-chat ask, before a review has been given).
@@ -208,7 +205,8 @@ export function ChatWindow() {
       setShowFeedback(true);
     } else if (followAllowed()) {
       // Short chat, OR long chat where a review was already given → follow gate.
-      setFollowGated(followGatedNow());
+      // Gated from the FIRST skip when they haven't followed: follow to unlock.
+      setFollowGated(true);
       setShowFollow(true);
     }
   }, [ended]);
