@@ -11,23 +11,45 @@ import { loadPrefs } from "@/lib/clientPrefs";
 import { FeedbackPrompt } from "./FeedbackPrompt";
 import { FollowPrompt } from "./FollowPrompt";
 
-// Show the post-chat feedback prompt only for chats ≥ this long.
+// Post-chat REVIEW gate — only for chats ≥ this long. Escalating "unlock" gate,
+// all persisted in localStorage so it survives across chats/sessions:
+//   - "given"  → they submitted a rating once. Never gated for a review again;
+//                future long chats fall through to the follow gate instead.
+//   - "bypass" → count of times we asked and they skipped without rating.
+//                1st time (bypass 0): optional. 2nd+ (bypass ≥1): GATED — they
+//                must submit a rating to unlock the next chat.
 const FEEDBACK_MIN_MS = 5 * 60_000;
-// Don't nudge again within this window after a submit/skip.
-const FEEDBACK_COOLDOWN_MS = 7 * 24 * 60 * 60_000;
-const FEEDBACK_KEY = "unknownchat:feedback:v1";
+const REVIEW_GIVEN_KEY = "unknownchat:review:given:v1";
+const REVIEW_BYPASS_KEY = "unknownchat:review:bypass:v1";
 
-function feedbackAllowed(): boolean {
+function reviewGiven(): boolean {
   try {
-    const ts = Number(localStorage.getItem(FEEDBACK_KEY) || 0);
-    return !ts || Date.now() - ts > FEEDBACK_COOLDOWN_MS;
+    return localStorage.getItem(REVIEW_GIVEN_KEY) === "1";
   } catch {
     return false;
   }
 }
-function markFeedbackShown() {
+function reviewBypassCount(): number {
   try {
-    localStorage.setItem(FEEDBACK_KEY, String(Date.now()));
+    return Number(localStorage.getItem(REVIEW_BYPASS_KEY) || 0);
+  } catch {
+    return 0;
+  }
+}
+// 2nd+ time we ask → gate the next chat behind submitting a rating.
+function reviewGatedNow(): boolean {
+  return reviewBypassCount() >= 1;
+}
+function markReviewGiven() {
+  try {
+    localStorage.setItem(REVIEW_GIVEN_KEY, "1");
+  } catch {
+    /* ignore */
+  }
+}
+function markReviewBypassed() {
+  try {
+    localStorage.setItem(REVIEW_BYPASS_KEY, String(reviewBypassCount() + 1));
   } catch {
     /* ignore */
   }
@@ -129,8 +151,11 @@ export function ChatWindow() {
   const [showFeedback, setShowFeedback] = useState(false);
   const [showFollow, setShowFollow] = useState(false);
   // When true, the follow prompt is gated: the next chat is locked until they
-  // click Follow (2nd+ short-chat nudge). Only applies to short (<5min) chats.
+  // click Follow (2nd+ nudge).
   const [followGated, setFollowGated] = useState(false);
+  // When true, the review prompt is gated: the next chat is locked until they
+  // submit a rating (2nd+ long-chat ask, before a review has been given).
+  const [reviewGated, setReviewGated] = useState(false);
   const chatStartRef = useRef<number>(0);
   const [captchaOpen, setCaptchaOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -169,24 +194,28 @@ export function ChatWindow() {
   useEffect(() => { sessionIdRef.current = sessionId; }, [sessionId]);
   useEffect(() => { endedRef.current = ended; }, [ended]);
 
-  // When a chat ends, ask for feedback if it was a real (≥5min) conversation and
-  // we haven't nudged this visitor recently.
+  // When a chat ends, pick ONE post-chat ask via the escalation chain:
+  //   long chat + no review yet → REVIEW (2nd+ ask gated)
+  //   else (short chat, OR long chat already reviewed) + not following → FOLLOW (2nd+ gated)
+  //   else → nothing.
   useEffect(() => {
     if (!ended) return;
     if (chatStartRef.current <= 0) return; // no real chat happened
     const lasted = Date.now() - chatStartRef.current >= FEEDBACK_MIN_MS;
-    if (lasted) {
-      // Long enough chat → ask for a rating.
-      if (feedbackAllowed()) setShowFeedback(true);
+    if (lasted && !reviewGiven()) {
+      // Long chat, no review yet → ask for a rating. 2nd+ time gates the next chat.
+      setReviewGated(reviewGatedNow());
+      setShowFeedback(true);
     } else if (followAllowed()) {
-      // Short chat → no rating; nudge an Instagram follow instead. 2nd+ time gates.
+      // Short chat, OR long chat where a review was already given → follow gate.
       setFollowGated(followGatedNow());
       setShowFollow(true);
     }
   }, [ended]);
 
   const submitFeedback = useCallback((rating: number, text: string) => {
-    markFeedbackShown();
+    markReviewGiven();   // rated once → never gated for a review again
+    setReviewGated(false); // unlock now that they've submitted
     const sid = sessionIdRef.current;
     fetch("/api/chat/feedback", {
       method: "POST",
@@ -199,7 +228,9 @@ export function ChatWindow() {
   }, []);
 
   const skipFeedback = useCallback(() => {
-    markFeedbackShown(); // also suppress for the cooldown so we don't nag
+    // Only reachable when NOT gated (the gated review card hides "skip"). Counts
+    // as a bypass so the NEXT long-chat review ask is gated.
+    markReviewBypassed();
     setShowFeedback(false);
   }, []);
 
@@ -695,25 +726,16 @@ export function ChatWindow() {
       // Record the abandoned session before we spin up a new one.
       notifyServerEnd("skip");
 
-      // If this was a real (≥5min) chat we can still ask about, end HERE and show
-      // the feedback prompt instead of jumping straight to a new stranger. The
-      // user taps "find another" afterwards. Short chats skip straight through.
+      // If there's a post-chat ask to show (review or follow, per the escalation
+      // chain), end HERE so the ended effect shows it; the user taps "find
+      // another" afterwards. Otherwise skip straight through to a new stranger.
       const lasted =
         chatStartRef.current > 0 && Date.now() - chatStartRef.current >= FEEDBACK_MIN_MS;
-      if (lasted && feedbackAllowed()) {
+      const willPrompt = (lasted && !reviewGiven()) || followAllowed();
+      if (willPrompt) {
         clearAllTimeouts();
         pushMsg({ role: "system", text: "you skipped." });
-        setEnded(true); // triggers the feedback prompt via the ended effect
-        return;
-      }
-
-      // Short chat → nudge an Instagram follow instead of jumping straight to a
-      // new stranger. End HERE so the ended effect shows the follow card; the
-      // user taps "find another" afterwards.
-      if (!lasted && followAllowed()) {
-        clearAllTimeouts();
-        pushMsg({ role: "system", text: "you skipped." });
-        setEnded(true); // triggers the follow prompt via the ended effect
+        setEnded(true); // ended effect decides review-vs-follow
         return;
       }
 
@@ -724,15 +746,18 @@ export function ChatWindow() {
     connect();
   }
 
-  // "find another" tap after a chat has ended. Enforces the follow gate.
+  // "find another" tap after a chat has ended. Enforces both unlock gates.
   function findAnother() {
-    if (showFollow && followGated) {
-      // Gated: the next chat is locked until they click Follow. Ignore the tap.
-      return;
-    }
+    // Gated review prompt → locked until they submit a rating.
+    if (showFeedback && reviewGated) return;
+    // Gated follow prompt → locked until they click Follow.
+    if (showFollow && followGated) return;
+    // Ungated review nudge they're skipping past (and haven't given one) → count
+    // it so the next long-chat ask is gated.
+    if (showFeedback && !reviewGiven()) markReviewBypassed();
+    if (showFeedback) setShowFeedback(false);
+    // Ungated follow nudge they're skipping past → count it so the next gates.
     if (showFollow) {
-      // Ungated 1st-time nudge they're skipping past → count it so the next
-      // short-chat nudge is gated.
       markFollowBypassed();
       setShowFollow(false);
     }
@@ -854,7 +879,7 @@ export function ChatWindow() {
               onFollow → markFollowClicked: a follow via the review cross-sell also
               satisfies the short-chat follow gate, so we never double-nudge. */}
           {ended && showFeedback && (
-            <FeedbackPrompt onSubmit={submitFeedback} onSkip={skipFeedback} onFollow={markFollowClicked} />
+            <FeedbackPrompt gated={reviewGated} onSubmit={submitFeedback} onSkip={skipFeedback} onFollow={markFollowClicked} />
           )}
 
           {/* Short (<5min) chat → Instagram follow nudge instead of feedback.
@@ -879,14 +904,16 @@ export function ChatWindow() {
             >
               <button
                 onClick={e => { e.stopPropagation(); ended ? findAnother() : skip(); }}
-                disabled={ended && showFollow && followGated}
+                disabled={ended && ((showFollow && followGated) || (showFeedback && reviewGated))}
                 className={
                   ended
                     ? "bg-red text-paper-cool border-none rounded-[9px] px-3 py-2 font-sans text-xs font-bold tracking-tight shadow-hard-sm flex-shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
                     : "bg-transparent border-none px-2.5 py-2 rounded-[9px] font-display text-base font-bold text-ink-mute flex-shrink-0"
                 }
                 title={
-                  ended && showFollow && followGated
+                  ended && showFeedback && reviewGated
+                    ? "leave a review to unlock your next chat"
+                    : ended && showFollow && followGated
                     ? "follow to unlock your next chat"
                     : ended ? "find another stranger" : "skip and find another"
                 }

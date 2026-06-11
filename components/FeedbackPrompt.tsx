@@ -18,10 +18,14 @@ const FACES: { value: number; emoji: string; label: string }[] = [
 // Post-chat feedback: an emoji rating + an optional written review.
 // Parent decides WHEN to show this (e.g. chats ≥ 5 min, not asked recently).
 export function FeedbackPrompt({
+  gated = false,
   onSubmit,
   onSkip,
   onFollow,
 }: {
+  // When gated, the next chat is locked behind submitting a rating: no "skip",
+  // and the header makes the unlock explicit.
+  gated?: boolean;
   onSubmit: (rating: number, text: string) => void;
   onSkip: () => void;
   // Called when the user taps the post-review follow CTA — lets the parent mark
@@ -68,13 +72,17 @@ export function FeedbackPrompt({
   return (
     <div className="mx-5 my-3 rounded-2xl border-2 border-ink bg-paper-cool p-4 shadow-hard-sm">
       <div className="mb-2 flex items-center justify-between">
-        <span className="font-display text-base font-bold text-ink">how was that chat?</span>
-        <button
-          onClick={onSkip}
-          className="font-sans text-xs font-bold text-ink-mute hover:text-ink"
-        >
-          skip
-        </button>
+        <span className="font-display text-base font-bold text-ink">
+          {gated ? "leave a review to unlock your next chat 🔓" : "how was that chat?"}
+        </span>
+        {!gated && (
+          <button
+            onClick={onSkip}
+            className="font-sans text-xs font-bold text-ink-mute hover:text-ink"
+          >
+            skip
+          </button>
+        )}
       </div>
 
       {/* Emoji rating */}
