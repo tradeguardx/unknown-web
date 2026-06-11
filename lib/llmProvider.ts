@@ -21,13 +21,15 @@ import { buildSystemPrompt, memorySection } from "./prompts";
 import { buildSystemPromptDeepSeek } from "./promptsDeepSeek";
 import { cachedSystem, getAnthropic, MODEL } from "./anthropic";
 import { deepseekChat } from "./deepseek";
+import { sarvamChat } from "./sarvam";
 
-export type LLMProvider = "anthropic" | "deepseek";
+export type LLMProvider = "anthropic" | "deepseek" | "sarvam";
 export type LLMProviderConfig = LLMProvider | "mixed";
 
 function getEnvConfig(): LLMProviderConfig {
   const env = process.env.LLM_PROVIDER;
   if (env === "deepseek") return "deepseek";
+  if (env === "sarvam") return "sarvam"; // TEST/EVAL only — force all chats to Sarvam
   if (env === "mixed") return "mixed";
   return "anthropic";
 }
@@ -96,6 +98,17 @@ export async function callLLM(req: LLMRequest): Promise<string> {
   if (provider === "deepseek") {
     const system = buildSystemPromptDeepSeek(req.persona, req.prefs, req.userMemory);
     return deepseekChat({
+      system,
+      messages: req.messages,
+      maxTokens: req.maxTokens,
+    });
+  }
+
+  // sarvam (TEST/EVAL only) — Indic-tuned. Uses the SAME prompt as Claude
+  // (buildSystemPrompt + memorySection) for a fair language/persona comparison.
+  if (provider === "sarvam") {
+    const system = buildSystemPrompt(req.persona, req.prefs) + memorySection(req.userMemory);
+    return sarvamChat({
       system,
       messages: req.messages,
       maxTokens: req.maxTokens,
