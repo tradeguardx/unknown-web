@@ -13,6 +13,30 @@ export function getAnthropic(): Anthropic {
 
 export const MODEL = "claude-haiku-4-5-20251001";
 
+export function isAnthropicAvailable(): boolean {
+  return !!process.env.ANTHROPIC_API_KEY;
+}
+
+// Single-shot completion helper for background tasks (rolling memory extraction,
+// chat summary). Mirrors deepseekChat's shape so call sites can swap providers
+// with a one-line change. Uses Claude Haiku (cheap, fast, reliable structured
+// output) by default; override `model` if needed.
+export async function anthropicChat(opts: {
+  system: string;
+  messages: Array<{ role: "user" | "assistant"; content: string }>;
+  maxTokens: number;
+  model?: string;
+}): Promise<string> {
+  const resp = await getAnthropic().messages.create({
+    model: opts.model || MODEL,
+    max_tokens: opts.maxTokens,
+    system: opts.system,
+    messages: opts.messages,
+  });
+  const block = resp.content.find(b => b.type === "text");
+  return block && block.type === "text" ? block.text : "";
+}
+
 // Build the system blocks for prompt caching. The STATIC persona prompt is the
 // same on every turn within a session, so the cache breakpoint goes at the end
 // of it → cached reads cost ~10% of normal input pricing.

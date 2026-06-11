@@ -137,10 +137,17 @@ export async function POST(req: Request) {
   // poll starts fresh from "ping" instead of "force-leave".
   resetSilentPing(sessionId);
 
-  // Random "stranger ghosted before reading" outcome — small chance the user just gets dropped.
-  if (Math.random() < session.persona.randomLeaveProbability * 0.4) {
-    endSession(sessionId, "ghosted");
-    onChatEnded(req, session, "ghosted");
+  // "Stranger ghosted before reading" — a stranger who never really engaged.
+  // This ONLY makes sense in the opening exchange; once there's a real back-and-
+  // forth, a silent drop just feels broken (it was a big chunk of prod "ghosted"
+  // chats on otherwise-fine conversations). So it's eligible ONLY on the user's
+  // first 1-2 messages — an established chat can NEVER be coded-dropped. We tag it
+  // "dropped" in analytics (distinct from a model-initiated [LEAVE: ghosted]) so
+  // the two are finally separable; the user-facing wording stays "ghosted".
+  const userTurns = session.messages.filter(m => m.role === "user").length; // incl. just-added
+  if (userTurns <= 2 && Math.random() < session.persona.randomLeaveProbability * 0.4) {
+    endSession(sessionId, "dropped");
+    onChatEnded(req, session, "dropped");
     return NextResponse.json({
       messages: [] as PacedMessage[],
       left: true,

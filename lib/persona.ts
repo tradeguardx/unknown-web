@@ -5,8 +5,29 @@
 //   - intent (love/flirt/etc) → mood and dislike-distribution shift
 //   - country → may be referenced by persona's dislikes for pointed friction
 
-import type { ChatIntent, Language, UserPrefs } from "./prefs";
+import type { AgeBand, ChatIntent, Language, UserPrefs } from "./prefs";
 import { LANGUAGES } from "./prefs";
+
+// Persona age window per USER age band. Overlapping but compatible — keeps an
+// 18yo away from a 40yo while still allowing some natural spread. min 18 always.
+const AGE_WINDOWS: Record<AgeBand, [number, number]> = {
+  "18-24": [18, 27],
+  "25-34": [22, 38],
+  "35-44": [30, 48],
+  "45+": [38, 62],
+};
+
+function pickAgeForBand(band?: AgeBand): number {
+  if (band && AGE_WINDOWS[band]) {
+    const [lo, hi] = AGE_WINDOWS[band];
+    return lo + Math.floor(Math.random() * (hi - lo + 1));
+  }
+  // No band given (user skipped it) — original distribution, skews young.
+  const r = Math.random();
+  return r < 0.55 ? 18 + Math.floor(Math.random() * 8)
+    : r < 0.85 ? 26 + Math.floor(Math.random() * 9)
+    : 35 + Math.floor(Math.random() * 15);
+}
 
 export type Gender = "male" | "female" | "nonbinary";
 export type Mood = "chatty" | "shy" | "flirty" | "bored" | "curious" | "grumpy" | "playful";
@@ -445,6 +466,20 @@ const SITUATIONS = [
   "just finished a workout, cooling down",
   "supposed to be sleeping but decided to chat instead",
   "watching tv half-heartedly in the background",
+  "walking home with headphones in",
+  "stuck in a boring online class / meeting, half-listening",
+  "hiding from a family gathering for a few minutes",
+  "on a long train ride, staring out the window",
+  "lying on the floor listening to music",
+  "procrastinating on something due tomorrow",
+  "out on a balcony / step getting some air",
+  "in bed with a hangover, regretting last night",
+  "waiting at the doctor's, bored out of your mind",
+  "watching the rain from the window",
+  "up too early, everyone else still asleep",
+  "cooking dinner, stirring something one-handed",
+  "just got flaked on by a friend, plans cancelled",
+  "at the airport, flight delayed",
 ];
 
 const POTENTIAL_DISLIKES = [
@@ -659,6 +694,27 @@ const STORY_SEEDS = [
   "your apartment building's elevator has been broken for a week",
   "your neighbor plays loud music every night, considering complaining",
   "your group chat has been weirdly quiet lately",
+
+  // More recent events — with emotional texture / things worth going deeper on
+  "a close friend's getting married and you're low-key stressed about the speech",
+  "you finally beat a game you'd been stuck on for weeks",
+  "you adopted a kitten last weekend and it's pure chaos",
+  "you bombed a presentation this week and you're still cringing about it",
+  "you got a haircut you're genuinely not sure about",
+
+  // More active threads — open loops that invite follow-up
+  "you're learning to drive and the parking part is killing you",
+  "you got ghosted by someone you actually liked, pretending you're fine",
+  "you applied for something big and keep refreshing your email for a reply",
+  "you're broke till payday and being dramatic about it",
+  "you keep meaning to call your grandma and feel guilty you haven't",
+
+  // More micro-current — small live dramas
+  "your upstairs neighbor is rearranging furniture at 1am again",
+  "you saw a video earlier that's living rent-free in your head",
+  "your sibling borrowed money and is dodging you about it",
+  "a song from your childhood came on and hit you out of nowhere",
+  "you're weirdly invested in some celebrity / online drama right now",
 ];
 
 function pickStories(): string[] {
@@ -1129,11 +1185,7 @@ export function generatePersona(prefs?: UserPrefs): Persona {
   const country = pickCountryForLanguage(prefs?.language);
   const city = pick(country.cities);
 
-  const ageRoll = Math.random();
-  const age =
-    ageRoll < 0.55 ? 18 + Math.floor(Math.random() * 8)
-    : ageRoll < 0.85 ? 26 + Math.floor(Math.random() * 9)
-    : 35 + Math.floor(Math.random() * 15);
+  const age = pickAgeForBand(prefs?.ageBand);
 
   const gender = pickGenderForPrefs(prefs);
 

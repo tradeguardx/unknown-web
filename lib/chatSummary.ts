@@ -1,15 +1,23 @@
-// Chat insight generator. When a chat closes, we extract a SHORT structured
-// read on what happened — both a human-readable summary AND machine fields we can
-// aggregate to understand how to improve the personas. Operators only; never
-// shown to users, never re-enters a chat.
+// Chat insight generator. When a chat closes, we extract a rich structured read
+// on what happened — a human-readable summary PLUS machine fields that let us
+// understand the USER (who they are, what they wanted, how they felt) and the
+// OUTCOME (did it click). Paired with the full persona "recipe" emitted in
+// events.ts, each chat becomes one labeled row: recipe × audience → outcome.
+// That dataset is what lets us enrich/optimize personas (and build bespoke ones)
+// later. Operators only; never shown to users, never re-enters a chat.
 //
-// Privacy: we summarize, we do NOT store the raw transcript.
+// Privacy: we summarize, we do NOT store the raw transcript. All inferred user
+// attributes are BUCKETED/BOOLEAN — no names, no exact ages, no quotes.
 //
-// Uses DeepSeek (cheap, fast) like lib/userMemory.ts. If DEEPSEEK_API_KEY isn't
-// set, insight is silently skipped.
+// Uses Claude (Haiku) like lib/userMemory.ts. If ANTHROPIC_API_KEY isn't set,
+// insight is silently skipped.
 
-import { DEEPSEEK_EXTRACT_MODEL, deepseekChat, isDeepSeekAvailable } from "./deepseek";
+import { anthropicChat, isAnthropicAvailable } from "./anthropic";
 import type { Session } from "./sessions";
+
+export type ArcMood =
+  | "happy" | "excited" | "flirty" | "neutral" | "curious"
+  | "bored" | "sad" | "lonely" | "anxious" | "angry" | "unknown";
 
 export interface ChatInsight {
   summary: string; // 2-4 sentence operational summary
@@ -19,31 +27,98 @@ export interface ChatInsight {
   endTrigger: string; // short: why/how it ended
   topics: string[]; // up to 4 short topic tags
   improvement: string; // one line: how the persona could've done better
+
+  // ── Emotional arc (inferred from the full transcript at close) ──
+  moodStart: ArcMood;
+  moodMid: ArcMood;
+  moodEnd: ArcMood;
+  moodShift: "improved" | "flat" | "declined";
+  feltBetter: boolean; // did the chat lift the user's mood
+  openness: "opened_up" | "surface" | "guarded";
+
+  // ── Who the user is (inferred; bucketed, no PII) ──
+  userAgeGroup: "<18" | "18-24" | "25-34" | "35+" | "unknown";
+  userGenderRevealed: "male" | "female" | "other" | "unknown";
+  lifeStage: "student" | "working" | "other" | "unknown";
+  typedLanguage: string; // what the user actually wrote in (e.g. "english", "hinglish")
+  lonelinessSignal: boolean;
+
+  // ── What the user wanted (feeds persona enrichment) ──
+  inferredIntent: string; // what they ACTUALLY sought, vs the form
+  userInterests: string[]; // up to 4 things the USER is into
+  respondedWellTo: string; // what persona energy clicked, e.g. "playful teasing", "being listened to"
+
+  // ── How it went ──
+  connectionQuality: "clicked" | "lukewarm" | "mismatch";
+  botAccusation: boolean; // did the user suspect they were talking to an AI
+  flirtLevel: "none" | "light" | "heavy";
+
+  // ── Safety (booleans only, never content) ──
+  minorSelfDisclosed: boolean; // user indicated they are under 18
+  abusiveUser: boolean;
+  distressSignal: boolean; // self-harm / crisis language
 }
 
-const SYSTEM_PROMPT = `You are a QA analyst for an anonymous "talk to a stranger" app where the "stranger" is an AI persona pretending to be a real person. You are given one chat transcript (USER = human, STRANGER = the AI persona).
+const SYSTEM_PROMPT = `You are a QA + audience analyst for an anonymous "talk to a stranger" app where the "stranger" is an AI persona pretending to be a real person. You are given one chat transcript (USER = human, STRANGER = the AI persona).
 
-Return a SHORT structured assessment to help operators improve the personas. Be neutral and concrete. Do NOT quote sensitive content.
+Return a structured assessment that helps us (1) improve personas and (2) understand the user. Be neutral and concrete. Do NOT quote sensitive content. Infer ONLY from what's actually in the transcript — when something isn't evidenced, use "unknown" (for enums) or false (for booleans). Bucket everything; never output names, exact ages, or locations.
 
 Respond with ONLY a JSON object (no markdown, no prose) of this exact shape:
 {
   "summary": "2-4 sentences: what the user wanted, how it went, why it ended",
-  "engagement": "high" | "medium" | "low",          // how engaged/invested the USER was
+  "engagement": "high" | "medium" | "low",
   "userSentiment": "positive" | "neutral" | "negative" | "mixed",
-  "personaRealism": "convincing" | "okay" | "broke_character",  // did the STRANGER feel like a real human?
-  "endTrigger": "short phrase, e.g. 'user went silent', 'persona left', 'user got bored', 'policy'",
-  "topics": ["1-4 short lowercase topic tags, e.g. 'relationships','college','gaming'"],
-  "improvement": "one concrete line on how this persona could have felt more human / kept the user engaged"
-}`;
+  "personaRealism": "convincing" | "okay" | "broke_character",
+  "endTrigger": "short phrase, e.g. 'user went silent', 'persona left', 'user got bored'",
+  "topics": ["1-4 short lowercase topic tags"],
+  "improvement": "one concrete line on how this persona could've felt more human / kept the user engaged",
+
+  "moodStart": "user's mood in the FIRST third of the chat",
+  "moodMid": "user's mood in the MIDDLE third",
+  "moodEnd": "user's mood in the LAST third",
+  "moodShift": "improved" | "flat" | "declined",
+  "feltBetter": true | false,
+  "openness": "opened_up" | "surface" | "guarded",
+
+  "userAgeGroup": "<18" | "18-24" | "25-34" | "35+" | "unknown",
+  "userGenderRevealed": "male" | "female" | "other" | "unknown",
+  "lifeStage": "student" | "working" | "other" | "unknown",
+  "typedLanguage": "lowercase language the USER typed in, e.g. 'english','hinglish','punjabi'",
+  "lonelinessSignal": true | false,
+
+  "inferredIntent": "what the user ACTUALLY wanted (e.g. 'flirt','vent','friend','bored','advice','sexual'), regardless of any stated filter",
+  "userInterests": ["1-4 things the USER is into, from what they said"],
+  "respondedWellTo": "what persona energy the user responded to best, e.g. 'playful teasing','being listened to','shared interest' (or 'nothing' if it flopped)",
+
+  "connectionQuality": "clicked" | "lukewarm" | "mismatch",
+  "botAccusation": true | false,
+  "flirtLevel": "none" | "light" | "heavy",
+
+  "minorSelfDisclosed": true | false,
+  "abusiveUser": true | false,
+  "distressSignal": true | false
+}
+Mood values must be one of: happy, excited, flirty, neutral, curious, bored, sad, lonely, anxious, angry, unknown.`;
 
 const MAX_MESSAGES = 40;
 
 const VALID_ENGAGEMENT = new Set(["high", "medium", "low"]);
 const VALID_SENTIMENT = new Set(["positive", "neutral", "negative", "mixed"]);
 const VALID_REALISM = new Set(["convincing", "okay", "broke_character"]);
+const VALID_MOOD = new Set<string>([
+  "happy", "excited", "flirty", "neutral", "curious",
+  "bored", "sad", "lonely", "anxious", "angry", "unknown",
+]);
+const VALID_SHIFT = new Set(["improved", "flat", "declined"]);
+const VALID_OPENNESS = new Set(["opened_up", "surface", "guarded"]);
+const VALID_AGE = new Set(["<18", "18-24", "25-34", "35+", "unknown"]);
+const VALID_GENDER = new Set(["male", "female", "other", "unknown"]);
+const VALID_LIFE = new Set(["student", "working", "other", "unknown"]);
+const VALID_CONN = new Set(["clicked", "lukewarm", "mismatch"]);
+const VALID_FLIRT = new Set(["none", "light", "heavy"]);
 
 export async function summarizeChat(session: Session): Promise<ChatInsight | null> {
-  if (!isDeepSeekAvailable()) return null;
+  if (!isAnthropicAvailable()) return null;
   if (session.messages.length < 2) return null;
 
   const recent = session.messages.slice(-MAX_MESSAGES);
@@ -60,13 +135,12 @@ export async function summarizeChat(session: Session): Promise<ChatInsight | nul
 
   let raw: string;
   try {
-    raw = await deepseekChat({
+    raw = await anthropicChat({
       system: SYSTEM_PROMPT,
       messages: [
         { role: "user", content: `CONTEXT: ${context}\n\nTRANSCRIPT:\n${transcript}\n\nReturn the JSON now.` },
       ],
-      maxTokens: 400,
-      model: DEEPSEEK_EXTRACT_MODEL,
+      maxTokens: 700,
     });
   } catch (err) {
     console.warn("[chatSummary] failed:", err instanceof Error ? err.message : String(err));
@@ -96,14 +170,17 @@ function normalize(raw: string, session: Session): ChatInsight | null {
 
   const pick = (v: unknown, valid: Set<string>, fallback: string) =>
     typeof v === "string" && valid.has(v) ? v : fallback;
-
-  const topics = Array.isArray(parsed.topics)
-    ? parsed.topics
-        .filter((t): t is string => typeof t === "string")
-        .map((t) => t.trim().toLowerCase().slice(0, 24))
-        .filter(Boolean)
-        .slice(0, 4)
-    : [];
+  const bool = (v: unknown) => v === true || v === "true";
+  const tagList = (v: unknown) =>
+    Array.isArray(v)
+      ? v
+          .filter((t): t is string => typeof t === "string")
+          .map((t) => t.trim().toLowerCase().slice(0, 24))
+          .filter(Boolean)
+          .slice(0, 4)
+      : [];
+  const str = (v: unknown, max: number) =>
+    typeof v === "string" ? v.trim().slice(0, max) : "";
 
   return {
     summary,
@@ -114,8 +191,32 @@ function normalize(raw: string, session: Session): ChatInsight | null {
       typeof parsed.endTrigger === "string" && parsed.endTrigger.trim()
         ? parsed.endTrigger.trim().slice(0, 60)
         : session.endReason ?? "unknown",
-    topics,
-    improvement:
-      typeof parsed.improvement === "string" ? parsed.improvement.trim().slice(0, 200) : "",
+    topics: tagList(parsed.topics),
+    improvement: str(parsed.improvement, 200),
+
+    moodStart: pick(parsed.moodStart, VALID_MOOD, "unknown") as ArcMood,
+    moodMid: pick(parsed.moodMid, VALID_MOOD, "unknown") as ArcMood,
+    moodEnd: pick(parsed.moodEnd, VALID_MOOD, "unknown") as ArcMood,
+    moodShift: pick(parsed.moodShift, VALID_SHIFT, "flat") as ChatInsight["moodShift"],
+    feltBetter: bool(parsed.feltBetter),
+    openness: pick(parsed.openness, VALID_OPENNESS, "surface") as ChatInsight["openness"],
+
+    userAgeGroup: pick(parsed.userAgeGroup, VALID_AGE, "unknown") as ChatInsight["userAgeGroup"],
+    userGenderRevealed: pick(parsed.userGenderRevealed, VALID_GENDER, "unknown") as ChatInsight["userGenderRevealed"],
+    lifeStage: pick(parsed.lifeStage, VALID_LIFE, "unknown") as ChatInsight["lifeStage"],
+    typedLanguage: str(parsed.typedLanguage, 24).toLowerCase() || "unknown",
+    lonelinessSignal: bool(parsed.lonelinessSignal),
+
+    inferredIntent: str(parsed.inferredIntent, 40).toLowerCase() || "unknown",
+    userInterests: tagList(parsed.userInterests),
+    respondedWellTo: str(parsed.respondedWellTo, 80),
+
+    connectionQuality: pick(parsed.connectionQuality, VALID_CONN, "lukewarm") as ChatInsight["connectionQuality"],
+    botAccusation: bool(parsed.botAccusation),
+    flirtLevel: pick(parsed.flirtLevel, VALID_FLIRT, "none") as ChatInsight["flirtLevel"],
+
+    minorSelfDisclosed: bool(parsed.minorSelfDisclosed),
+    abusiveUser: bool(parsed.abusiveUser),
+    distressSignal: bool(parsed.distressSignal),
   };
 }

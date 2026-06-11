@@ -9,10 +9,12 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
+  AGE_BANDS,
   COUNTRY_OPTIONS,
   INTENT_LABELS,
   LANGUAGES,
   intentRequiresAgeGate,
+  type AgeBand,
   type ChatIntent,
   type Language,
   type Orientation,
@@ -148,7 +150,17 @@ export function PrefsSheet({ open, onClose }: Props) {
           </Field>
         </div>
 
-        <div className="mt-3">
+        <div className="grid grid-cols-2 gap-2 mt-3">
+          <Field label="my age">
+            <select
+              value={prefs.ageBand ?? ""}
+              onChange={e => update("ageBand", (e.target.value || undefined) as AgeBand | undefined)}
+              className="paper-select"
+            >
+              <option value="">rather not say</option>
+              {AGE_BANDS.map(b => <option key={b} value={b}>{b}</option>)}
+            </select>
+          </Field>
           <Field label="looking for">
             <select
               value={prefs.intent ?? ""}

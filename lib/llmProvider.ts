@@ -1,21 +1,21 @@
-// Thin abstraction that routes to Anthropic or DeepSeek based on the
-// LLM_PROVIDER env var.
+// Thin abstraction that routes to a chat LLM based on the LLM_PROVIDER env var.
 //
-//   - "anthropic" (default) → Claude Haiku 4.5 + lib/prompts.ts (with prompt caching)
-//   - "deepseek"            → deepseek-chat + lib/promptsDeepSeek.ts
-//   - "mixed"               → 50/50 coin flip per SESSION (not per turn). Once
-//                             a session picks a provider, that provider serves
-//                             every turn of that chat for consistency.
+//   - "anthropic"  → Claude Haiku 4.5 + lib/prompts.ts (with prompt caching)
+//   - "sarvam"     → Sarvam (Indic-tuned) + lib/prompts.ts (same prompt as Claude)
+//   - "deepseek"   → deepseek-chat + lib/promptsDeepSeek.ts (no longer in default routing)
+//   - "mixed"      → PRODUCTION mode. Route per SESSION by language: English +
+//                    Indic → Sarvam, everything else → Claude. The provider is
+//                    fixed for the chat's lifetime (no mid-chat voice switch).
 //
-// The Anthropic call is identical to what was previously inline in the route
-// handlers — copying it verbatim keeps the Claude flow untouched.
+// Anthropic and Sarvam share lib/prompts.ts; DeepSeek has its own (promptsDeepSeek.ts).
+// All use the same conventions ([LEAVE], [STAY], \n bursts) so the downstream
+// parser works for any of them.
 //
-// Each provider has its own system prompt file so the two can be tuned
-// independently. Both use the same conventions ([LEAVE], [STAY], \n bursts)
-// so the downstream parser works for either.
+// NOTE: rolling memory extraction + chat summary run on Claude (see lib/anthropic.ts
+// anthropicChat), independent of which provider serves the chat.
 
 import type { Persona } from "./persona";
-import { isLanguage, type UserPrefs } from "./prefs";
+import { isLanguage, isIndicLanguage, type UserPrefs } from "./prefs";
 import type { UserMemory } from "./sessions";
 import { buildSystemPrompt, memorySection } from "./prompts";
 import { buildSystemPromptDeepSeek } from "./promptsDeepSeek";
@@ -28,25 +28,28 @@ export type LLMProviderConfig = LLMProvider | "mixed";
 
 function getEnvConfig(): LLMProviderConfig {
   const env = process.env.LLM_PROVIDER;
-  if (env === "deepseek") return "deepseek";
-  if (env === "sarvam") return "sarvam"; // TEST/EVAL only — force all chats to Sarvam
-  if (env === "mixed") return "mixed";
+  if (env === "deepseek") return "deepseek"; // force all chats to DeepSeek
+  if (env === "sarvam") return "sarvam";     // force ALL chats to Sarvam (single-provider)
+  if (env === "mixed") return "mixed";       // PROD: language-routed Sarvam/Claude
   return "anthropic";
 }
 
 // Called at session creation. The provider is fixed for the chat's lifetime
 // (no mid-conversation voice switch).
 //
-// In "mixed" mode we route by LANGUAGE: English (or unset) chats go to DeepSeek
-// (cheap, and plenty good at English — the bulk of traffic), while non-English
-// chats go to Claude/Anthropic for its stronger multilingual quality. A stale/
-// unknown language counts as English (it falls back to English in the prompt).
+// In "mixed" mode we route by LANGUAGE:
+//   - English (or unset/stale) + Indic languages (hinglish, punjabi, …) → Sarvam.
+//     Sarvam is tuned for Indian languages + code-mixing and is strong at English
+//     too — this is the bulk of our traffic.
+//   - Every other (non-Indic, non-English) language → Claude/Anthropic for its
+//     stronger general multilingual quality.
+// (DeepSeek is no longer in the chat routing.)
 export function pickProviderForSession(prefs?: UserPrefs): LLMProvider {
   const cfg = getEnvConfig();
   if (cfg !== "mixed") return cfg; // forced single-provider mode
   const lang = prefs?.language;
-  const nonEnglish = !!lang && lang !== "english" && isLanguage(lang);
-  return nonEnglish ? "anthropic" : "deepseek";
+  const englishOrIndic = !lang || lang === "english" || !isLanguage(lang) || isIndicLanguage(lang);
+  return englishOrIndic ? "sarvam" : "anthropic";
 }
 
 // Back-compat default picker. If "mixed" mode is on and this is called outside

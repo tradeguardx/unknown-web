@@ -143,6 +143,27 @@ export function countryFrom(req: Request): string | undefined {
   return undefined;
 }
 
+// The user's LOCAL hour (0-23) at chat time, from the IP's IANA timezone
+// (geoip-lite ships one per range). Lets us answer "what hour do people in India
+// actually chat" without any client-side capture. undefined if we can't resolve.
+export function localHourFrom(req: Request): number | undefined {
+  try {
+    const ip = visitorIp(req);
+    if (!ip) return undefined;
+    const tz = geoip.lookup(ip)?.timezone;
+    if (!tz) return undefined;
+    const h = new Intl.DateTimeFormat("en-US", {
+      timeZone: tz,
+      hour: "numeric",
+      hour12: false,
+    }).format(new Date());
+    const n = parseInt(h, 10);
+    return Number.isFinite(n) ? n % 24 : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 // Coarse device class from the User-Agent — enough to compare mobile vs desktop
 // UX without a UA-parsing dependency.
 export function deviceFrom(req: Request): "mobile" | "tablet" | "desktop" {
@@ -283,13 +304,25 @@ export function emitChatSummary(
   reason: string,
 ): Promise<void> {
   const durationMs = Math.max(0, Date.now() - session.createdAt);
+  const p = session.persona;
+
+  // Derived conversation metrics (computed in code, no LLM cost).
+  const userMsgs = session.messages.filter((m) => m.role === "user").length;
+  const personaMsgs = session.messages.filter((m) => m.role === "assistant").length;
+  const userLens = session.messages.filter((m) => m.role === "user").map((m) => m.content.length);
+  const avgUserMsgLen = userLens.length
+    ? Math.round(userLens.reduce((a, b) => a + b, 0) / userLens.length)
+    : 0;
+  const last = session.messages[session.messages.length - 1];
+  const whoEnded = last ? (last.role === "user" ? "user" : "persona") : "unknown";
+
   return emitEvent({
     type: "chat_summary",
     sessionId: session.id,
     country: countryFrom(req),
     props: {
       summary: insight.summary,
-      // Structured persona-improvement signals.
+      // ── Structured persona-improvement signals ──
       engagement: insight.engagement,
       user_sentiment: insight.userSentiment,
       persona_realism: insight.personaRealism,
@@ -299,20 +332,78 @@ export function emitChatSummary(
       end_reason: reason,
       duration_ms: durationMs,
       message_count: session.messages.length,
-      // Filter / prefs snapshot — what the user picked before chatting.
+
+      // ── Audience: emotional arc (inferred from the full transcript) ──
+      mood_start: insight.moodStart,
+      mood_mid: insight.moodMid,
+      mood_end: insight.moodEnd,
+      mood_shift: insight.moodShift,
+      felt_better: insight.feltBetter,
+      openness: insight.openness,
+
+      // ── Audience: who the user is (bucketed, no PII) ──
+      user_age_group: insight.userAgeGroup,
+      user_gender_revealed: insight.userGenderRevealed,
+      life_stage: insight.lifeStage,
+      typed_language: insight.typedLanguage,
+      loneliness_signal: insight.lonelinessSignal,
+
+      // ── Audience: what the user wanted (feeds persona enrichment) ──
+      inferred_intent: insight.inferredIntent,
+      user_interests: insight.userInterests.join(","),
+      responded_well_to: insight.respondedWellTo,
+
+      // ── Outcome ──
+      connection_quality: insight.connectionQuality,
+      bot_accusation: insight.botAccusation,
+      flirt_level: insight.flirtLevel,
+
+      // ── Safety (booleans only) ──
+      minor_self_disclosed: insight.minorSelfDisclosed,
+      abusive_user: insight.abusiveUser,
+      distress_signal: insight.distressSignal,
+
+      // ── Derived conversation metrics ──
+      user_msgs: userMsgs,
+      persona_msgs: personaMsgs,
+      avg_user_msg_len: avgUserMsgLen,
+      who_ended: whoEnded,
+      user_local_hour: localHourFrom(req) ?? -1,
+
+      // ── Filter / prefs snapshot — what the user picked before chatting ──
       intent: session.prefs?.intent ?? "unset",
       gender: session.prefs?.gender ?? "unset",
       interested_in: session.prefs?.interestedIn ?? "unset",
       language: session.prefs?.language ?? "unset",
       pref_country: session.prefs?.country ?? "unset",
       provider: session.provider,
-      // Persona snapshot — useful for spotting which persona shapes go well/badly.
-      persona_country: session.persona.country,
-      persona_age: session.persona.age,
-      persona_gender: session.persona.gender,
-      persona_mood: session.persona.mood,
-      persona_archetype: session.persona.archetype,
-      persona_typing_style: session.persona.typingStyle,
+
+      // ── Persona recipe (the full "recipe" half of recipe × audience → outcome) ──
+      persona_country: p.country,
+      persona_age: p.age,
+      persona_gender: p.gender,
+      persona_mood: p.mood,
+      persona_archetype: p.archetype,
+      persona_typing_style: p.typingStyle,
+      persona_emoji_policy: p.emojiPolicy,
+      persona_verbosity: p.verbosity,
+      persona_burst_style: p.burstStyle,
+      persona_romantic_type: p.romanticType ?? "none",
+      persona_vibe_arc: p.vibeArc,
+      persona_wpm: p.wpm,
+      persona_local_hour: p.localHour,
+      persona_random_leave_prob: p.randomLeaveProbability,
+      persona_starts_prob: p.startsConversationProbability,
+      persona_interests: p.interests.join(","),
+      persona_situation: p.situation,
+      persona_quirk: p.quirk,
+      persona_dislikes: p.dislikes.join(","),
+      // Big-Five-lite — each as its own queryable field.
+      persona_extraversion: p.personality.extraversion,
+      persona_agreeableness: p.personality.agreeableness,
+      persona_openness: p.personality.openness,
+      persona_conscientiousness: p.personality.conscientiousness,
+      persona_emotionality: p.personality.emotionality,
     },
   });
 }

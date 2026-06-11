@@ -1,10 +1,13 @@
-// Sarvam AI client (TEST/EVAL only — not wired into production routing).
+// Sarvam AI client — PRIMARY chat provider for English + Indic languages.
 //
 // Sarvam is an India-built LLM tuned for Indian languages + code-mixing
-// (Hinglish, Hindi, Punjabi, Tamil, …). Its /v1/chat/completions endpoint is
-// OpenAI-compatible, so we hit it via fetch with the same shape as
-// lib/deepseek.ts / lib/gemini.ts. Used to evaluate Sarvam across languages +
-// personas on a local experiment branch.
+// (Hinglish, Punjabi, Tamil, …) and is strong at English too. Its
+// /v1/chat/completions endpoint is OpenAI-compatible, so we hit it via fetch
+// with the same shape as lib/deepseek.ts. Uses the SAME system prompt as Claude
+// (lib/prompts.ts) so the two are interchangeable per the language router.
+//
+// Requires SARVAM_API_KEY (set as a prod secret). In "mixed" mode the router
+// (lib/llmProvider.ts) sends English + Indic chats here, non-Indic to Claude.
 //
 // Tuning for OUR use case (casual texting personas, not an assistant):
 //   - reasoning_effort: null → thinking mode OFF. We want fast, reflexive,

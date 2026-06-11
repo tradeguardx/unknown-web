@@ -43,3 +43,6 @@ Thumbs.db
 *.pem
 .turbo/
 coverage/
+
+# persona eval reports (transcripts)
+eval/results/

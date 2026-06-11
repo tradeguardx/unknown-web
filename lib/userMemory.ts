@@ -11,16 +11,15 @@
 //                 ("gets flirty late at night", "sarcastic", "stressed",
 //                  "likes being teased", "misses ex sometimes")
 //
-// Always uses DeepSeek for extraction (deepseek-chat), regardless of which
-// model is serving the actual chat. Reasons:
-//   - Cheap (~$0.0006 per extraction with caching = effectively free at our scale)
-//   - Fast (~1-2s typical) — fire-and-forget overhead is minimal
-//   - High quality structured output (better than Llama 8B for parsing reliability)
+// Always uses Claude (Haiku) for extraction, regardless of which model is
+// serving the actual chat. Reasons:
+//   - Cheap + fast on Haiku — fire-and-forget overhead is minimal
+//   - High quality structured output (reliable bullet parsing)
 //
-// If DEEPSEEK_API_KEY isn't set, memory updates are silently skipped — chat
+// If ANTHROPIC_API_KEY isn't set, memory updates are silently skipped — chat
 // keeps working, just with no rolling memory beyond the recent window.
 
-import { DEEPSEEK_EXTRACT_MODEL, deepseekChat, isDeepSeekAvailable } from "./deepseek";
+import { anthropicChat, isAnthropicAvailable } from "./anthropic";
 import { EMPTY_USER_MEMORY, getSession, type UserMemory } from "./sessions";
 
 // How often to refresh memory (in total message count). Default: every 10.
@@ -34,7 +33,7 @@ const CAP_INTERESTS = 5;
 const CAP_EMOTIONAL = 6;
 
 export function shouldRefreshMemory(messageCount: number): boolean {
-  if (!isDeepSeekAvailable()) return false;
+  if (!isAnthropicAvailable()) return false;
   if (messageCount < 4) return false; // not enough material yet
   return messageCount % REFRESH_EVERY_N_MESSAGES === 0;
 }
@@ -95,7 +94,7 @@ interface RefreshArgs {
 }
 
 export async function refreshUserMemory({ sessionId }: RefreshArgs): Promise<void> {
-  if (!isDeepSeekAvailable()) return;
+  if (!isAnthropicAvailable()) return;
 
   const session = getSession(sessionId);
   if (!session) return;
@@ -118,11 +117,10 @@ Update the notes. Output the FULL labeled bullet list (existing + any new facts/
 
   let raw: string;
   try {
-    raw = await deepseekChat({
+    raw = await anthropicChat({
       system: EXTRACTION_SYSTEM_PROMPT,
       messages: [{ role: "user", content: userPrompt }],
       maxTokens: 350,
-      model: DEEPSEEK_EXTRACT_MODEL,
     });
   } catch (err) {
     console.warn(
