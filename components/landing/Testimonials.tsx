@@ -14,8 +14,11 @@ const INTENT_HINT: Record<string, string> = {
 };
 
 export function Testimonials({ data }: { data: TestimonialsData | null }) {
-  if (!data || data.reviews.length === 0) return null;
-  const shown = data.reviews.slice(0, 6);
+  // Only show WRITTEN reviews — gated ratings can be star-only (empty text),
+  // which would render as broken empty-quote cards.
+  const written = (data?.reviews ?? []).filter((r) => r.text && r.text.trim().length > 0);
+  if (!data || written.length === 0) return null;
+  const shown = written.slice(0, 6);
 
   return (
     <section className="mt-14 lg:mt-20">

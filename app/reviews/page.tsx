@@ -30,34 +30,63 @@ const INTENT_HINT: Record<string, string> = {
 
 export default async function ReviewsPage() {
   const data = await getAllReviews();
-  const reviews = data?.reviews ?? [];
+  const allReviews = data?.reviews ?? [];
+  // Only WRITTEN reviews are shown + emitted as schema Review items. Gated
+  // ratings can be star-only (empty text) — an empty reviewBody is invalid for
+  // Google and an empty quote card looks broken, so we drop them from both.
+  const reviews = allReviews.filter((r) => r.text && r.text.trim().length > 0);
   const avg = data?.avgRating ?? 0;
-  const count = data?.count ?? 0;
+  const count = data?.count ?? 0; // total ratings (incl. star-only)
 
-  // Review + AggregateRating JSON-LD (eligible for star ratings in Google).
+  // AggregateRating (+ Review items) JSON-LD — eligible for star ratings in
+  // Google. Same @id as the homepage WebApplication so it's ONE entity, not two.
   const jsonLd =
     count >= 5
       ? {
           "@context": "https://schema.org",
-          "@type": "SoftwareApplication",
-          name: SITE_NAME,
-          applicationCategory: "CommunicationApplication",
-          operatingSystem: "Any (web)",
-          url: SITE_URL,
-          aggregateRating: {
-            "@type": "AggregateRating",
-            ratingValue: avg,
-            reviewCount: count,
-            bestRating: 5,
-            worstRating: 1,
-          },
-          review: reviews.slice(0, 30).map((r) => ({
-            "@type": "Review",
-            reviewRating: { "@type": "Rating", ratingValue: r.rating, bestRating: 5 },
-            author: { "@type": "Person", name: "A stranger" },
-            reviewBody: r.text,
-            ...(r.ts ? { datePublished: new Date(r.ts).toISOString().slice(0, 10) } : {}),
-          })),
+          "@graph": [
+            {
+              "@type": "WebApplication",
+              "@id": `${SITE_URL}/#app`,
+              name: SITE_NAME,
+              applicationCategory: "CommunicationApplication",
+              operatingSystem: "Any (web)",
+              url: SITE_URL,
+              aggregateRating: {
+                "@type": "AggregateRating",
+                ratingValue: Number(avg.toFixed(1)),
+                ratingCount: count,
+                bestRating: 5,
+                worstRating: 1,
+              },
+              ...(reviews.length
+                ? {
+                    review: reviews.slice(0, 30).map((r) => ({
+                      "@type": "Review",
+                      reviewRating: {
+                        "@type": "Rating",
+                        ratingValue: r.rating,
+                        bestRating: 5,
+                        worstRating: 1,
+                      },
+                      author: {
+                        "@type": "Person",
+                        name: r.country ? `A stranger from ${r.country}` : "A stranger",
+                      },
+                      reviewBody: r.text,
+                      ...(r.ts ? { datePublished: new Date(r.ts).toISOString().slice(0, 10) } : {}),
+                    })),
+                  }
+                : {}),
+            },
+            {
+              "@type": "BreadcrumbList",
+              itemListElement: [
+                { "@type": "ListItem", position: 1, name: "Home", item: SITE_URL },
+                { "@type": "ListItem", position: 2, name: "Reviews", item: `${SITE_URL}/reviews` },
+              ],
+            },
+          ],
         }
       : null;
 

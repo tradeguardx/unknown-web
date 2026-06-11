@@ -116,8 +116,8 @@ export default async function Landing() {
     if (app) {
       app.aggregateRating = {
         "@type": "AggregateRating",
-        ratingValue: testimonials.avgRating,
-        reviewCount: testimonials.count,
+        ratingValue: Number(testimonials.avgRating.toFixed(1)),
+        ratingCount: testimonials.count,
         bestRating: 5,
         worstRating: 1,
       };
