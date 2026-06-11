@@ -43,9 +43,11 @@ const MAX_TOTAL_MS = 60_000;
 // users have called it out — so even a reflex reply takes a human beat to land.
 const MIN_TOTAL_MS = 1_600;
 // Typing-time guardrails. A 1–2 word reply still shows a brief, believable type;
-// a long reply never drags past this.
+// a long reply scales up to this. Raised from 11s → 22s so genuinely long
+// sentences take a realistic human typing time instead of all topping out fast
+// at the old cap (which made big messages feel suspiciously quick).
 const MIN_TYPING_MS = 600;
-const MAX_TYPING_MS = 11_000;
+const MAX_TYPING_MS = 22_000;
 
 export function computePacing(persona: Persona, replyText: string): PacingResult {
   const text = replyText.trim();
