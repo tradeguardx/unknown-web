@@ -100,13 +100,12 @@ function isSpam(text: string, recentUserMessages: string[]): boolean {
   const matches = recentUserMessages.filter(m => m.trim().toLowerCase() === trimmed).length;
   if (matches >= 4) return true;
 
-  // Excessive repetition within a single message (e.g., "aaaaaaa" / "spam spam spam spam")
-  if (/(.)\1{15,}/.test(text)) return true;
+  // Excessive repetition within a single message — only GENUINE gibberish/
+  // flooding, never playful emphasis. Real users type "noooo", "haha haha haha",
+  // "stop stop stop", "lol lol lol lol lol" — those must NOT end a chat.
+  if (/(.)\1{24,}/.test(text)) return true; // 25+ of the SAME char in a row
   const words = text.toLowerCase().split(/\s+/).filter(Boolean);
-  if (words.length >= 5) {
-    const uniq = new Set(words);
-    if (uniq.size === 1) return true;
-  }
+  if (words.length >= 12 && new Set(words).size === 1) return true; // 12+ identical words
 
   return false;
 }
