@@ -21,13 +21,15 @@ import { buildSystemPrompt, memorySection } from "./prompts";
 import { buildSystemPromptDeepSeek } from "./promptsDeepSeek";
 import { cachedSystem, getAnthropic, MODEL } from "./anthropic";
 import { deepseekChat } from "./deepseek";
+import { geminiChat } from "./gemini";
 
-export type LLMProvider = "anthropic" | "deepseek";
+export type LLMProvider = "anthropic" | "deepseek" | "gemini";
 export type LLMProviderConfig = LLMProvider | "mixed";
 
 function getEnvConfig(): LLMProviderConfig {
   const env = process.env.LLM_PROVIDER;
   if (env === "deepseek") return "deepseek";
+  if (env === "gemini") return "gemini"; // TEST/EVAL only — force all chats to Gemini
   if (env === "mixed") return "mixed";
   return "anthropic";
 }
@@ -96,6 +98,17 @@ export async function callLLM(req: LLMRequest): Promise<string> {
   if (provider === "deepseek") {
     const system = buildSystemPromptDeepSeek(req.persona, req.prefs, req.userMemory);
     return deepseekChat({
+      system,
+      messages: req.messages,
+      maxTokens: req.maxTokens,
+    });
+  }
+
+  // gemini (TEST/EVAL only) — uses the SAME prompt as Claude (prompts.ts) for a
+  // fair comparison: static persona prompt + the rolling memory block.
+  if (provider === "gemini") {
+    const system = buildSystemPrompt(req.persona, req.prefs) + memorySection(req.userMemory);
+    return geminiChat({
       system,
       messages: req.messages,
       maxTokens: req.maxTokens,
