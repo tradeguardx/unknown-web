@@ -45,7 +45,8 @@ export type AnalyticsEventType =
   | "chat_summary"
   | "content_filter"
   | "feedback"
-  | "chat_transcript";
+  | "chat_transcript"
+  | "follow_click";
 
 type PropValue = string | number | boolean;
 
@@ -256,6 +257,19 @@ export function emitPageview(
     ref: keptRef,
     ua: req.headers.get("user-agent") || undefined,
     props: { device: deviceFrom(req) },
+  });
+}
+
+// Fired when a user taps a "follow us on Instagram" CTA (short-chat follow card
+// or the 4–5★ review cross-sell). `source` distinguishes which. A click is our
+// only proxy for an actual follow (no IG API).
+export function emitFollowClick(req: Request, source: string): Promise<void> {
+  return emitEvent({
+    type: "follow_click",
+    vid: visitorVid(req),
+    country: countryFrom(req),
+    ua: req.headers.get("user-agent") || undefined,
+    props: { source, device: deviceFrom(req) },
   });
 }
 

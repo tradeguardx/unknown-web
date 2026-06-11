@@ -11,7 +11,7 @@
 // client events into the pipeline.
 
 import { NextResponse } from "next/server";
-import { emitPageview, isAnalyticsEnabled } from "@/lib/events";
+import { emitPageview, emitFollowClick, isAnalyticsEnabled } from "@/lib/events";
 import { clientIp, rateLimit } from "@/lib/rateLimit";
 
 export const runtime = "nodejs";
@@ -20,6 +20,7 @@ interface TrackBody {
   type?: string;
   path?: string;
   ref?: string;
+  source?: string;
 }
 
 export async function POST(req: Request) {
@@ -31,6 +32,13 @@ export async function POST(req: Request) {
   if (!limit.ok) return NextResponse.json({ ok: true }); // swallow, never error the page
 
   const body = (await req.json().catch(() => ({}))) as TrackBody;
+
+  // Follow-link click (Instagram CTA). Low-volume, enriched server-side.
+  if (body.type === "follow_click") {
+    const source = typeof body.source === "string" ? body.source.slice(0, 40) : "unknown";
+    void emitFollowClick(req, source);
+    return NextResponse.json({ ok: true });
+  }
 
   if (body.type !== "pageview" || typeof body.path !== "string" || !body.path) {
     return NextResponse.json({ error: "invalid event" }, { status: 400 });

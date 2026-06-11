@@ -54,6 +54,20 @@ function markFollowClicked() {
     /* ignore */
   }
 }
+// Best-effort analytics ping when a follow CTA is tapped. keepalive so it still
+// sends as the IG link opens a new tab. `source` = "follow_card" | "review_crosssell".
+function trackFollowClick(source: string) {
+  try {
+    fetch("/api/analytics/track", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "follow_click", source }),
+      keepalive: true,
+    }).catch(() => { /* best-effort */ });
+  } catch {
+    /* ignore */
+  }
+}
 
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "";
 
@@ -197,8 +211,14 @@ export function ChatWindow() {
 
   const followClicked = useCallback(() => {
     markFollowClicked(); // clicked Follow → never nudge again; unlocks the gate
+    trackFollowClick("follow_card");
     setShowFollow(false);
     setFollowGated(false);
+  }, []);
+  // Follow tapped from the 4–5★ review thank-you cross-sell.
+  const reviewFollowClicked = useCallback(() => {
+    markFollowClicked();
+    trackFollowClick("review_crosssell");
   }, []);
   const dismissFollow = useCallback(() => {
     // Reachable only for the optional <5min follow nudge ("maybe later"/✕).
@@ -836,7 +856,7 @@ export function ChatWindow() {
               onFollow → markFollowClicked: a follow via the review cross-sell also
               satisfies the short-chat follow gate, so we never double-nudge. */}
           {ended && showFeedback && (
-            <FeedbackPrompt gated={reviewGated} onSubmit={submitFeedback} onSkip={skipFeedback} onFollow={markFollowClicked} />
+            <FeedbackPrompt gated={reviewGated} onSubmit={submitFeedback} onSkip={skipFeedback} onFollow={reviewFollowClicked} />
           )}
 
           {/* Short (<5min) chat → Instagram follow nudge instead of feedback.
