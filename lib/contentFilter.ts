@@ -93,9 +93,12 @@ function isSpam(text: string, recentUserMessages: string[]): boolean {
   const trimmed = text.trim().toLowerCase();
   if (trimmed.length < 3) return false;
 
-  // 3+ identical (or near-identical) recent user messages = spam
+  // Repeated identical messages = flooding — but only at a HIGH count. People
+  // legitimately repeat short texts ("lol", "u there?", "hello?") and re-send
+  // when ignored, so ending a real chat after just 3 repeats was far too
+  // aggressive (false positives). Require 5+ identical in the recent window.
   const matches = recentUserMessages.filter(m => m.trim().toLowerCase() === trimmed).length;
-  if (matches >= 2) return true;
+  if (matches >= 4) return true;
 
   // Excessive repetition within a single message (e.g., "aaaaaaa" / "spam spam spam spam")
   if (/(.)\1{15,}/.test(text)) return true;
