@@ -33,23 +33,34 @@ function markFeedbackShown() {
   }
 }
 
-// Instagram follow nudge — shown after SHORT (<5min) chats, i.e. the ones that
-// don't get the feedback prompt. Two suppression states:
-//   - "done"  → they clicked Follow. We can't actually read IG follow status
-//               (no API), so a click is our best proxy: never ask again.
-//   - "ts"    → they dismissed ("maybe later"). Re-ask after a short cooldown.
+// Instagram follow nudge — shown ONLY after SHORT (<5min) chats, i.e. the ones
+// that don't get the feedback prompt. Escalating gate:
+//   - "done"  → they clicked Follow. We can't read IG follow status (no API), so
+//               a click is our best proxy: never ask again, ever.
+//   - "bypass"→ count of times we showed it and they moved on WITHOUT following.
+//               1st time (bypass 0): optional — they can dismiss / skip to next.
+//               2nd time onward (bypass ≥1): GATED — the next chat is locked
+//               behind a Follow click. One click anytime → "done" → never again.
 const FOLLOW_DONE_KEY = "unknownchat:follow:done:v1";
-const FOLLOW_TS_KEY = "unknownchat:follow:ts:v1";
-const FOLLOW_COOLDOWN_MS = 3 * 24 * 60 * 60_000; // 3 days between dismissals
+const FOLLOW_BYPASS_KEY = "unknownchat:follow:bypass:v1";
 
 function followAllowed(): boolean {
   try {
-    if (localStorage.getItem(FOLLOW_DONE_KEY) === "1") return false; // already followed/clicked
-    const ts = Number(localStorage.getItem(FOLLOW_TS_KEY) || 0);
-    return !ts || Date.now() - ts > FOLLOW_COOLDOWN_MS;
+    return localStorage.getItem(FOLLOW_DONE_KEY) !== "1"; // ask until they click Follow once
   } catch {
     return false;
   }
+}
+function followBypassCount(): number {
+  try {
+    return Number(localStorage.getItem(FOLLOW_BYPASS_KEY) || 0);
+  } catch {
+    return 0;
+  }
+}
+// 2nd+ showing → gate the next chat behind a Follow click.
+function followGatedNow(): boolean {
+  return followBypassCount() >= 1;
 }
 function markFollowClicked() {
   try {
@@ -58,9 +69,9 @@ function markFollowClicked() {
     /* ignore */
   }
 }
-function markFollowDismissed() {
+function markFollowBypassed() {
   try {
-    localStorage.setItem(FOLLOW_TS_KEY, String(Date.now()));
+    localStorage.setItem(FOLLOW_BYPASS_KEY, String(followBypassCount() + 1));
   } catch {
     /* ignore */
   }
@@ -117,6 +128,9 @@ export function ChatWindow() {
   const [ended, setEnded] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
   const [showFollow, setShowFollow] = useState(false);
+  // When true, the follow prompt is gated: the next chat is locked until they
+  // click Follow (2nd+ short-chat nudge). Only applies to short (<5min) chats.
+  const [followGated, setFollowGated] = useState(false);
   const chatStartRef = useRef<number>(0);
   const [captchaOpen, setCaptchaOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -165,7 +179,8 @@ export function ChatWindow() {
       // Long enough chat → ask for a rating.
       if (feedbackAllowed()) setShowFeedback(true);
     } else if (followAllowed()) {
-      // Short chat → no rating; nudge an Instagram follow instead.
+      // Short chat → no rating; nudge an Instagram follow instead. 2nd+ time gates.
+      setFollowGated(followGatedNow());
       setShowFollow(true);
     }
   }, [ended]);
@@ -189,11 +204,14 @@ export function ChatWindow() {
   }, []);
 
   const followClicked = useCallback(() => {
-    markFollowClicked(); // they clicked Follow → never nudge again on this browser
+    markFollowClicked(); // clicked Follow → never nudge again; unlocks the gate
     setShowFollow(false);
+    setFollowGated(false);
   }, []);
   const dismissFollow = useCallback(() => {
-    markFollowDismissed(); // "maybe later" → re-ask after the cooldown
+    // Only reachable when NOT gated (the gated card hides dismiss). Counts as a
+    // bypass so the NEXT short-chat nudge is gated.
+    markFollowBypassed();
     setShowFollow(false);
   }, []);
 
@@ -706,6 +724,23 @@ export function ChatWindow() {
     connect();
   }
 
+  // "find another" tap after a chat has ended. Enforces the follow gate.
+  function findAnother() {
+    if (showFollow && followGated) {
+      // Gated: the next chat is locked until they click Follow. Ignore the tap.
+      return;
+    }
+    if (showFollow) {
+      // Ungated 1st-time nudge they're skipping past → count it so the next
+      // short-chat nudge is gated.
+      markFollowBypassed();
+      setShowFollow(false);
+    }
+    clearAllTimeouts();
+    setEnded(false);
+    connect();
+  }
+
   function onCaptchaSuccess(token: string) {
     setCaptchaOpen(false);
     connect(token);
@@ -823,7 +858,7 @@ export function ChatWindow() {
           {/* Short (<5min) chat → Instagram follow nudge instead of feedback.
               The link opens in a new tab, so the user stays on the chat page. */}
           {ended && showFollow && !showFeedback && (
-            <FollowPrompt onFollow={followClicked} onDismiss={dismissFollow} />
+            <FollowPrompt gated={followGated} onFollow={followClicked} onDismiss={dismissFollow} />
           )}
 
           {/* Input bar. z-50 ensures no fixed-positioned overlay (e.g. the
@@ -841,13 +876,18 @@ export function ChatWindow() {
               style={{ touchAction: "manipulation" }}
             >
               <button
-                onClick={e => { e.stopPropagation(); skip(); }}
+                onClick={e => { e.stopPropagation(); ended ? findAnother() : skip(); }}
+                disabled={ended && showFollow && followGated}
                 className={
                   ended
-                    ? "bg-red text-paper-cool border-none rounded-[9px] px-3 py-2 font-sans text-xs font-bold tracking-tight shadow-hard-sm flex-shrink-0"
+                    ? "bg-red text-paper-cool border-none rounded-[9px] px-3 py-2 font-sans text-xs font-bold tracking-tight shadow-hard-sm flex-shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
                     : "bg-transparent border-none px-2.5 py-2 rounded-[9px] font-display text-base font-bold text-ink-mute flex-shrink-0"
                 }
-                title={ended ? "find another stranger" : "skip and find another"}
+                title={
+                  ended && showFollow && followGated
+                    ? "follow to unlock your next chat"
+                    : ended ? "find another stranger" : "skip and find another"
+                }
               >
                 {ended ? "find another" : "skip"}
               </button>

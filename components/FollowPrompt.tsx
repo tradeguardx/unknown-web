@@ -10,9 +10,13 @@ import { SOCIALS } from "@/lib/site";
 const IG = SOCIALS.find((s) => s.name === "Instagram" && s.url);
 
 export function FollowPrompt({
+  gated = false,
   onFollow,
   onDismiss,
 }: {
+  // When gated, the next chat is locked behind a Follow click: no dismiss / no
+  // "maybe later", and the copy makes the unlock explicit.
+  gated?: boolean;
   onFollow: () => void;
   onDismiss: () => void;
 }) {
@@ -22,19 +26,23 @@ export function FollowPrompt({
   return (
     <div className="px-4 pb-2">
       <div className="relative rounded-2xl border-2 border-ink bg-paper-cool p-4 shadow-hard-sm -rotate-[0.4deg]">
-        <button
-          onClick={onDismiss}
-          aria-label="dismiss"
-          className="absolute right-2 top-2 rounded-md px-1.5 py-0.5 font-sans text-xs font-bold text-ink-mute hover:text-ink"
-        >
-          ✕
-        </button>
+        {!gated && (
+          <button
+            onClick={onDismiss}
+            aria-label="dismiss"
+            className="absolute right-2 top-2 rounded-md px-1.5 py-0.5 font-sans text-xs font-bold text-ink-mute hover:text-ink"
+          >
+            ✕
+          </button>
+        )}
 
         <div className="mb-2 font-sans text-sm font-bold tracking-tight text-ink">
-          that was quick 👋
+          {gated ? "follow to unlock your next chat 🔓" : "that was quick 👋"}
         </div>
         <p className="mb-3 font-display text-[13px] leading-relaxed text-ink-soft">
-          follow us on instagram — we post the unhinged stranger moments there 👀
+          {gated
+            ? "tap follow on instagram and your next stranger unlocks right away 👇"
+            : "follow us on instagram — we post the unhinged stranger moments there 👀"}
         </p>
 
         <div className="flex items-center gap-2">
@@ -52,12 +60,14 @@ export function FollowPrompt({
             </svg>
             follow {IG.handle}
           </a>
-          <button
-            onClick={onDismiss}
-            className="rounded-xl px-2.5 py-2 font-display text-xs text-ink-mute hover:text-ink"
-          >
-            maybe later
-          </button>
+          {!gated && (
+            <button
+              onClick={onDismiss}
+              className="rounded-xl px-2.5 py-2 font-display text-xs text-ink-mute hover:text-ink"
+            >
+              maybe later
+            </button>
+          )}
         </div>
       </div>
     </div>
