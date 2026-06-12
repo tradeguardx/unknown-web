@@ -1,22 +1,74 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-// Persistent first-party visitor id. This is what lets analytics tell apart the
-// SAME user from a DIFFERENT user across days and networks (new vs returning) —
-// the IP+UA hash alone can't, because IPs change and rotate daily.
-//
-// On the first API request with no `uc_vid` cookie we mint one (random UUID) and
-// set it for a year. We also forward it (and a "is this their first ever visit?"
-// flag) to the route handler via request headers, so the SAME request that
-// creates the cookie still emits an event tagged correctly as a new visitor.
-//
-// Runs only on /api/* — page documents don't emit events, and scoping it here
-// means the very first event (the homepage's pageview beacon) is the request
-// that mints the cookie, so it's correctly classified as "new".
+// Two jobs:
+//  1. Persistent first-party visitor id (uc_vid) — lets analytics tell the SAME
+//     user apart across days/networks (new vs returning); IP+UA alone can't.
+//  2. Homepage auto-localization — send real users to /id or /pt based on their
+//     language/geo (their IG-ad traffic lands on "/" directly, so hreflang alone
+//     wouldn't reach them). Bots are exempt so crawling/SEO stays intact.
 
 const VID_COOKIE = "uc_vid";
+const LOC_COOKIE = "uc_loc"; // once set, the homepage is never auto-redirected again
 const ONE_YEAR = 60 * 60 * 24 * 365;
 
+// Map a visitor to a localized landing. Accept-Language is the primary signal
+// (the language they actually read); geo country is a secondary hint.
+const LOCALES = [
+  { path: "/id", langs: ["id", "in"], countries: ["ID"] }, // Bahasa Indonesia
+  { path: "/pt", langs: ["pt"], countries: ["BR", "PT"] }, // Portuguese (BR)
+];
+
+// Don't redirect crawlers — Googlebot must crawl "/", "/id", "/pt" independently
+// so hreflang + indexing work. Only real users get auto-localized.
+const BOT_RE =
+  /bot|crawl|spider|slurp|mediapartners|facebookexternalhit|embedly|quora|pinterest|whatsapp|telegrambot|slackbot|discordbot|bingpreview|google-?inspectiontool|chrome-lighthouse/i;
+
+function pickLocale(req: NextRequest): string | null {
+  const country = (req.headers.get("cf-ipcountry") || "").trim().toUpperCase();
+  const accept = (req.headers.get("accept-language") || "").toLowerCase();
+  // First language tag, e.g. "id-ID,id;q=0.9,en;q=0.8" -> "id"
+  const primaryLang = accept.split(",")[0]?.split("-")[0]?.trim() || "";
+
+  for (const loc of LOCALES) {
+    if (country && loc.countries.includes(country)) return loc.path;
+    if (primaryLang && loc.langs.includes(primaryLang)) return loc.path;
+  }
+  return null;
+}
+
 export function middleware(req: NextRequest) {
+  const { pathname, search } = req.nextUrl;
+
+  // --- Homepage auto-localization (only "/") --------------------------------
+  if (pathname === "/") {
+    const ua = req.headers.get("user-agent") || "";
+    const alreadyRouted = req.cookies.has(LOC_COOKIE);
+    const isBot = BOT_RE.test(ua);
+    const forceEn = req.nextUrl.searchParams.has("en"); // ?en pins English
+
+    if (!alreadyRouted && !isBot && !forceEn) {
+      const target = pickLocale(req);
+      if (target) {
+        const url = req.nextUrl.clone();
+        url.pathname = target;
+        url.search = search; // preserve ?utm_*, etc.
+        const res = NextResponse.redirect(url, 302);
+        res.cookies.set(LOC_COOKIE, target, { path: "/", maxAge: ONE_YEAR, sameSite: "lax" });
+        return res;
+      }
+    }
+    // English (or pinned / bot): remember the choice so we don't re-evaluate or loop.
+    if (!alreadyRouted) {
+      const res = withVid(req);
+      res.cookies.set(LOC_COOKIE, "en", { path: "/", maxAge: ONE_YEAR, sameSite: "lax" });
+      return res;
+    }
+  }
+
+  return withVid(req);
+}
+
+function withVid(req: NextRequest): NextResponse {
   const existing = req.cookies.get(VID_COOKIE)?.value;
   const vid = existing || crypto.randomUUID();
 
@@ -38,5 +90,5 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/api/:path*"],
+  matcher: ["/", "/api/:path*"],
 };
