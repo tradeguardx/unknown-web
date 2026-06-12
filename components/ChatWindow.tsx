@@ -299,7 +299,7 @@ export function ChatWindow() {
     try {
       const n = new Notification("unknown.chat", {
         body,
-        icon: "/icon.svg",
+        icon: "/icon-192.png",
         tag: "unknown-chat-msg", // collapses duplicate notifications
       });
       n.onclick = () => {

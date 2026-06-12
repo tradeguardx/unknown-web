@@ -107,11 +107,20 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     creator: "@unknownchat",
   },
-  // Icons come from the app/ file convention now:
-  //   app/favicon.ico  → Google Search favicon (raster 16/32/48)
-  //   app/icon.svg     → crisp modern-browser favicon
-  //   app/apple-icon.png → iOS home-screen icon
-  // (manifest references the 192/512 PNGs for PWA / install.)
+  // Full favicon set lives in /public. Declared explicitly so the correct <link>
+  // tags render (we removed the app/ icon convention files to avoid conflicts).
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/favicon-16x16.png", type: "image/png", sizes: "16x16" },
+      { url: "/favicon-32x32.png", type: "image/png", sizes: "32x32" },
+      { url: "/favicon-48x48.png", type: "image/png", sizes: "48x48" },
+    ],
+    shortcut: "/favicon.ico",
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+  },
+  // manifest references the 192/512 PNGs for PWA / install.
   manifest: "/manifest.webmanifest",
   // Google Search Console domain ownership verification.
   verification: {
