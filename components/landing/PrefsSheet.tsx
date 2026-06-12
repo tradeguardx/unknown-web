@@ -193,9 +193,9 @@ export function PrefsSheet({ open, onClose }: Props) {
           </div>
         )}
 
-        <p className="mt-4 text-xs text-ink-mute text-center font-display">
-          by tapping save & start, u accept these aren&apos;t real humans.{" "}
-          <Link href="/about" className="underline text-red">read more</Link>
+        <p className="mt-4 text-center font-sans text-[13px] leading-relaxed text-ink-soft">
+          {`By tapping "Save & Start", you acknowledge you're chatting with AI personas, not real people. `}
+          <Link href="/about" className="font-semibold text-red underline underline-offset-2">Learn more</Link>
         </p>
 
         <button
