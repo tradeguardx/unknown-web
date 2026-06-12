@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
-import { SITE_URL } from "@/lib/site";
+import { SITE_URL, SUPPORT_EMAIL } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "terms",
@@ -194,8 +194,8 @@ export default function TermsPage() {
 
             <Section title="Contact">
               <p>
-                Questions, complaints, or DMCA notices: please reach out via the contact details
-                on our <Link href="/about" className="underline hover:text-ink">about</Link> page.
+                Questions, complaints, or DMCA notices: email us at{" "}
+                <a href={`mailto:${SUPPORT_EMAIL}`} className="underline hover:text-ink">{SUPPORT_EMAIL}</a>.
               </p>
             </Section>
           </div>

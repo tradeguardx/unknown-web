@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
-import { SITE_URL } from "@/lib/site";
+import { SITE_URL, SUPPORT_EMAIL } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "about",
@@ -59,9 +59,8 @@ export default function About() {
 
           <h2 className="mt-10 text-xl font-semibold">contact</h2>
           <p className="mt-2 text-ink-soft">
-            For privacy questions, abuse reports, DMCA notices, or anything else — reach out
-            via the contact details on this page (TBD: replace with your preferred contact
-            method, e.g. an email address or a typeform link).
+            For privacy questions, abuse reports, DMCA notices, refunds, or anything else — email us at{" "}
+            <a href={`mailto:${SUPPORT_EMAIL}`} className="underline hover:text-ink text-red">{SUPPORT_EMAIL}</a>.
           </p>
 
           <div className="mt-10 text-sm text-ink-mute">

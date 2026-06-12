@@ -7,6 +7,10 @@ export const SITE_URL =
 
 export const SITE_NAME = "unknown.chat";
 
+// Support / contact email — the single way people reach us (refunds, privacy,
+// abuse, DMCA, general questions). Used everywhere we surface contact info.
+export const SUPPORT_EMAIL = "support@unknown.chat";
+
 // Social profiles we invite people to follow. Add Twitter/X here later and it
 // shows up everywhere <SocialFollow /> is rendered — no other change needed.
 // Set `url` to "" to hide a platform without deleting the entry.

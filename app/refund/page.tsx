@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
-import { SITE_URL, SOCIALS } from "@/lib/site";
+import { SITE_URL, SUPPORT_EMAIL } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "refund policy",
@@ -15,8 +15,6 @@ export const metadata: Metadata = {
     url: `${SITE_URL}/refund`,
   },
 };
-
-const IG = SOCIALS.find((s) => s.name === "Instagram" && s.url);
 
 export default function RefundPage() {
   const updated = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
@@ -65,8 +63,9 @@ export default function RefundPage() {
             <div>
               <h2 className="text-lg font-bold text-ink">How to request a refund</h2>
               <p className="mt-2 text-[15px]">
-                Reach out within 7 days{IG ? <> by messaging us on Instagram <a href={IG.url} target="_blank" rel="noopener noreferrer" className="underline text-red">{IG.handle}</a></> : ""} with the
-                email or account used for the purchase. Tell us you&apos;d like a refund — that&apos;s it.
+                Email us within 7 days at{" "}
+                <a href={`mailto:${SUPPORT_EMAIL}`} className="underline text-red">{SUPPORT_EMAIL}</a>{" "}
+                from (or mentioning) the email or account used for the purchase. Tell us you&apos;d like a refund — that&apos;s it.
               </p>
             </div>
 

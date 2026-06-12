@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
-import { SITE_URL } from "@/lib/site";
+import { SITE_URL, SUPPORT_EMAIL } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "privacy",
@@ -182,8 +182,8 @@ export default function PrivacyPage() {
 
             <Section title="Contact">
               <p>
-                For privacy questions or concerns, see the contact details on our{" "}
-                <Link href="/about" className="underline hover:text-ink">about</Link> page.
+                For privacy questions or concerns, email us at{" "}
+                <a href={`mailto:${SUPPORT_EMAIL}`} className="underline hover:text-ink">{SUPPORT_EMAIL}</a>.
               </p>
             </Section>
           </div>
