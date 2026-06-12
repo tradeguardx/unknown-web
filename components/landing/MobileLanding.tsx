@@ -40,6 +40,20 @@ export function MobileLanding({ testimonials }: { testimonials?: TestimonialsDat
           <MiniChat onTap={() => setSheetOpen(true)} />
         </section>
 
+        <Link
+          href="/plus"
+          className="group mt-9 lg:mt-14 flex items-center justify-between gap-3 rounded-2xl border-2 border-ink bg-lilac/40 px-4 py-3 shadow-hard-sm -rotate-[0.3deg] transition-transform hover:-translate-y-0.5"
+        >
+          <span className="font-sans text-[15px] font-bold text-ink">
+            unknown<span className="text-red">+</span>{" "}
+            <span className="font-display font-normal text-ink-soft">— save chats · audio · perfect match</span>
+          </span>
+          <span className="flex shrink-0 items-center gap-2">
+            <span className="rounded-full border-[1.5px] border-ink bg-yellow px-2 py-0.5 font-display text-[11px] font-bold text-ink -rotate-2">soon</span>
+            <span className="font-sans text-sm font-bold text-red transition-transform group-hover:translate-x-0.5">→</span>
+          </span>
+        </Link>
+
         <OverheardSection />
         <LastNight />
         <Testimonials data={testimonials ?? null} />

@@ -116,6 +116,18 @@ export function MenuDrawer({ open, onClose }: Props) {
 
         <div className="flex-1 px-5 py-4 flex flex-col gap-0.5 overflow-y-auto">
           <Section>navigate</Section>
+          <Link
+            href="/plus"
+            onClick={onClose}
+            className="flex items-center justify-between py-3 border-b-[1.5px] border-dashed border-paper-deep"
+          >
+            <span className="font-sans text-[17px] font-bold tracking-[-0.015em] text-red">
+              unknown+ ✨
+            </span>
+            <span className="rounded-full border-[1.5px] border-ink bg-yellow px-2 py-0.5 font-display text-[11px] font-bold text-ink -rotate-2">
+              soon
+            </span>
+          </Link>
           <DrawerLink href="/about" onClick={onClose}>about</DrawerLink>
           <DrawerLink href="/faq" onClick={onClose}>faq</DrawerLink>
           <DrawerLink href="/terms" onClick={onClose}>terms</DrawerLink>
