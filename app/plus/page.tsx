@@ -7,24 +7,29 @@ import { SITE_URL, SOCIALS } from "@/lib/site";
 export const metadata: Metadata = {
   title: { absolute: "unknown+ — coming soon | unknown.chat" },
   description:
-    "unknown+ is coming soon: save your chats, deeper personas, audio chat, perfect match, and unlimited strangers — for about $5/month.",
+    "unknown+ is coming soon: save your chats, no skips, build your own personas, and better matches — for about $5/month.",
   alternates: { canonical: `${SITE_URL}/plus` },
   openGraph: {
     title: "unknown+ — coming soon",
-    description: "Save chats, deeper personas, audio chat, perfect match, unlimited — ~$5/mo.",
+    description: "Save chats, no skips, build your own personas, better match — ~$5/mo.",
     url: `${SITE_URL}/plus`,
   },
 };
 
 const IG = SOCIALS.find((s) => s.name === "Instagram" && s.url);
 
+// The ONE hero feature (Apple-style — make one bigger than the rest).
+const HERO_FEATURE = {
+  emoji: "💾",
+  title: "Save Chats",
+  line: "The conversations that usually disappear… don’t anymore.",
+};
+
+// Supporting trio.
 const FEATURES: { emoji: string; title: string; desc: string }[] = [
-  { emoji: "💾", title: "Save your chats", desc: "Keep the conversations that usually vanish when you close the tab." },
-  { emoji: "🧠", title: "Better personas", desc: "Smarter, deeper strangers with more memory — they remember you across chats." },
-  { emoji: "🎙️", title: "Audio chat", desc: "Actually talk out loud, not just text. Hear the persona, voice your side." },
-  { emoji: "💘", title: "Perfect match", desc: "Pick the exact vibe — mood, personality, country, energy — instead of a random draw." },
-  { emoji: "♾️", title: "Unlimited", desc: "No caps, no waiting, no captcha. Skip to a fresh stranger as much as you want." },
-  { emoji: "🎨", title: "Custom personas", desc: "Shape your own stranger — looks, backstory, the way they text." },
+  { emoji: "🚫", title: "No skips", desc: "Strangers stay. No ghosting, no leaving you mid-chat." },
+  { emoji: "🎨", title: "Build your own personas", desc: "Design your stranger — their vibe, backstory, the way they text." },
+  { emoji: "💘", title: "Better match", desc: "Pick the exact mood, energy & personality — not a random draw." },
 ];
 
 export default function PlusPage() {
@@ -65,8 +70,19 @@ export default function PlusPage() {
             <p className="mt-2.5 font-display text-xs text-ink-mute">cancel anytime · 7-day money-back guarantee</p>
           </div>
 
-          {/* Features */}
-          <div className="mt-10 grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {/* Hero feature — one bigger than the rest (Apple-style) */}
+          <div className="mt-10 relative overflow-hidden rounded-3xl border-[2.5px] border-ink bg-gradient-to-br from-lilac/55 via-paper-cool to-yellow/40 p-6 lg:p-8 shadow-hard -rotate-[0.4deg]">
+            <div className="text-4xl lg:text-5xl">{HERO_FEATURE.emoji}</div>
+            <h2 className="mt-3 font-sans text-2xl lg:text-4xl font-bold tracking-tight text-ink">
+              {HERO_FEATURE.title}
+            </h2>
+            <p className="mt-2 font-serif italic text-lg lg:text-2xl leading-snug text-ink-soft max-w-md">
+              {HERO_FEATURE.line}
+            </p>
+          </div>
+
+          {/* Supporting trio */}
+          <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
             {FEATURES.map((f, i) => (
               <div
                 key={f.title}

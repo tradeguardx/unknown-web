@@ -65,7 +65,7 @@ export function MobileLanding({ testimonials }: { testimonials?: TestimonialsDat
               </div>
 
               <div className="mt-2.5 flex flex-wrap gap-1.5">
-                {["💾 save chats", "🎙️ audio", "💘 perfect match", "♾️ unlimited"].map((p) => (
+                {["💾 save chats", "🚫 no skips", "🎨 build personas", "💘 better match"].map((p) => (
                   <span
                     key={p}
                     className="rounded-full border-[1.5px] border-ink bg-paper-cool px-2 py-0.5 font-display text-[11.5px] font-semibold text-ink"
