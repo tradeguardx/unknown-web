@@ -14,6 +14,7 @@ import { useState } from "react";
 import { PrefsSheet } from "./PrefsSheet";
 import { MenuDrawer } from "./MenuDrawer";
 import { Testimonials } from "./Testimonials";
+import { HomeFAQ } from "./HomeFAQ";
 import { SocialFollow } from "@/components/SocialFollow";
 import type { TestimonialsData } from "@/lib/testimonials";
 
@@ -40,6 +41,7 @@ export function MobileLanding({ testimonials }: { testimonials?: TestimonialsDat
         <OverheardSection />
         <Testimonials data={testimonials ?? null} />
         <WhyPostits />
+        <HomeFAQ />
         <Footer />
       </main>
 
@@ -70,11 +72,11 @@ function Header({ onMenu }: { onMenu: () => void }) {
 function Wordmark({ size = "sm" }: { size?: "sm" | "lg" }) {
   if (size === "lg") {
     return (
-      <h1 className="inline-block relative font-sans font-bold text-5xl lg:text-7xl xl:text-8xl leading-[0.9] tracking-[-0.05em] text-ink mb-3.5 lg:mb-5">
+      <div className="inline-block relative font-sans font-bold text-5xl lg:text-7xl xl:text-8xl leading-[0.9] tracking-[-0.05em] text-ink mb-3.5 lg:mb-5">
         unknown
         <span className="text-red text-[0.65em] inline-block -translate-y-[0.12em]">.</span>
         chat
-      </h1>
+      </div>
     );
   }
   return (
@@ -101,9 +103,9 @@ function LiveCounter() {
 function Hero({ onStart }: { onStart: () => void }) {
   return (
     <section className="pt-4 lg:pt-0 pb-6 lg:pb-0 text-center lg:text-left relative">
-      <div className="inline-flex items-center gap-[7px] font-display text-lg lg:text-xl text-red font-semibold mb-2.5 lg:mb-4 -rotate-2 before:content-[''] before:w-[18px] before:h-[1.5px] before:bg-red before:rounded after:content-[''] after:w-[18px] after:h-[1.5px] after:bg-red after:rounded">
-        talk to a stranger · no signup
-      </div>
+      <h1 className="inline-flex items-center gap-[7px] font-display text-lg lg:text-xl text-red font-semibold mb-2.5 lg:mb-4 -rotate-2 before:content-[''] before:w-[18px] before:h-[1.5px] before:bg-red before:rounded after:content-[''] after:w-[18px] after:h-[1.5px] after:bg-red after:rounded">
+        talk to an AI stranger · no signup
+      </h1>
 
       <div className="relative inline-block py-2">
         <span className="absolute top-6 left-2.5 lg:top-8 lg:left-4 z-[5] bg-yellow border-[1.5px] border-ink rounded-full px-2.5 py-1 font-display text-sm lg:text-base font-bold text-ink shadow-hard-xs -rotate-[10deg] whitespace-nowrap">

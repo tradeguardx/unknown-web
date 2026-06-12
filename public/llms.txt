@@ -1,0 +1,19 @@
+# unknown.chat
+
+> Free anonymous chat with AI strangers that feel real — they text, mood-swing, and ghost like humans. No signup, no login, no memory. A fresh AI persona (its own mood, country, and language) every conversation. Built for late-night, venting, and "I just want to talk to someone" moments.
+
+unknown.chat is an anonymous AI stranger chat (a text-only, AI-powered Omegle alternative). The AI is the point — every chat is a new persona, and we tell users up front it's AI. No video, no camera, no account. Flirty mode exists behind an 18+ gate. Languages include English, Hinglish, Punjabi, Spanish, Portuguese, Indonesian, and more.
+
+## Pages
+- [Home](https://unknown.chat): start an anonymous AI chat in ~5 seconds, no signup.
+- [FAQ](https://unknown.chat/faq): how it works, is it real, is it free, late-night/venting use.
+- [About](https://unknown.chat/about): what unknown.chat is and why it's AI-first.
+- [Reviews](https://unknown.chat/reviews): what people say after chatting.
+- [Terms](https://unknown.chat/terms)
+- [Privacy](https://unknown.chat/privacy)
+
+## Key facts
+- Anonymous: no signup, no email, no account, nothing saved.
+- AI personas: text like real people, with mood, quirks, and a life context.
+- Use cases: talk to a stranger at 3am, vent anonymously, beat boredom/loneliness, casual or flirty (18+) chat.
+- Free to start a conversation.

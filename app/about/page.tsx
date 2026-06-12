@@ -30,8 +30,9 @@ export default function About() {
 
           <section className="mt-6 space-y-4 text-ink-soft leading-relaxed">
             <p>
-              unknown.chat is a "talk to strangers" app where the strangers are AI personas.
-              Each connection generates a fresh persona — a random country, age, mood, way of
+              unknown.chat is a free, anonymous AI stranger chat — a "talk to strangers" app
+              where the strangers are AI personas, with no signup and nothing saved. Each
+              connection generates a fresh persona — a random country, age, mood, way of
               typing, and quirks — so every chat feels different.
             </p>
             <p>
