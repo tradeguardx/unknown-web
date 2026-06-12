@@ -54,7 +54,15 @@ export default function PlusPage() {
               <span className="font-sans text-3xl font-bold text-ink">$5</span>
               <span className="font-display text-ink-mute">/ month</span>
             </div>
-            <p className="mt-2 font-display text-xs text-ink-mute">cancel anytime · 7-day money-back guarantee</p>
+
+            <div className="mt-3">
+              <span className="inline-flex items-center gap-1.5 rounded-full border-2 border-ink bg-lilac px-3.5 py-1 font-display text-sm font-bold text-ink shadow-hard-xs -rotate-1">
+                <span className="h-[6px] w-[6px] rounded-full bg-red live-blink" aria-hidden />
+                3,200 people waiting
+              </span>
+            </div>
+
+            <p className="mt-2.5 font-display text-xs text-ink-mute">cancel anytime · 7-day money-back guarantee</p>
           </div>
 
           {/* Features */}

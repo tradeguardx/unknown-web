@@ -107,3 +107,19 @@ body {
     rgba(255, 255, 255, 0.2) 6px
   );
 }
+
+/* "stranger" pill (mini-chat header). Was inline in MobileLanding; moved here so
+   the extracted MiniChat component can use it. */
+.stranger-blob {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #e64a3a;
+  color: #faf5e6;
+  padding: 1px 8px;
+  border-radius: 100px;
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  transform: rotate(-2deg);
+}
