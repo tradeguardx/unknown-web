@@ -37,12 +37,10 @@ export function FollowPrompt({
         )}
 
         <div className="mb-2 font-sans text-sm font-bold tracking-tight text-ink">
-          {gated ? "follow to unlock your next chat 🔓" : "that was quick 👋"}
+          early users get unlimited new personas ✨
         </div>
         <p className="mb-3 font-display text-[13px] leading-relaxed text-ink-soft">
-          {gated
-            ? "tap follow on instagram and your next stranger unlocks right away 👇"
-            : "follow us on instagram — we post the unhinged stranger moments there 👀"}
+          follow us on instagram to continue 👀
         </p>
 
         <div className="flex items-center gap-2">

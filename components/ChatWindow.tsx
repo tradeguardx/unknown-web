@@ -18,11 +18,10 @@ import { FollowPrompt } from "./FollowPrompt";
 //                  the proxy) → never nudged to follow again.
 //
 // Tiers (decided in the chat-end effect):
-//   <5min   → FOLLOW, optional (can skip past freely)
-//   5–10min → FOLLOW gated (follow to continue); once followed → REVIEW gated
-//   >10min  → REVIEW gated (review to continue); once reviewed → FOLLOW gated
-const SHORT_MAX_MS = 5 * 60_000;   // < this  → short chat
-const LONG_MIN_MS = 10 * 60_000;   // >= this → long chat (5–10min is "medium")
+//   <10min → SOFT follow nudge (optional — NEVER blocks the next chat)
+//   ≥10min → REVIEW gated (must rate to continue); once rated → soft follow
+// Follow is always soft; only the review is gated.
+const LONG_MIN_MS = 10 * 60_000;   // >= this → long chat → review gate
 const REVIEW_GIVEN_KEY = "unknownchat:review:given:v1";
 const FOLLOW_DONE_KEY = "unknownchat:follow:done:v1";
 
@@ -166,26 +165,22 @@ export function ChatWindow() {
   useEffect(() => { endedRef.current = ended; }, [ended]);
 
   // When a chat ends, pick ONE post-chat ask, tiered by DURATION:
-  //   <5min   → follow, optional
-  //   5–10min → follow gated; once followed → review gated
-  //   >10min  → review gated; once reviewed → follow gated
+  //   <10min → SOFT follow nudge (optional, never blocks the next chat)
+  //   ≥10min → REVIEW gate (must rate to continue); once rated → soft follow
+  // Follow is ALWAYS soft now (no hard follow gate); only the review is gated.
   useEffect(() => {
     if (!ended) return;
     if (chatStartRef.current <= 0) return; // no real chat happened
     const dur = Date.now() - chatStartRef.current;
     const followed = followDone();
     const reviewed = reviewGiven();
-    if (dur < SHORT_MAX_MS) {
-      // Short chat → optional follow nudge (skippable). Nothing if already following.
+    if (dur < LONG_MIN_MS) {
+      // Short/medium chat → optional follow nudge (skippable).
       if (!followed) { setFollowGated(false); setShowFollow(true); }
-    } else if (dur < LONG_MIN_MS) {
-      // Medium (5–10min) → follow to continue; once followed, ask for a review.
-      if (!followed) { setFollowGated(true); setShowFollow(true); }
-      else if (!reviewed) { setReviewGated(true); setShowFeedback(true); }
     } else {
-      // Long (>10min) → review to continue; once reviewed, ask for a follow.
+      // Long (≥10min) → review to continue; once rated, a soft follow nudge.
       if (!reviewed) { setReviewGated(true); setShowFeedback(true); }
-      else if (!followed) { setFollowGated(true); setShowFollow(true); }
+      else if (!followed) { setFollowGated(false); setShowFollow(true); }
     }
   }, [ended]);
 
@@ -712,8 +707,7 @@ export function ChatWindow() {
       const followed = followDone();
       const reviewed = reviewGiven();
       const willPrompt =
-        dur < SHORT_MAX_MS ? !followed
-        : dur < LONG_MIN_MS ? (!followed || !reviewed)
+        dur < LONG_MIN_MS ? !followed
         : (!reviewed || !followed);
       if (willPrompt) {
         clearAllTimeouts();
