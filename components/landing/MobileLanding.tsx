@@ -42,16 +42,44 @@ export function MobileLanding({ testimonials }: { testimonials?: TestimonialsDat
 
         <Link
           href="/plus"
-          className="group mt-9 lg:mt-14 flex items-center justify-between gap-3 rounded-2xl border-2 border-ink bg-lilac/40 px-4 py-3 shadow-hard-sm -rotate-[0.3deg] transition-transform hover:-translate-y-0.5"
+          aria-label="unknown+ — coming soon"
+          className="group mt-9 lg:mt-14 block overflow-hidden rounded-2xl border-[2.5px] border-ink bg-gradient-to-br from-lilac/60 via-paper-cool to-yellow/45 shadow-hard -rotate-[0.4deg] transition-transform hover:-translate-y-0.5"
         >
-          <span className="font-sans text-[15px] font-bold text-ink">
-            unknown<span className="text-red">+</span>{" "}
-            <span className="font-display font-normal text-ink-soft">— save chats · audio · perfect match</span>
-          </span>
-          <span className="flex shrink-0 items-center gap-2">
-            <span className="rounded-full border-[1.5px] border-ink bg-yellow px-2 py-0.5 font-display text-[11px] font-bold text-ink -rotate-2">soon</span>
-            <span className="font-sans text-sm font-bold text-red transition-transform group-hover:translate-x-0.5">→</span>
-          </span>
+          <div className="flex items-center justify-between gap-4 p-4 lg:p-5">
+            <div className="min-w-0">
+              <div className="mb-1.5 flex flex-wrap items-center gap-2">
+                <span className="rounded-full border-[1.5px] border-ink bg-yellow px-2 py-0.5 font-display text-[11px] font-bold text-ink -rotate-1">
+                  ✨ coming soon
+                </span>
+                <span className="inline-flex items-center gap-1 font-display text-[12px] font-bold text-ink-soft">
+                  <span className="h-[6px] w-[6px] rounded-full bg-red live-blink" aria-hidden />
+                  3,200 waiting
+                </span>
+              </div>
+
+              <div className="font-sans text-xl lg:text-2xl font-bold tracking-tight text-ink leading-tight">
+                unknown<span className="text-red">+</span>
+                <span className="ml-1.5 font-display text-sm lg:text-base font-normal text-ink-soft">
+                  — turn the chat all the way up
+                </span>
+              </div>
+
+              <div className="mt-2.5 flex flex-wrap gap-1.5">
+                {["💾 save chats", "🎙️ audio", "💘 perfect match", "♾️ unlimited"].map((p) => (
+                  <span
+                    key={p}
+                    className="rounded-full border-[1.5px] border-ink bg-paper-cool px-2 py-0.5 font-display text-[11.5px] font-semibold text-ink"
+                  >
+                    {p}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <span className="hidden sm:inline-flex shrink-0 items-center gap-1 self-center rounded-xl border-2 border-ink bg-red px-4 py-2.5 font-sans text-[13px] font-bold tracking-tight text-paper-cool shadow-hard-xs">
+              peek <span className="transition-transform group-hover:translate-x-0.5">→</span>
+            </span>
+          </div>
         </Link>
 
         <OverheardSection />
