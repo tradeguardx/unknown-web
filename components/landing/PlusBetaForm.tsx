@@ -43,8 +43,8 @@ export function PlusBetaForm() {
         <div className="text-3xl">🎉</div>
         <h3 className="mt-2 font-sans text-xl font-bold tracking-tight text-ink">you&apos;re on the list!</h3>
         <p className="mt-1.5 font-display text-[15px] leading-relaxed text-ink-soft">
-          we&apos;ll email you the moment unknown+ goes live — and your{" "}
-          <span className="font-bold text-ink">first month is free</span>. 🎁
+          last step — <span className="font-bold text-ink">make sure you&apos;re following us</span> on instagram.
+          that&apos;s how you claim your <span className="font-bold text-ink">free month</span>. we&apos;ll ping you when unknown+ is live. 🎁
         </p>
         {IG && (
           <a
@@ -53,7 +53,7 @@ export function PlusBetaForm() {
             rel="noopener noreferrer"
             className="mt-4 inline-flex items-center gap-1.5 rounded-xl border-2 border-ink bg-red px-4 py-2 font-sans text-[13px] font-bold tracking-tight text-paper-cool shadow-hard-xs"
           >
-            follow {IG.handle} for updates
+            follow {IG.handle} →
           </a>
         )}
       </div>
@@ -73,43 +73,54 @@ export function PlusBetaForm() {
           get unknown<span className="text-red">+</span> free
         </h3>
         <p className="mt-1.5 font-display text-[14px] leading-relaxed text-ink-soft">
-          register for the beta — we&apos;ll notify you when it&apos;s live and you get your{" "}
-          <span className="font-bold text-ink">first month free</span>.
+          <span className="font-bold text-ink">follow us</span> + register, and your{" "}
+          <span className="font-bold text-ink">first month is free</span> when we launch.
         </p>
       </div>
 
-      <div className="mt-5 space-y-2.5">
-        <label className="block">
-          <span className="mb-1 block font-display text-[13px] font-bold text-ink">your email</span>
-          <input
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@email.com"
-            className="w-full rounded-xl border-2 border-ink bg-paper px-3.5 py-2.5 font-sans text-[14px] text-ink outline-none placeholder:text-ink-mute focus:-translate-y-px transition-transform"
-          />
-        </label>
-        <label className="block">
-          <span className="mb-1 block font-display text-[13px] font-bold text-ink">
-            instagram <span className="font-normal text-ink-mute">(optional — we&apos;ll ping you there too)</span>
-          </span>
-          <input
-            type="text"
-            value={instagram}
-            onChange={(e) => setInstagram(e.target.value)}
-            placeholder="@yourhandle"
-            className="w-full rounded-xl border-2 border-ink bg-paper px-3.5 py-2.5 font-sans text-[14px] text-ink outline-none placeholder:text-ink-mute focus:-translate-y-px transition-transform"
-          />
-        </label>
+      {/* Step 1 — follow (the perk is for followers) */}
+      {IG && (
+        <a
+          href={IG.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl border-2 border-ink bg-red px-4 py-2.5 font-sans text-[13px] font-bold tracking-tight text-paper-cool shadow-hard transition-transform hover:-translate-y-0.5"
+        >
+          <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" aria-hidden>
+            <rect x="3" y="3" width="18" height="18" rx="5" stroke="currentColor" strokeWidth="2" />
+            <circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="2" />
+            <circle cx="17.5" cy="6.5" r="1.2" fill="currentColor" />
+          </svg>
+          ① follow {IG.handle}
+        </a>
+      )}
+
+      {/* Step 2 — details */}
+      <div className="mt-4 space-y-2.5">
+        <span className="block font-display text-[13px] font-bold text-ink">② drop your details</span>
+        <input
+          type="email"
+          required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="your email"
+          className="w-full rounded-xl border-2 border-ink bg-paper px-3.5 py-2.5 font-sans text-[14px] text-ink outline-none placeholder:text-ink-mute focus:-translate-y-px transition-transform"
+        />
+        <input
+          type="text"
+          value={instagram}
+          onChange={(e) => setInstagram(e.target.value)}
+          placeholder="@yourhandle (so we can confirm your follow)"
+          className="w-full rounded-xl border-2 border-ink bg-paper px-3.5 py-2.5 font-sans text-[14px] text-ink outline-none placeholder:text-ink-mute focus:-translate-y-px transition-transform"
+        />
       </div>
 
       <button
         type="submit"
         disabled={status === "sending"}
-        className="mt-4 w-full rounded-xl border-2 border-ink bg-red px-5 py-3 font-sans font-bold tracking-tight text-paper-cool shadow-hard transition-transform hover:-translate-y-0.5 disabled:opacity-60 disabled:cursor-not-allowed"
+        className="mt-4 w-full rounded-xl border-2 border-ink bg-ink px-5 py-3 font-sans font-bold tracking-tight text-paper-cool shadow-hard transition-transform hover:-translate-y-0.5 disabled:opacity-60 disabled:cursor-not-allowed"
       >
-        {status === "sending" ? "reserving…" : "reserve my free month →"}
+        {status === "sending" ? "claiming…" : "claim my free month →"}
       </button>
 
       {status === "error" && (
