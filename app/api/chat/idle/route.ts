@@ -18,9 +18,10 @@ import { callLLM, trimHistory } from "@/lib/llmProvider";
 import { clientIp, rateLimit } from "@/lib/rateLimit";
 import { onChatEnded } from "@/lib/chatClose";
 
-// Cap on consecutive idle pings before we force the persona to leave. Real
-// strangers don't keep poking; after 2 unanswered pings, the chat is over.
-const MAX_SILENT_PINGS = 2;
+// Cap on consecutive idle pings before we force the persona to leave. Journey:
+// idle #1 → the persona pings ("u there?"); idle #2 → still no reply → force
+// leave (reason "silent"). One nudge, then out — real strangers don't keep poking.
+const MAX_SILENT_PINGS = 1;
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
