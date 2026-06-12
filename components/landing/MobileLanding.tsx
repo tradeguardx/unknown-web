@@ -15,7 +15,7 @@ import { PrefsSheet } from "./PrefsSheet";
 import { MenuDrawer } from "./MenuDrawer";
 import { Testimonials } from "./Testimonials";
 import { HomeFAQ } from "./HomeFAQ";
-import { SocialFollow } from "@/components/SocialFollow";
+import { SiteFooter } from "@/components/SiteFooter";
 import type { TestimonialsData } from "@/lib/testimonials";
 
 export function MobileLanding({ testimonials }: { testimonials?: TestimonialsData | null }) {
@@ -42,7 +42,7 @@ export function MobileLanding({ testimonials }: { testimonials?: TestimonialsDat
         <Testimonials data={testimonials ?? null} />
         <WhyPostits />
         <HomeFAQ />
-        <Footer />
+        <SiteFooter />
       </main>
 
       <PrefsSheet open={sheetOpen} onClose={() => setSheetOpen(false)} />
@@ -364,22 +364,6 @@ function WhyPostits() {
 }
 
 // ─── footer ──────────────────────────────────────────────────────────────
-
-function Footer() {
-  return (
-    <div className="mt-7 lg:mt-20 pt-5 lg:pt-8 border-t-[1.5px] border-dashed border-paper-deep text-center font-display text-sm lg:text-base text-ink-mute">
-      <div className="flex flex-wrap justify-center gap-x-3 gap-y-1 mb-2 font-sans text-xs lg:text-sm">
-        <Link href="/about" className="text-ink-mute hover:text-ink">about</Link>
-        <span aria-hidden>·</span>
-        <Link href="/terms" className="text-ink-mute hover:text-ink">terms</Link>
-        <span aria-hidden>·</span>
-        <Link href="/privacy" className="text-ink-mute hover:text-ink">privacy</Link>
-      </div>
-      <SocialFollow className="mb-4" />
-      <div>made for the strange &amp; sleepless ♡</div>
-    </div>
-  );
-}
 
 // ─── doodles ─────────────────────────────────────────────────────────────
 

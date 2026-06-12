@@ -7,6 +7,7 @@
 // per the feedback_disclosure memory.
 
 import Link from "next/link";
+import { SocialFollow } from "@/components/SocialFollow";
 
 const YEAR = new Date().getFullYear();
 
@@ -35,6 +36,8 @@ export function SiteFooter() {
         and{" "}
         <Link href="/privacy" className="underline text-red font-semibold">privacy policy</Link>.
       </div>
+      <SocialFollow className="mb-3" />
+      <div className="font-display text-[13px] text-ink-mute mb-1">made for the strange &amp; sleepless ♡</div>
       <div className="font-mono text-[11px] text-ink-faint">© {YEAR} unknown.chat</div>
     </footer>
   );
