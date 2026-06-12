@@ -20,9 +20,13 @@ export function SiteFooter() {
         <span aria-hidden className="text-ink-faint">·</span>
         <Link href="/faq" className="text-ink-mute hover:text-ink">faq</Link>
         <span aria-hidden className="text-ink-faint">·</span>
+        <Link href="/plus" className="text-ink-mute hover:text-ink">unknown+</Link>
+        <span aria-hidden className="text-ink-faint">·</span>
         <Link href="/terms" className="text-ink-mute hover:text-ink">terms</Link>
         <span aria-hidden className="text-ink-faint">·</span>
         <Link href="/privacy" className="text-ink-mute hover:text-ink">privacy</Link>
+        <span aria-hidden className="text-ink-faint">·</span>
+        <Link href="/refund" className="text-ink-mute hover:text-ink">refund</Link>
       </div>
       <div className="font-display text-[15px] text-ink-soft leading-relaxed mb-2">
         The strangers on unknown.chat are AI personas, not real people. By using this site
