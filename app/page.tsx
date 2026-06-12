@@ -20,7 +20,11 @@ import { SITE_URL, SITE_NAME } from "@/lib/site";
 export const revalidate = 120;
 
 export const metadata: Metadata = {
-  title: "Talk to a stranger at 3am — anonymous AI chat, no signup",
+  // ABSOLUTE so the "· unknown.chat" template isn't appended (that pushed the
+  // title to ~70 chars, and Google collapsed it to the bare brand). Keyword-led
+  // + concise (~48 chars) so Google renders a rich title; the domain shows on a
+  // separate line above it, so no brand token needed here.
+  title: { absolute: "Talk to Strangers — Anonymous AI Chat, No Signup" },
   description:
     "Free anonymous chat with AI strangers that feel real — text, mood-swing, and ghost like humans. No signup, no memory, fresh persona every chat.",
   alternates: {
