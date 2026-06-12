@@ -30,6 +30,19 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "daily",
       priority: 0.7,
     },
+    // Localized landing pages (Bahasa Indonesia, Brazilian Portuguese).
+    {
+      url: `${SITE_URL}/id`,
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.7,
+    },
+    {
+      url: `${SITE_URL}/pt`,
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.7,
+    },
     {
       url: `${SITE_URL}/terms`,
       lastModified: now,

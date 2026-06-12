@@ -29,6 +29,13 @@ export const metadata: Metadata = {
     "Free anonymous chat with AI strangers that feel real — text, mood-swing, and ghost like humans. No signup, no memory, fresh persona every chat.",
   alternates: {
     canonical: SITE_URL,
+    // hreflang cluster — links the English landing to the localized pages.
+    languages: {
+      en: SITE_URL,
+      id: `${SITE_URL}/id`,
+      "pt-BR": `${SITE_URL}/pt`,
+      "x-default": SITE_URL,
+    },
   },
   openGraph: {
     title: "unknown.chat — talk to a stranger at 3am",
