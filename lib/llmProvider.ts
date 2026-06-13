@@ -38,18 +38,21 @@ function getEnvConfig(): LLMProviderConfig {
 // (no mid-conversation voice switch).
 //
 // In "mixed" mode we route by LANGUAGE:
-//   - English (or unset/stale) + Indic languages (hinglish, punjabi, …) → Sarvam.
-//     Sarvam is tuned for Indian languages + code-mixing and is strong at English
-//     too — this is the bulk of our traffic.
+//   - Indic languages (hinglish, punjabi, …) → Sarvam. Tuned for Indian
+//     languages + code-mixing.
+//   - English (or unset/stale, which is overwhelmingly English) → DeepSeek.
 //   - Every other (non-Indic, non-English) language → Claude/Anthropic for its
 //     stronger general multilingual quality.
-// (DeepSeek is no longer in the chat routing.)
 export function pickProviderForSession(prefs?: UserPrefs): LLMProvider {
   const cfg = getEnvConfig();
   if (cfg !== "mixed") return cfg; // forced single-provider mode
   const lang = prefs?.language;
-  const englishOrIndic = !lang || lang === "english" || !isLanguage(lang) || isIndicLanguage(lang);
-  return englishOrIndic ? "sarvam" : "anthropic";
+  // Indic → Sarvam.
+  if (isIndicLanguage(lang)) return "sarvam";
+  // English, or unset / stale / unrecognized (default traffic is English) → DeepSeek.
+  if (!lang || lang === "english" || !isLanguage(lang)) return "deepseek";
+  // Every other recognized language → Claude.
+  return "anthropic";
 }
 
 // Back-compat default picker. If "mixed" mode is on and this is called outside
