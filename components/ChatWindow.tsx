@@ -8,6 +8,19 @@ import { CaptchaModal } from "./CaptchaModal";
 import { LookingView } from "./landing/LookingView";
 import { MenuDrawer } from "./landing/MenuDrawer";
 import { loadPrefs } from "@/lib/clientPrefs";
+import { OpenerStarters } from "./chat/OpenerStarters";
+import type { ChatIntent } from "@/lib/prefs";
+
+// Friendly label for the bottom "mood:" line, derived from the user's intent.
+const MOOD_LABELS: Record<ChatIntent, string> = {
+  anything: "open to anything",
+  casual: "chill",
+  love: "romantic",
+  flirt: "flirty",
+  friends: "friendly",
+  vent: "here to listen",
+  deep: "deep",
+};
 import { FeedbackPrompt } from "./FeedbackPrompt";
 import { FollowPrompt } from "./FollowPrompt";
 
@@ -87,6 +100,7 @@ interface PacedMessage {
 
 interface StartResponse {
   sessionId: string;
+  vibe?: string;
   opener:
     | { willSendFirst: true; text: string; delayMs: number; preTypingMs: number }
     | { willSendFirst: false };
@@ -113,6 +127,10 @@ function nextIdleDelayMs(): number {
 
 export function ChatWindow() {
   const [sessionId, setSessionId] = useState<string | null>(null);
+  // Short persona "vibe" line (e.g. "night owl · into late chats") + the user's
+  // chosen intent — both shown in the new chat chrome.
+  const [vibe, setVibe] = useState<string>();
+  const [intent, setIntent] = useState<ChatIntent>();
   const [messages, setMessages] = useState<DisplayMsg[]>([]);
   const [typing, setTyping] = useState(false);
   const [input, setInput] = useState("");
@@ -541,6 +559,7 @@ export function ChatWindow() {
       await new Promise(r => schedule(r as () => void, 600 + Math.random() * 1400));
 
       const prefs = loadPrefs();
+      setIntent(prefs?.intent);
       const res = await fetch("/api/chat/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -560,6 +579,7 @@ export function ChatWindow() {
       if (!res.ok) throw new Error("failed to start");
       const data = (await res.json()) as StartResponse;
       setSessionId(data.sessionId);
+      setVibe(data.vibe);
       chatStartRef.current = Date.now();
       setShowFeedback(false);
       pushMsg({ role: "system", text: "you're now chatting with a random stranger." });
@@ -592,8 +612,8 @@ export function ChatWindow() {
     if (el) el.scrollTop = el.scrollHeight;
   }, [messages, typing]);
 
-  async function send() {
-    const text = input.trim();
+  async function send(textArg?: string) {
+    const text = (textArg ?? input).trim();
     if (!text || !sessionId || ended) return;
 
     lastUserActivityRef.current = Date.now();
@@ -758,6 +778,11 @@ export function ChatWindow() {
     m => !(m.role === "system" && m.text === "looking for a stranger..."),
   );
 
+  // Connected, nobody has spoken yet (stranger didn't open, user hasn't typed) →
+  // show the "say something first?" starters instead of a blank thread.
+  const noConversationYet =
+    !!sessionId && !ended && !messages.some(m => m.role === "user" || m.role === "assistant");
+
   return (
     <div className="min-h-screen flex flex-col max-w-md lg:max-w-2xl mx-auto w-full">
       {/* Header — wordmark + a live status pill (connected / disconnected /
@@ -813,38 +838,62 @@ export function ChatWindow() {
           {/* Context strip — stranger blob + connection age + (vibes pill
               when connected). Hidden during a chat that already ended;
               replaced with a simple "stranger left" line. */}
-          <div className="flex items-center justify-between px-5 py-2.5 border-b-[1.5px] border-dashed border-paper-deep flex-shrink-0">
-            <div className="flex items-center gap-2 font-display text-sm font-semibold text-ink">
-              {ended ? (
-                <span className="text-ink-mute">stranger left.</span>
-              ) : (
-                <>
-                  <span className="inline-flex items-center gap-1 bg-red text-paper-cool px-2 py-[1px] rounded-full font-sans text-[10px] font-bold -rotate-2">
-                    <span className="w-[4px] h-[4px] rounded-full bg-paper-cool" />
-                    stranger
-                  </span>
-                  <LastSeenLabel typing={typing} lastSeenAt={lastSeenAt} />
-                </>
-              )}
+          <div className="flex items-start justify-between px-5 py-2.5 border-b-[1.5px] border-dashed border-paper-deep flex-shrink-0">
+            <div className="flex items-center gap-2.5 min-w-0">
+              {/* Stranger avatar — friendly lilac blob. */}
+              <span className="flex-shrink-0 h-9 w-9 rounded-2xl bg-lilac border-2 border-ink flex items-center justify-center" aria-hidden>
+                <svg width="20" height="20" viewBox="0 0 24 24">
+                  <circle cx="8.5" cy="10" r="1.3" fill="#1a1610" />
+                  <circle cx="15.5" cy="10" r="1.3" fill="#1a1610" />
+                  <path d="M8 14.5c1.2 1.5 2.6 2.2 4 2.2s2.8-.7 4-2.2" stroke="#1a1610" strokeWidth="1.6" fill="none" strokeLinecap="round" />
+                </svg>
+              </span>
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5 font-sans text-sm font-bold text-ink">
+                  {ended ? (
+                    <span className="text-ink-mute">stranger left.</span>
+                  ) : (
+                    <>
+                      <span className="w-[7px] h-[7px] rounded-full bg-red flex-shrink-0" />
+                      <span className="truncate">a stranger</span>
+                    </>
+                  )}
+                </div>
+                {!ended &&
+                  (typing ? (
+                    <div className="font-serif italic text-[13px] text-ink-soft">typing…</div>
+                  ) : vibe ? (
+                    <div className="font-serif italic text-[13px] text-[#8b6fb8] truncate">{vibe}</div>
+                  ) : (
+                    <LastSeenLabel typing={typing} lastSeenAt={lastSeenAt} />
+                  ))}
+              </div>
             </div>
             {!ended && (
-              <Link
-                href="/"
-                className="bg-transparent border-[1.2px] border-ink px-2.5 py-[3px] rounded-full font-display text-[13px] font-bold text-ink"
-                title="change your vibe"
+              // Skip lives up here, away from the input — tapping it by accident
+              // while typing was costing real chats.
+              <button
+                onClick={skip}
+                className="flex-shrink-0 bg-ink text-paper-cool border-[1.2px] border-ink px-3.5 py-1.5 rounded-full font-sans text-[13px] font-bold tracking-tight shadow-hard-xs"
+                title="skip and find another"
               >
-                vibes
-              </Link>
+                skip →
+              </button>
             )}
           </div>
 
-          {/* Thread */}
-          <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-4 font-mono text-[13.5px] leading-[1.7]">
-            {threadMessages.map((m, i) => (
-              <MessageBubble key={i} role={m.role} text={m.text} />
-            ))}
-            {typing && <TypingIndicator />}
-          </div>
+          {/* Thread, OR the "say something first?" starters when the stranger
+              hasn't opened and the user hasn't said anything yet. */}
+          {noConversationYet && !typing ? (
+            <OpenerStarters onPick={(t) => send(t)} />
+          ) : (
+            <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-4 font-mono text-[13.5px] leading-[1.7]">
+              {threadMessages.map((m, i) => (
+                <MessageBubble key={i} role={m.role} text={m.text} />
+              ))}
+              {typing && <TypingIndicator />}
+            </div>
+          )}
 
           {/* Post-chat feedback — only after a real (≥5min) conversation.
               onFollow → markFollowClicked: a follow via the review cross-sell also
@@ -863,6 +912,17 @@ export function ChatWindow() {
               global CookieBanner, which on mobile spans the bottom of the
               viewport) can sit on top and steal the user's taps. */}
           <div className="px-4 pt-3 pb-5 flex-shrink-0 relative z-50">
+            {/* Mood line — only AFTER a chat ends (skipped/closed), so the user
+                can change the vibe for their NEXT stranger. Hidden mid-chat:
+                changing vibes there would mean abandoning the current stranger. */}
+            {ended && (
+              <p className="mb-2 px-1 font-sans text-[12px] text-ink-mute">
+                🎚 next chat&apos;s mood: <span className="font-bold text-ink">{MOOD_LABELS[intent ?? "casual"]}</span>
+                {" — tap "}
+                <Link href="/" className="underline font-semibold text-ink hover:text-red">vibes</Link>
+                {" to change it (flirty, deep, hype…)"}
+              </p>
+            )}
             <div
               // Tapping anywhere in the row focuses the actual input — fixes
               // an iOS bug where the first tap occasionally lands on the
@@ -873,24 +933,25 @@ export function ChatWindow() {
               className="flex gap-1.5 items-center bg-paper-cool border-2 border-ink rounded-2xl p-[3px] shadow-hard-sm"
               style={{ touchAction: "manipulation" }}
             >
-              <button
-                onClick={e => { e.stopPropagation(); ended ? findAnother() : skip(); }}
-                disabled={ended && ((showFollow && followGated) || (showFeedback && reviewGated))}
-                className={
-                  ended
-                    ? "bg-red text-paper-cool border-none rounded-[9px] px-3 py-2 font-sans text-xs font-bold tracking-tight shadow-hard-sm flex-shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
-                    : "bg-transparent border-none px-2.5 py-2 rounded-[9px] font-display text-base font-bold text-ink-mute flex-shrink-0"
-                }
-                title={
-                  ended && showFeedback && reviewGated
-                    ? "leave a review to unlock your next chat"
-                    : ended && showFollow && followGated
-                    ? "follow to unlock your next chat"
-                    : ended ? "find another stranger" : "skip and find another"
-                }
-              >
-                {ended ? "find another" : "skip"}
-              </button>
+              {/* When ended, the bottom button becomes the primary "find another"
+                  CTA. During an active chat there is NO skip button here — skip
+                  lives in the top strip so it can't be mis-tapped while typing. */}
+              {ended && (
+                <button
+                  onClick={e => { e.stopPropagation(); findAnother(); }}
+                  disabled={(showFollow && followGated) || (showFeedback && reviewGated)}
+                  className="bg-red text-paper-cool border-none rounded-[9px] px-3 py-2 font-sans text-xs font-bold tracking-tight shadow-hard-sm flex-shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+                  title={
+                    showFeedback && reviewGated
+                      ? "leave a review to unlock your next chat"
+                      : showFollow && followGated
+                      ? "follow to unlock your next chat"
+                      : "find another stranger"
+                  }
+                >
+                  find another
+                </button>
+              )}
               <input
                 ref={inputRef}
                 type="text"
@@ -920,9 +981,10 @@ export function ChatWindow() {
                 <button
                   onClick={e => { e.stopPropagation(); send(); }}
                   disabled={!input.trim() || !sessionId}
-                  className="bg-ink text-paper border-none rounded-[10px] px-3.5 py-2 font-sans text-xs font-bold tracking-tight flex-shrink-0 disabled:opacity-40"
+                  aria-label="send"
+                  className="bg-red text-paper-cool border-2 border-ink rounded-full h-10 w-10 flex items-center justify-center text-lg font-bold flex-shrink-0 shadow-hard-xs transition-transform hover:-translate-y-0.5 disabled:opacity-40 disabled:hover:translate-y-0"
                 >
-                  send
+                  →
                 </button>
               )}
             </div>

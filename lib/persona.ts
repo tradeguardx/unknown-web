@@ -580,6 +580,28 @@ const INTENT_OPENERS: Partial<Record<ChatIntent, Partial<Record<TypingStyle, str
   },
 };
 
+// A short, human two-part "vibe" line shown under the stranger label in the chat
+// header (e.g. "night owl · into late chats"). Derived from the persona's local
+// hour + a real interest — gives the blank stranger a hint of personality without
+// revealing anything the user has to "earn" in conversation.
+export function personaVibe(persona: Persona): string {
+  const h = persona.localHour;
+  const when =
+    h >= 22 || h < 5 ? "night owl"
+    : h < 9 ? "early riser"
+    : h < 17 ? "killing time"
+    : "winding down";
+
+  const interest = persona.interests[0];
+  const into = interest
+    ? `into ${interest}`
+    : when === "night owl"
+    ? "into late chats"
+    : "up for whatever";
+
+  return `${when} · ${into}`;
+}
+
 export function pickFirstMessage(persona: Persona, intent?: ChatIntent): string {
   const base = BASE_OPENERS[persona.typingStyle];
   // ~45% of the time when intent is set, use an intent-flavored opener if one exists.

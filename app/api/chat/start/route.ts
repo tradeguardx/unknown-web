@@ -5,7 +5,7 @@
 
 import { NextResponse } from "next/server";
 import { createSession, appendMessage } from "@/lib/sessions";
-import { pickFirstMessage } from "@/lib/persona";
+import { pickFirstMessage, personaVibe } from "@/lib/persona";
 import { computePacing } from "@/lib/pacing";
 import { intentRequiresAgeGate, type UserPrefs } from "@/lib/prefs";
 import { clientIp, rateLimit } from "@/lib/rateLimit";
@@ -113,6 +113,7 @@ export async function POST(req: Request) {
   return NextResponse.json({
     sessionId: session.id,
     opener,
+    vibe: personaVibe(session.persona),
     debug: process.env.NODE_ENV === "development" ? { persona: session.persona } : undefined,
   });
 }
