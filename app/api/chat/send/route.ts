@@ -17,7 +17,7 @@ import {
 } from "@/lib/sessions";
 import { parseReply, type PacedMessage } from "@/lib/replyParser";
 import { callLLM, trimHistory } from "@/lib/llmProvider";
-import { isEcho, ANTI_ECHO_NUDGE } from "@/lib/antiEcho";
+import { isEcho, ANTI_ECHO_NUDGE, loopRecoveryLine } from "@/lib/antiEcho";
 import { clientIp, rateLimit } from "@/lib/rateLimit";
 import { checkContent, getCloseText } from "@/lib/contentFilter";
 import { refreshUserMemory, shouldRefreshMemory } from "@/lib/userMemory";
@@ -206,6 +206,7 @@ export async function POST(req: Request) {
     .slice(-6)
     .map((m) => m.content);
   if (isEcho(raw, priorAssistant)) {
+    let replaced = false;
     try {
       const retry = await callLLM({
         persona: session.persona,
@@ -216,10 +217,17 @@ export async function POST(req: Request) {
         provider: session.provider,
         extraDirective: ANTI_ECHO_NUDGE,
       });
-      if (retry && !isEcho(retry, priorAssistant)) raw = retry;
+      if (retry && !isEcho(retry, priorAssistant)) {
+        raw = retry;
+        replaced = true;
+      }
     } catch (err) {
       console.warn("[anti-echo] retry failed:", err instanceof Error ? err.message : String(err));
     }
+    // The model is hard-stuck in a loop (e.g. Sarvam repeating "yo still there?")
+    // — even the regeneration echoed. Never show the user a 3rd repeat; drop in a
+    // natural recovery line so the chat can keep going instead of dying.
+    if (!replaced) raw = loopRecoveryLine(session.messages.length);
   }
 
   const parsed = parseReply(session.persona, raw);
