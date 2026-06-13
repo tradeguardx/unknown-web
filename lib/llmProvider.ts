@@ -93,13 +93,17 @@ export interface LLMRequest {
   // specific provider (mixed-mode sessions). If omitted, falls back to the
   // env-derived default.
   provider?: LLMProvider;
+  // Optional extra system directive — used by the anti-echo guard to nudge a
+  // regeneration away from repeating a line the persona already said.
+  extraDirective?: string;
 }
 
 export async function callLLM(req: LLMRequest): Promise<string> {
   const provider = req.provider ?? getActiveProvider();
+  const extra = req.extraDirective ? `\n\n${req.extraDirective}` : "";
 
   if (provider === "deepseek") {
-    const system = buildSystemPromptDeepSeek(req.persona, req.prefs, req.userMemory);
+    const system = buildSystemPromptDeepSeek(req.persona, req.prefs, req.userMemory) + extra;
     return deepseekChat({
       system,
       messages: req.messages,
@@ -110,7 +114,7 @@ export async function callLLM(req: LLMRequest): Promise<string> {
   // sarvam (TEST/EVAL only) — Indic-tuned. Uses the SAME prompt as Claude
   // (buildSystemPrompt + memorySection) for a fair language/persona comparison.
   if (provider === "sarvam") {
-    const system = buildSystemPrompt(req.persona, req.prefs) + memorySection(req.userMemory);
+    const system = buildSystemPrompt(req.persona, req.prefs) + memorySection(req.userMemory) + extra;
     return sarvamChat({
       system,
       messages: req.messages,
@@ -120,9 +124,10 @@ export async function callLLM(req: LLMRequest): Promise<string> {
 
   // anthropic — static persona prompt is cached; rolling memory is appended as a
   // separate (uncached) block after the cache breakpoint so memory refreshes
-  // don't invalidate the cached persona prefix.
+  // don't invalidate the cached persona prefix. The anti-echo directive (when
+  // present) rides in the uncached memory block so it never breaks the cache.
   const staticPrompt = buildSystemPrompt(req.persona, req.prefs);
-  const memory = memorySection(req.userMemory);
+  const memory = memorySection(req.userMemory) + extra;
   const resp = await getAnthropic().messages.create({
     model: MODEL,
     max_tokens: req.maxTokens,

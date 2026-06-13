@@ -17,6 +17,7 @@ import {
 } from "@/lib/sessions";
 import { parseReply, type PacedMessage } from "@/lib/replyParser";
 import { callLLM, trimHistory } from "@/lib/llmProvider";
+import { isEcho, ANTI_ECHO_NUDGE } from "@/lib/antiEcho";
 import { clientIp, rateLimit } from "@/lib/rateLimit";
 import { checkContent, getCloseText } from "@/lib/contentFilter";
 import { refreshUserMemory, shouldRefreshMemory } from "@/lib/userMemory";
@@ -194,6 +195,31 @@ export async function POST(req: Request) {
         ? { error: "upstream error", detail: msg }
         : { error: "upstream error" };
     return NextResponse.json(body, { status: 502 });
+  }
+
+  // Anti-echo guard: if the reply substantially repeats a line the persona
+  // already said this chat (the #1 "I'm a bot" tell, and a top skip cause),
+  // regenerate ONCE with an explicit don't-repeat nudge. Best-effort — if the
+  // retry fails or still echoes, we fall back to the original draft.
+  const priorAssistant = session.messages
+    .filter((m) => m.role === "assistant")
+    .slice(-6)
+    .map((m) => m.content);
+  if (isEcho(raw, priorAssistant)) {
+    try {
+      const retry = await callLLM({
+        persona: session.persona,
+        prefs: session.prefs,
+        userMemory: session.userMemory,
+        messages: llmMessages,
+        maxTokens: 256,
+        provider: session.provider,
+        extraDirective: ANTI_ECHO_NUDGE,
+      });
+      if (retry && !isEcho(retry, priorAssistant)) raw = retry;
+    } catch (err) {
+      console.warn("[anti-echo] retry failed:", err instanceof Error ? err.message : String(err));
+    }
   }
 
   const parsed = parseReply(session.persona, raw);
