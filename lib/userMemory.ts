@@ -21,6 +21,7 @@
 
 import { anthropicChat, isAnthropicAvailable } from "./anthropic";
 import { EMPTY_USER_MEMORY, getSession, type UserMemory } from "./sessions";
+import { addUsage, normalizeUsage } from "./usage";
 
 // How often to refresh memory (in total message count). Default: every 10.
 const REFRESH_EVERY_N_MESSAGES = Math.max(
@@ -121,6 +122,7 @@ Update the notes. Output the FULL labeled bullet list (existing + any new facts/
       system: EXTRACTION_SYSTEM_PROMPT,
       messages: [{ role: "user", content: userPrompt }],
       maxTokens: 350,
+      onUsage: (u) => addUsage(session.usage, "anthropic", normalizeUsage(u, "anthropic")),
     });
   } catch (err) {
     console.warn(

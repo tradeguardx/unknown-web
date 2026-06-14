@@ -18,6 +18,7 @@ import {
 import { parseReply, type PacedMessage } from "@/lib/replyParser";
 import { callLLM, trimHistory } from "@/lib/llmProvider";
 import { isEcho, ANTI_ECHO_NUDGE, loopRecoveryLine } from "@/lib/antiEcho";
+import { addUsage } from "@/lib/usage";
 import { clientIp, rateLimit } from "@/lib/rateLimit";
 import { checkContent, getCloseText } from "@/lib/contentFilter";
 import { refreshUserMemory, shouldRefreshMemory } from "@/lib/userMemory";
@@ -173,6 +174,7 @@ export async function POST(req: Request) {
       messages: llmMessages,
       maxTokens: 256,
       provider: session.provider,
+      onUsage: (u, p) => addUsage(session.usage, p, u),
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -216,6 +218,7 @@ export async function POST(req: Request) {
         maxTokens: 256,
         provider: session.provider,
         extraDirective: ANTI_ECHO_NUDGE,
+        onUsage: (u, p) => addUsage(session.usage, p, u),
       });
       if (retry && !isEcho(retry, priorAssistant)) {
         raw = retry;

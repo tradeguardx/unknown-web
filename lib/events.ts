@@ -17,6 +17,7 @@ import { createHash } from "crypto";
 import { nanoid } from "nanoid";
 import geoip from "geoip-lite";
 import type { Session } from "./sessions";
+import { summarizeUsage } from "./usage";
 
 const INGEST_URL = process.env.ANALYTICS_INGEST_URL;
 const INGEST_KEY = process.env.ANALYTICS_INGEST_KEY;
@@ -330,6 +331,10 @@ export function emitChatSummary(
   const last = session.messages[session.messages.length - 1];
   const whoEnded = last ? (last.role === "user" ? "user" : "persona") : "unknown";
 
+  // Token usage + estimated $ cost for the whole session (chat turns + memory +
+  // summary, across providers). This event fires last, so totals are complete.
+  const usage = summarizeUsage(session.usage);
+
   return emitEvent({
     type: "chat_summary",
     sessionId: session.id,
@@ -391,6 +396,14 @@ export function emitChatSummary(
       language: session.prefs?.language ?? "unset",
       pref_country: session.prefs?.country ?? "unset",
       provider: session.provider,
+
+      // ── Token usage + estimated cost (instrumentation) ──
+      input_tokens: usage.inputTokens,
+      output_tokens: usage.outputTokens,
+      cache_read_tokens: usage.cacheReadTokens,
+      cache_write_tokens: usage.cacheWriteTokens,
+      est_cost_usd: usage.estCostUsd,
+      usage_json: JSON.stringify(session.usage),
 
       // ── Persona recipe (the full "recipe" half of recipe × audience → outcome) ──
       persona_country: p.country,

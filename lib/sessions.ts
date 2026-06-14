@@ -4,6 +4,7 @@
 import { generatePersona, type Persona } from "./persona";
 import type { UserPrefs } from "./prefs";
 import { type LLMProvider, pickProviderForSession } from "./llmProvider";
+import type { ProviderUsage } from "./usage";
 import { nanoid } from "nanoid";
 
 export interface ChatMessage {
@@ -66,6 +67,9 @@ export interface Session {
   // + summary without a request object. country = geo at start, vid = visitor id.
   country?: string;
   vid?: string;
+  // Token usage accumulated across this session, keyed by provider (chat turns +
+  // memory + summary). Used for per-chat cost instrumentation (lib/usage.ts).
+  usage: ProviderUsage;
 }
 
 // Stash the session map on globalThis so Next.js dev-mode hot reloads (which
@@ -100,6 +104,7 @@ export function createSession(prefs?: UserPrefs): Session {
     ended: false,
     createdAt: Date.now(),
     lastActivityAt: Date.now(),
+    usage: {},
   };
   SESSIONS.set(session.id, session);
   return session;

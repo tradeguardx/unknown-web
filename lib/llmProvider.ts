@@ -22,6 +22,7 @@ import { buildSystemPromptDeepSeek } from "./promptsDeepSeek";
 import { cachedSystem, getAnthropic, MODEL } from "./anthropic";
 import { deepseekChat } from "./deepseek";
 import { sarvamChat } from "./sarvam";
+import { normalizeUsage, type TokenUsage } from "./usage";
 
 export type LLMProvider = "anthropic" | "deepseek" | "sarvam";
 export type LLMProviderConfig = LLMProvider | "mixed";
@@ -99,11 +100,18 @@ export interface LLMRequest {
   // Optional extra system directive — used by the anti-echo guard to nudge a
   // regeneration away from repeating a line the persona already said.
   extraDirective?: string;
+  // Optional usage sink — called with normalized token usage + the provider that
+  // served the call, so the caller can accumulate per-session cost. (lib/usage.ts)
+  onUsage?: (usage: TokenUsage, provider: LLMProvider) => void;
 }
 
 export async function callLLM(req: LLMRequest): Promise<string> {
   const provider = req.provider ?? getActiveProvider();
   const extra = req.extraDirective ? `\n\n${req.extraDirective}` : "";
+  // Provider-aware adapter: client gives us raw usage, we normalize + tag it.
+  const sink = req.onUsage
+    ? (raw: unknown) => req.onUsage!(normalizeUsage(raw, provider), provider)
+    : undefined;
 
   if (provider === "deepseek") {
     const system = buildSystemPromptDeepSeek(req.persona, req.prefs, req.userMemory) + extra;
@@ -111,6 +119,7 @@ export async function callLLM(req: LLMRequest): Promise<string> {
       system,
       messages: req.messages,
       maxTokens: req.maxTokens,
+      onUsage: sink,
     });
   }
 
@@ -122,6 +131,7 @@ export async function callLLM(req: LLMRequest): Promise<string> {
       system,
       messages: req.messages,
       maxTokens: req.maxTokens,
+      onUsage: sink,
     });
   }
 
@@ -137,6 +147,7 @@ export async function callLLM(req: LLMRequest): Promise<string> {
     system: cachedSystem(staticPrompt, memory),
     messages: req.messages,
   });
+  if (resp.usage) sink?.(resp.usage);
   const block = resp.content.find(b => b.type === "text");
   return block && block.type === "text" ? block.text : "";
 }

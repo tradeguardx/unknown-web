@@ -14,6 +14,7 @@
 
 import { anthropicChat, isAnthropicAvailable } from "./anthropic";
 import type { Session } from "./sessions";
+import { addUsage, normalizeUsage } from "./usage";
 
 export type ArcMood =
   | "happy" | "excited" | "flirty" | "neutral" | "curious"
@@ -141,6 +142,7 @@ export async function summarizeChat(session: Session): Promise<ChatInsight | nul
         { role: "user", content: `CONTEXT: ${context}\n\nTRANSCRIPT:\n${transcript}\n\nReturn the JSON now.` },
       ],
       maxTokens: 700,
+      onUsage: (u) => addUsage(session.usage, "anthropic", normalizeUsage(u, "anthropic")),
     });
   } catch (err) {
     console.warn("[chatSummary] failed:", err instanceof Error ? err.message : String(err));

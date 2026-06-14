@@ -17,6 +17,7 @@ import { parseReply, type PacedMessage } from "@/lib/replyParser";
 import { callLLM, trimHistory } from "@/lib/llmProvider";
 import { clientIp, rateLimit } from "@/lib/rateLimit";
 import { onChatEnded } from "@/lib/chatClose";
+import { addUsage } from "@/lib/usage";
 
 // Cap on consecutive idle pings before we force the persona to leave. Journey:
 // idle #1 → the persona pings ("u there?"); idle #2 → still no reply → force
@@ -82,6 +83,7 @@ export async function POST(req: Request) {
       messages: llmMessages,
       maxTokens: 128,
       provider: session.provider,
+      onUsage: (u, p) => addUsage(session.usage, p, u),
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

@@ -26,6 +26,7 @@ export async function anthropicChat(opts: {
   messages: Array<{ role: "user" | "assistant"; content: string }>;
   maxTokens: number;
   model?: string;
+  onUsage?: (rawUsage: unknown) => void;
 }): Promise<string> {
   const resp = await getAnthropic().messages.create({
     model: opts.model || MODEL,
@@ -33,6 +34,7 @@ export async function anthropicChat(opts: {
     system: opts.system,
     messages: opts.messages,
   });
+  if (resp.usage) opts.onUsage?.(resp.usage);
   const block = resp.content.find(b => b.type === "text");
   return block && block.type === "text" ? block.text : "";
 }

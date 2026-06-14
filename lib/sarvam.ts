@@ -47,6 +47,7 @@ interface SarvamChoice {
 }
 interface SarvamResponse {
   choices?: SarvamChoice[];
+  usage?: unknown;
   error?: { message: string; code?: string };
 }
 
@@ -55,6 +56,7 @@ export async function sarvamChat(opts: {
   messages: Array<{ role: "user" | "assistant"; content: string }>;
   maxTokens: number;
   model?: string;
+  onUsage?: (rawUsage: unknown) => void;
 }): Promise<string> {
   const key = process.env.SARVAM_API_KEY;
   if (!key) throw new Error("SARVAM_API_KEY is not set");
@@ -83,5 +85,6 @@ export async function sarvamChat(opts: {
 
   const data = (await res.json()) as SarvamResponse;
   if (data.error) throw new Error(`Sarvam error: ${data.error.message}`);
+  if (data.usage) opts.onUsage?.(data.usage);
   return data.choices?.[0]?.message?.content ?? "";
 }

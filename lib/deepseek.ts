@@ -37,6 +37,7 @@ interface DeepSeekChoice {
 
 interface DeepSeekResponse {
   choices?: DeepSeekChoice[];
+  usage?: unknown;
   error?: { message: string; type?: string; code?: string };
 }
 
@@ -45,6 +46,7 @@ export async function deepseekChat(opts: {
   messages: Array<{ role: "user" | "assistant"; content: string }>;
   maxTokens: number;
   model?: string;
+  onUsage?: (rawUsage: unknown) => void;
 }): Promise<string> {
   const key = process.env.DEEPSEEK_API_KEY;
   if (!key) throw new Error("DEEPSEEK_API_KEY is not set");
@@ -74,5 +76,6 @@ export async function deepseekChat(opts: {
   if (data.error) {
     throw new Error(`DeepSeek error: ${data.error.message}`);
   }
+  if (data.usage) opts.onUsage?.(data.usage);
   return data.choices?.[0]?.message?.content ?? "";
 }
