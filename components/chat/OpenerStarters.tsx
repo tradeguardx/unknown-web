@@ -1,18 +1,12 @@
 "use client";
 
 // The "say something first?" empty state. Shown when the user has connected to a
-// stranger who did NOT open first. Lets them optionally SET A VIBE (re-rolls the
-// stranger to match the chosen mood) and then say hi to start.
+// stranger who did NOT open first. A "set a vibe" button opens a full vibe popup
+// (re-rolls the stranger to match the chosen mood); then they say hi to start.
 
+import { useState } from "react";
 import type { ChatIntent } from "@/lib/prefs";
-
-const VIBES: { label: string; intent: ChatIntent }[] = [
-  { label: "chill", intent: "casual" },
-  { label: "flirty", intent: "flirt" },
-  { label: "deep", intent: "deep" },
-  { label: "friendly", intent: "friends" },
-  { label: "vent", intent: "vent" },
-];
+import { VibePicker, VIBES } from "./VibePicker";
 
 export function OpenerStarters({
   onPick,
@@ -23,6 +17,9 @@ export function OpenerStarters({
   currentIntent?: ChatIntent;
   onSetVibe?: (intent: ChatIntent) => void;
 }) {
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const currentLabel = VIBES.find((v) => v.intent === currentIntent)?.label;
+
   return (
     <div className="flex-1 overflow-y-auto px-6 py-8 flex flex-col items-center justify-center text-center">
       <div className="text-ink-mute text-2xl" aria-hidden>
@@ -33,29 +30,17 @@ export function OpenerStarters({
         no names, no history. it vanishes when you leave.
       </p>
 
-      {/* Set a vibe — re-rolls the stranger to match the chosen mood. */}
+      {/* Set a vibe — opens the full picker; re-rolls the stranger to match. */}
       {onSetVibe && (
-        <div className="mt-6 w-full max-w-sm">
-          <div className="font-sans text-[11px] font-bold uppercase tracking-wider text-ink-mute mb-2">
-            set a vibe
-          </div>
-          <div className="flex flex-wrap gap-2 justify-center">
-            {VIBES.map((v) => (
-              <button
-                key={v.intent}
-                onClick={() => onSetVibe(v.intent)}
-                className={`rounded-full border-[1.5px] border-ink px-3 py-1.5 font-sans text-[13px] font-bold tracking-tight shadow-hard-xs ${
-                  currentIntent === v.intent ? "bg-ink text-paper-cool" : "bg-paper-cool text-ink"
-                }`}
-              >
-                {v.label}
-              </button>
-            ))}
-          </div>
-        </div>
+        <button
+          onClick={() => setPickerOpen(true)}
+          className="mt-5 rounded-full border-[1.5px] border-ink bg-paper-cool px-4 py-2 font-sans text-[13px] font-bold tracking-tight text-ink shadow-hard-xs"
+        >
+          🎚 {currentLabel ? `vibe: ${currentLabel}` : "set a vibe"} ▾
+        </button>
       )}
 
-      <div className="mt-6 w-full max-w-sm">
+      <div className="mt-5 w-full max-w-sm">
         <button
           onClick={() => onPick("hi 👋")}
           className="relative w-full rounded-2xl border-2 border-ink bg-paper-cool px-5 py-4 shadow-hard-sm transition-transform hover:-translate-y-0.5 active:translate-y-0"
@@ -68,6 +53,18 @@ export function OpenerStarters({
           <span className="block font-sans text-lg font-bold tracking-tight text-ink">hi 👋</span>
         </button>
       </div>
+
+      {onSetVibe && (
+        <VibePicker
+          open={pickerOpen}
+          current={currentIntent}
+          onSelect={(i) => {
+            setPickerOpen(false);
+            onSetVibe(i);
+          }}
+          onClose={() => setPickerOpen(false)}
+        />
+      )}
     </div>
   );
 }
