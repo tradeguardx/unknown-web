@@ -7,6 +7,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { matchApi, type MatchedPersona } from "@/lib/matchApi";
+import { UpgradeAccount } from "@/components/match/UpgradeAccount";
 
 function lastActive(iso?: string | null): string {
   if (!iso) return "new connection";
@@ -53,6 +54,12 @@ export default function ConnectionsPage() {
         <h1 className="font-sans text-lg font-bold tracking-tight text-ink">your connections</h1>
         <span className="w-10" />
       </header>
+
+      {state === "ready" && matches.length > 0 && (
+        <div className="mt-5">
+          <UpgradeAccount />
+        </div>
+      )}
 
       <div className="mt-6 flex-1">
         {state === "loading" && (
