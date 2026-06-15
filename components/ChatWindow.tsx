@@ -966,7 +966,7 @@ export function ChatWindow() {
                 changing vibes there would mean abandoning the current stranger. */}
             {ended && (
               <p className="mb-2 px-1 font-sans text-[12px] text-ink-mute">
-                🎚 next chat&apos;s mood: <span className="font-bold text-ink">{MOOD_LABELS[intent ?? "casual"]}</span>
+                next chat&apos;s mood: <span className="font-bold text-ink">{MOOD_LABELS[intent ?? "casual"]}</span>
                 {" — tap "}
                 <Link href="/" className="underline font-semibold text-ink hover:text-red">vibes</Link>
                 {" to change it (flirty, deep, hype…)"}

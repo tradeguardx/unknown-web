@@ -33,9 +33,20 @@ export function OpenerStarters({
       {onReroll && (
         <button
           onClick={() => setSheetOpen(true)}
-          className="mt-5 rounded-full border-[1.5px] border-ink bg-paper-cool px-4 py-2 font-sans text-[13px] font-bold tracking-tight text-ink shadow-hard-xs"
+          className="mt-5 inline-flex items-center gap-2 rounded-full border-[1.5px] border-ink bg-paper-cool px-4 py-2 font-sans text-[13px] font-bold tracking-tight text-ink shadow-hard-xs hover:-translate-y-0.5 transition-transform"
         >
-          🎚 {currentLabel ? `vibe: ${currentLabel}` : "set your vibe"} ▾
+          {/* sliders icon */}
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden>
+            <line x1="4" y1="8" x2="20" y2="8" />
+            <line x1="4" y1="16" x2="20" y2="16" />
+            <circle cx="9" cy="8" r="2.4" fill="currentColor" stroke="none" />
+            <circle cx="15" cy="16" r="2.4" fill="currentColor" stroke="none" />
+          </svg>
+          <span>{currentLabel ? `vibe: ${currentLabel}` : "set your vibe"}</span>
+          {/* chevron */}
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M6 9l6 6 6-6" />
+          </svg>
         </button>
       )}
 
