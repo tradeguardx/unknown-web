@@ -19,6 +19,7 @@ import { useCallback, useEffect, useState } from "react";
 import { AccountMenu } from "@/components/match/AccountMenu";
 import { UpgradeAccount } from "@/components/match/UpgradeAccount";
 import { matchApi } from "@/lib/matchApi";
+import { useAccount, clearAccountCache } from "@/lib/useAccount";
 
 interface Props {
   open: boolean;
@@ -30,26 +31,12 @@ const NOTIFY_KEY = "unknownchat:notify:v1";
 export function MenuDrawer({ open, onClose }: Props) {
   const [notifyPerm, setNotifyPerm] = useState<NotificationPermission | "unsupported">("default");
   const [notifyPref, setNotifyPref] = useState(false);
-  // Auth state → drives the auth-aware menu (account-first for logged-in users).
-  const [loggedIn, setLoggedIn] = useState<boolean | null>(null);
-  const [subscribed, setSubscribed] = useState(false);
+  // Auth state from the shared cached hook (instant from session, no per-open
+  // refetch / flicker).
   const [loginOpen, setLoginOpen] = useState(false);
-
-  useEffect(() => {
-    if (!open) return;
-    let alive = true;
-    matchApi
-      .me()
-      .then((m) => {
-        if (!alive) return;
-        setLoggedIn(!m.isAnonymous);
-        setSubscribed(m.subscription.active);
-      })
-      .catch(() => {});
-    return () => {
-      alive = false;
-    };
-  }, [open]);
+  const acct = useAccount();
+  const loggedIn = acct ? acct.loggedIn : null;
+  const subscribed = acct?.subscriptionActive ?? false;
 
   // Probe Notification API state every time the drawer opens — cheap, and
   // catches the case where the user changes browser permissions while we're
@@ -247,7 +234,8 @@ export function MenuDrawer({ open, onClose }: Props) {
             subtitle="save your matches across every device 💘"
             onDone={() => {
               setLoginOpen(false);
-              setLoggedIn(true);
+              clearAccountCache();
+              window.location.reload(); // pick up the new session everywhere
             }}
           />
         </div>

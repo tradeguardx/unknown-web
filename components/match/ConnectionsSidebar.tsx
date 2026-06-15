@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { matchApi, type MatchedPersona } from "@/lib/matchApi";
+import { useAccount } from "@/lib/useAccount";
 import { UpgradeAccount } from "./UpgradeAccount";
 import { MenuDrawer } from "@/components/landing/MenuDrawer";
 
@@ -37,8 +38,8 @@ export function ConnectionsSidebar() {
   const activeId = path.startsWith("/connections/") ? path.split("/")[2] : null;
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
   const [matches, setMatches] = useState<MatchedPersona[]>([]);
-  const [acct, setAcct] = useState<Awaited<ReturnType<typeof matchApi.me>> | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const acct = useAccount(); // shared cached account (plan/usage), no extra fetch
 
   useEffect(() => {
     let alive = true;
@@ -46,7 +47,6 @@ export function ConnectionsSidebar() {
       .listMatches()
       .then((d) => alive && (setMatches(d.matches ?? []), setState("ready")))
       .catch(() => alive && setState("error"));
-    matchApi.me().then((m) => alive && setAcct(m)).catch(() => {});
     return () => {
       alive = false;
     };
@@ -128,9 +128,9 @@ export function ConnectionsSidebar() {
       </div>
 
       {/* Account status footer — plan + messages used. (Log out lives in the ☰ menu.) */}
-      {acct && !acct.isAnonymous && (
+      {acct && acct.loggedIn && (
         <div className="flex-shrink-0 border-t-[1.5px] border-dashed border-paper-deep px-4 py-3 min-w-0">
-          {acct.subscription.active ? (
+          {acct.subscriptionActive && acct.usage ? (
             <div className="font-sans text-[12px] text-ink truncate">
               <span className="font-bold text-red">unknown+</span>{" "}
               <span className="text-ink-mute">
@@ -143,7 +143,7 @@ export function ConnectionsSidebar() {
               <span className="font-bold text-ink">free plan</span> · subscribe for unlimited
             </div>
           )}
-          {acct.email && <div className="font-display text-[11px] text-ink-mute truncate">{acct.email}</div>}
+          {acct.email && <div className="font-sans text-[11px] text-ink-mute truncate">{acct.email}</div>}
         </div>
       )}
     </div>
