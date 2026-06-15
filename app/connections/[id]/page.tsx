@@ -12,6 +12,7 @@ import { TypingIndicator } from "@/components/TypingIndicator";
 import { matchApi, isPaywall, type MatchMessage, type MatchedPersona } from "@/lib/matchApi";
 import { Paywall } from "@/components/match/Paywall";
 import { UpgradeAccount } from "@/components/match/UpgradeAccount";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 
 type Msg = { role: "user" | "assistant" | "system"; text: string };
 
@@ -26,6 +27,7 @@ export default function ConnectionChatPage() {
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
   const [paywall, setPaywall] = useState<null | "paywall" | "quota">(null);
   const [anon, setAnon] = useState<boolean | null>(null); // must log in to chat
+  const [confirmUnmatch, setConfirmUnmatch] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
   // Account state — anonymous users can open a connection but must log in to chat.
@@ -37,9 +39,8 @@ export default function ConnectionChatPage() {
     };
   }, []);
 
-  async function unmatch() {
-    if (!match) return;
-    if (!window.confirm(`unmatch ${match.displayName}? this deletes your chat with them.`)) return;
+  async function doUnmatch() {
+    setConfirmUnmatch(false);
     try {
       await matchApi.unmatch(id);
       window.location.href = "/connections"; // full nav so the sidebar refreshes
@@ -115,7 +116,7 @@ export default function ConnectionChatPage() {
         </div>
         {state === "ready" && (
           <button
-            onClick={unmatch}
+            onClick={() => setConfirmUnmatch(true)}
             className="flex-shrink-0 rounded-full border-[1.5px] border-ink bg-paper-cool px-3 py-1.5 font-sans text-[12px] font-bold tracking-tight text-ink shadow-hard-xs hover:bg-red hover:text-paper-cool hover:border-ink"
             title={`unmatch ${name}`}
           >
@@ -185,6 +186,16 @@ export default function ConnectionChatPage() {
       )}
 
       {paywall && <Paywall reason={paywall} name={name} onClose={() => setPaywall(null)} />}
+
+      <ConfirmDialog
+        open={confirmUnmatch}
+        title={`unmatch ${name}?`}
+        body="this deletes your chat with them. you can't undo it."
+        confirmLabel="unmatch"
+        danger
+        onConfirm={doUnmatch}
+        onCancel={() => setConfirmUnmatch(false)}
+      />
     </div>
   );
 }
