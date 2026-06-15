@@ -116,7 +116,7 @@ export default function ConnectionChatPage() {
         {state === "ready" && (
           <button
             onClick={unmatch}
-            className="flex-shrink-0 font-sans text-[12px] font-semibold tracking-tight text-ink-mute hover:text-red"
+            className="flex-shrink-0 rounded-full border-[1.5px] border-ink bg-paper-cool px-3 py-1.5 font-sans text-[12px] font-bold tracking-tight text-ink shadow-hard-xs hover:bg-red hover:text-paper-cool hover:border-ink"
             title={`unmatch ${name}`}
           >
             unmatch
