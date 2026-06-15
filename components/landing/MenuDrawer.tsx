@@ -128,6 +128,15 @@ export function MenuDrawer({ open, onClose }: Props) {
         <div className="flex-1 px-5 py-4 flex flex-col gap-0.5 overflow-y-auto">
           <Section>navigate</Section>
           <Link
+            href="/chat"
+            onClick={onClose}
+            className="flex items-center justify-between py-3 border-b-[1.5px] border-dashed border-paper-deep"
+          >
+            <span className="font-sans text-[17px] font-bold tracking-[-0.015em] text-ink">
+              talk to a stranger 💬
+            </span>
+          </Link>
+          <Link
             href="/connections"
             onClick={onClose}
             className="flex items-center justify-between py-3 border-b-[1.5px] border-dashed border-paper-deep"
