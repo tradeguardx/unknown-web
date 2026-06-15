@@ -36,6 +36,7 @@ export function ConnectionsSidebar() {
   const activeId = path.startsWith("/connections/") ? path.split("/")[2] : null;
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
   const [matches, setMatches] = useState<MatchedPersona[]>([]);
+  const [acct, setAcct] = useState<Awaited<ReturnType<typeof matchApi.me>> | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -43,6 +44,7 @@ export function ConnectionsSidebar() {
       .listMatches()
       .then((d) => alive && (setMatches(d.matches ?? []), setState("ready")))
       .catch(() => alive && setState("error"));
+    matchApi.me().then((m) => alive && setAcct(m)).catch(() => {});
     return () => {
       alive = false;
     };
@@ -113,6 +115,25 @@ export function ConnectionsSidebar() {
           </ul>
         )}
       </div>
+
+      {/* Account status footer — plan + messages used */}
+      {acct && !acct.isAnonymous && (
+        <div className="flex-shrink-0 border-t-[1.5px] border-dashed border-paper-deep px-4 py-3">
+          {acct.subscription.active ? (
+            <div className="font-sans text-[12px] text-ink">
+              <span className="font-bold text-red">unknown+</span>{" "}
+              <span className="text-ink-mute">
+                · {acct.usage.includedUsed.toLocaleString()} / {acct.usage.includedQuota.toLocaleString()} messages
+                {acct.usage.topUpRemaining > 0 ? ` · +${acct.usage.topUpRemaining.toLocaleString()} top-up` : ""}
+              </span>
+            </div>
+          ) : (
+            <div className="font-sans text-[12px] text-ink-mute">
+              <span className="font-bold text-ink">free plan</span> · subscribe for unlimited
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

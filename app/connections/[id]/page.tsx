@@ -11,6 +11,7 @@ import { MessageBubble } from "@/components/MessageBubble";
 import { TypingIndicator } from "@/components/TypingIndicator";
 import { matchApi, isPaywall, type MatchMessage, type MatchedPersona } from "@/lib/matchApi";
 import { Paywall } from "@/components/match/Paywall";
+import { UpgradeAccount } from "@/components/match/UpgradeAccount";
 
 type Msg = { role: "user" | "assistant" | "system"; text: string };
 
@@ -24,7 +25,28 @@ export default function ConnectionChatPage() {
   const [typing, setTyping] = useState(false);
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
   const [paywall, setPaywall] = useState<null | "paywall" | "quota">(null);
+  const [anon, setAnon] = useState<boolean | null>(null); // must log in to chat
   const scrollRef = useRef<HTMLDivElement | null>(null);
+
+  // Account state — anonymous users can open a connection but must log in to chat.
+  useEffect(() => {
+    let alive = true;
+    matchApi.me().then((m) => alive && setAnon(m.isAnonymous)).catch(() => alive && setAnon(null));
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  async function unmatch() {
+    if (!match) return;
+    if (!window.confirm(`unmatch ${match.displayName}? this deletes your chat with them.`)) return;
+    try {
+      await matchApi.unmatch(id);
+      window.location.href = "/connections"; // full nav so the sidebar refreshes
+    } catch {
+      /* ignore */
+    }
+  }
 
   useEffect(() => {
     let alive = true;
@@ -59,8 +81,11 @@ export default function ConnectionChatPage() {
       const { reply } = await matchApi.send(convoId, text);
       setMsgs((m) => [...m, { role: "assistant", text: reply }]);
     } catch (e) {
+      const code = (e as { code?: string; status?: number }).code;
       if (isPaywall(e)) {
-        setPaywall((e as { code?: string }).code === "QUOTA_EXHAUSTED" ? "quota" : "paywall");
+        setPaywall(code === "QUOTA_EXHAUSTED" ? "quota" : "paywall");
+      } else if (code === "LOGIN_REQUIRED") {
+        setAnon(true); // backend says log in → show the gate
       } else {
         setMsgs((m) => [...m, { role: "system", text: "couldn't send — try again" }]);
       }
@@ -84,10 +109,19 @@ export default function ConnectionChatPage() {
             <path d="M8 14.5c1.2 1.5 2.6 2.2 4 2.2s2.8-.7 4-2.2" stroke="#1a1610" strokeWidth="1.6" fill="none" strokeLinecap="round" />
           </svg>
         </span>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <div className="font-sans text-sm font-bold text-ink truncate">{name}</div>
           {match?.vibe && <div className="font-serif italic text-[12px] text-[#8b6fb8] truncate">{match.vibe}</div>}
         </div>
+        {state === "ready" && (
+          <button
+            onClick={unmatch}
+            className="flex-shrink-0 font-display text-[12px] text-ink-mute hover:text-red underline"
+            title={`unmatch ${name}`}
+          >
+            unmatch
+          </button>
+        )}
       </header>
 
       {state === "loading" && <p className="text-center font-serif italic text-ink-mute mt-16">opening…</p>}
@@ -107,6 +141,17 @@ export default function ConnectionChatPage() {
             {typing && <TypingIndicator />}
           </div>
 
+          {anon === true ? (
+            // Anonymous → must log in to chat. Show the gate with the free-message pitch.
+            <div className="px-4 pt-3 pb-5 flex-shrink-0">
+              <UpgradeAccount
+                forceShow
+                title={`log in to chat with ${name}`}
+                subtitle="you've got 10 free messages to start 💘 — log in to send them."
+                onDone={() => setAnon(false)}
+              />
+            </div>
+          ) : (
           <div className="px-4 pt-3 pb-5 flex-shrink-0">
             <div
               onClick={() => document.getElementById("match-input")?.focus()}
@@ -135,6 +180,7 @@ export default function ConnectionChatPage() {
               </button>
             </div>
           </div>
+          )}
         </>
       )}
 

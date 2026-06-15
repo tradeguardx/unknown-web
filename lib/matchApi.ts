@@ -88,8 +88,18 @@ export const matchApi = {
   loginPassword: (email: string, password: string) =>
     getSupabase().auth.signInWithPassword({ email, password }),
 
+  // Account status — login state, subscription, usage.
+  me: () =>
+    call<{
+      isAnonymous: boolean;
+      email: string | null;
+      subscription: { active: boolean };
+      usage: { includedUsed: number; includedQuota: number; includedRemaining: number; topUpRemaining: number };
+    }>("/me"),
+
   // Matches (free)
   listMatches: () => call<{ matches: MatchedPersona[] }>("/matches"),
+  unmatch: (id: string) => call<{ deleted: boolean }>(`/matches/${id}`, { method: "DELETE" }),
   createMatch: (m: { persona: unknown; displayName: string; avatar?: string; vibe?: string }) =>
     call<{ match: MatchedPersona }>("/matches", { method: "POST", body: JSON.stringify(m) }),
 

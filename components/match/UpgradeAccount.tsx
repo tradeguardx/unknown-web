@@ -9,7 +9,17 @@
 import { useEffect, useState } from "react";
 import { matchApi } from "@/lib/matchApi";
 
-export function UpgradeAccount() {
+export function UpgradeAccount({
+  title = "save your connections 🔒",
+  subtitle = "you're a guest. add a login so your people are here on every device.",
+  onDone,
+  forceShow = false,
+}: {
+  title?: string;
+  subtitle?: string;
+  onDone?: () => void;
+  forceShow?: boolean;
+} = {}) {
   const [anon, setAnon] = useState<boolean | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -25,7 +35,7 @@ export function UpgradeAccount() {
     };
   }, []);
 
-  if (anon !== true) return null;
+  if (anon !== true && !forceShow) return null;
 
   async function google() {
     const redirectTo = typeof window !== "undefined" ? window.location.href : undefined;
@@ -45,7 +55,10 @@ export function UpgradeAccount() {
         : await matchApi.loginPassword(email.trim(), password);
     setBusy(false);
     if (error) setError(error.message);
-    else setDone(true);
+    else {
+      setDone(true);
+      onDone?.();
+    }
   }
 
   if (done) {
@@ -61,10 +74,8 @@ export function UpgradeAccount() {
 
   return (
     <div className="rounded-2xl border-2 border-ink bg-yellow-soft p-4 shadow-hard-sm">
-      <p className="font-sans text-[14px] font-bold text-ink">save your connections 🔒</p>
-      <p className="mt-1 font-display text-[13px] text-ink-soft">
-        you&apos;re a guest. add a login so your people are here on every device.
-      </p>
+      <p className="font-sans text-[14px] font-bold text-ink">{title}</p>
+      <p className="mt-1 font-display text-[13px] text-ink-soft">{subtitle}</p>
 
       <button
         onClick={google}
