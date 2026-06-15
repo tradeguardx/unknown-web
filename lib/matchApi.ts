@@ -80,7 +80,13 @@ export const matchApi = {
   },
   signInWithGoogle: (redirectTo?: string) =>
     getSupabase().auth.signInWithOAuth({ provider: "google", options: { redirectTo } }),
-  signInWithEmail: (email: string) => getSupabase().auth.signInWithOtp({ email }),
+
+  // Email + password (no OTP). "create" links the credentials to the CURRENT
+  // (anonymous) user — keeps their matches. "login" signs into an existing account.
+  createPassword: (email: string, password: string) =>
+    getSupabase().auth.updateUser({ email, password }),
+  loginPassword: (email: string, password: string) =>
+    getSupabase().auth.signInWithPassword({ email, password }),
 
   // Matches (free)
   listMatches: () => call<{ matches: MatchedPersona[] }>("/matches"),
