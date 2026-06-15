@@ -73,10 +73,10 @@ export default function ConnectionChatPage() {
   const name = match?.displayName ?? "them";
 
   return (
-    <div className="min-h-screen flex flex-col max-w-md lg:max-w-2xl mx-auto w-full">
-      {/* Header */}
+    <div className="flex flex-col h-full w-full">
+      {/* Header — back arrow returns to the list on mobile (hidden on desktop where the sidebar persists) */}
       <header className="flex items-center gap-2.5 px-4 py-3 border-b-[1.5px] border-dashed border-paper-deep flex-shrink-0">
-        <Link href="/connections" className="text-ink-mute hover:text-ink text-lg">←</Link>
+        <Link href="/connections" className="text-ink-mute hover:text-ink text-lg lg:hidden">←</Link>
         <span className="h-9 w-9 rounded-2xl bg-lilac border-2 border-ink flex items-center justify-center flex-shrink-0" aria-hidden>
           <svg width="20" height="20" viewBox="0 0 24 24">
             <circle cx="8.5" cy="10" r="1.3" fill="#1a1610" />
