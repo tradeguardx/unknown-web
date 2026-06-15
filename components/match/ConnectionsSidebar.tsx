@@ -8,6 +8,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { matchApi, type MatchedPersona } from "@/lib/matchApi";
 import { UpgradeAccount } from "./UpgradeAccount";
+import { MenuDrawer } from "@/components/landing/MenuDrawer";
 
 function lastActive(iso?: string | null): string {
   if (!iso) return "new";
@@ -37,6 +38,7 @@ export function ConnectionsSidebar() {
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
   const [matches, setMatches] = useState<MatchedPersona[]>([]);
   const [acct, setAcct] = useState<Awaited<ReturnType<typeof matchApi.me>> | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -55,8 +57,17 @@ export function ConnectionsSidebar() {
       <header className="flex items-center justify-between px-4 py-3 border-b-[1.5px] border-dashed border-paper-deep flex-shrink-0">
         <Link href="/" className="text-sm text-ink-mute hover:text-ink">← home</Link>
         <span className="font-sans text-sm font-bold tracking-tight text-ink">connections 💘</span>
-        <span className="w-12" />
+        <button
+          onClick={() => setMenuOpen(true)}
+          aria-label="menu"
+          className="p-1 text-ink-soft hover:text-ink"
+        >
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <path d="M3 6h14M3 10h14M3 14h14" />
+          </svg>
+        </button>
       </header>
+      <MenuDrawer open={menuOpen} onClose={() => setMenuOpen(false)} />
 
       <div className="flex-1 overflow-y-auto">
         <div className="px-3 pt-3">
