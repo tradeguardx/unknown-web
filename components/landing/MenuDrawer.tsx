@@ -116,6 +116,7 @@ export function MenuDrawer({ open, onClose }: Props) {
         </div>
 
         <div className="flex-1 px-5 py-4 flex flex-col gap-0.5 overflow-y-auto">
+          <AccountMenu />
           <Section>navigate</Section>
           <Link
             href="/connections"
@@ -160,8 +161,6 @@ export function MenuDrawer({ open, onClose }: Props) {
               </button>
             </>
           )}
-
-          <AccountMenu />
         </div>
 
         <div className="px-5 py-5 border-t-[1.5px] border-dashed border-paper-deep text-center font-display text-sm text-ink-mute">
