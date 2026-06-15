@@ -1,7 +1,31 @@
-// Right-pane placeholder when no chat is selected (desktop). On mobile this main
-// pane is hidden by the layout — the sidebar (the list) shows instead.
+"use client";
+
+// Right-pane default. On DESKTOP we auto-open the first connection (so the chat
+// pane isn't empty). On mobile this pane is hidden by the layout — the list shows
+// instead, so we don't auto-redirect there (keeps the list as the entry point).
+
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { matchApi } from "@/lib/matchApi";
 
 export default function ConnectionsIndex() {
+  const router = useRouter();
+
+  useEffect(() => {
+    if (typeof window === "undefined" || window.innerWidth < 1024) return; // desktop only
+    let alive = true;
+    matchApi
+      .listMatches()
+      .then((d) => {
+        const first = d.matches?.[0];
+        if (alive && first) router.replace(`/connections/${first.id}`);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [router]);
+
   return (
     <div className="flex-1 flex items-center justify-center text-center px-6">
       <div>

@@ -12,9 +12,9 @@ export default function ConnectionsLayout({ children }: { children: React.ReactN
   const onChat = /^\/connections\/[^/]+/.test(path); // a specific chat is open
 
   return (
-    <div className="flex h-[100dvh] w-full max-w-5xl mx-auto lg:border-x-2 border-ink">
+    <div className="flex h-[100dvh] w-full">
       <aside
-        className={`w-full lg:w-80 lg:flex-shrink-0 lg:border-r-2 border-ink ${
+        className={`w-full lg:w-[30%] lg:flex-shrink-0 lg:border-r-2 border-ink ${
           onChat ? "hidden lg:flex lg:flex-col" : "flex flex-col"
         }`}
       >
