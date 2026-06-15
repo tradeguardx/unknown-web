@@ -87,6 +87,22 @@ export const matchApi = {
   createMatch: (m: { persona: unknown; displayName: string; avatar?: string; vibe?: string }) =>
     call<{ match: MatchedPersona }>("/matches", { method: "POST", body: JSON.stringify(m) }),
 
+  // "Keep this one" — freeze the CURRENT chat's persona. Goes through the
+  // chatApp route (which holds the persona server-side) with our Bearer token.
+  async keepChat(sessionId: string): Promise<{ match: MatchedPersona }> {
+    const token = await getToken();
+    const res = await fetch("/api/match/keep", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ sessionId }),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new MatchApiError(res.status, json?.error?.message || res.statusText, json?.error?.code);
+    }
+    return json.data ?? json;
+  },
+
   // Resume + chat (entitlement-gated; send() throws MatchApiError 402 on paywall)
   resume: (matchId: string) =>
     call<{ match: MatchedPersona; conversation: { id: string }; messages: MatchMessage[] }>(

@@ -9,6 +9,7 @@ import { LookingView } from "./landing/LookingView";
 import { MenuDrawer } from "./landing/MenuDrawer";
 import { loadPrefs } from "@/lib/clientPrefs";
 import { OpenerStarters } from "./chat/OpenerStarters";
+import { matchApi } from "@/lib/matchApi";
 import type { ChatIntent } from "@/lib/prefs";
 
 // Friendly label for the bottom "mood:" line, derived from the user's intent.
@@ -134,6 +135,9 @@ export function ChatWindow() {
   const [messages, setMessages] = useState<DisplayMsg[]>([]);
   const [typing, setTyping] = useState(false);
   const [input, setInput] = useState("");
+  // "Keep this one" (match) state — saves the current persona as a connection.
+  const [matched, setMatched] = useState(false);
+  const [keeping, setKeeping] = useState(false);
   const [ended, setEnded] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
   const [showFollow, setShowFollow] = useState(false);
@@ -582,6 +586,7 @@ export function ChatWindow() {
       setVibe(data.vibe);
       chatStartRef.current = Date.now();
       setShowFeedback(false);
+      setMatched(false); // fresh stranger → not yet a saved match
       pushMsg({ role: "system", text: "you're now chatting with a random stranger." });
 
       let openerEnd = 0;
@@ -705,6 +710,21 @@ export function ChatWindow() {
       pushMsg({ role: "system", text: "network hiccup. try again." });
     } finally {
       schedule(() => { replyInFlightRef.current = false; }, 200);
+    }
+  }
+
+  // "Keep this one" — freeze the current persona as a saved match (free). The
+  // persona stays server-side; we just pass the sessionId + our Supabase token.
+  async function keep() {
+    if (!sessionId || matched || keeping) return;
+    setKeeping(true);
+    try {
+      await matchApi.keepChat(sessionId);
+      setMatched(true);
+    } catch {
+      pushMsg({ role: "system", text: "couldn't save them — try again in a sec" });
+    } finally {
+      setKeeping(false);
     }
   }
 
@@ -870,15 +890,29 @@ export function ChatWindow() {
               </div>
             </div>
             {!ended && (
-              // Skip lives up here, away from the input — tapping it by accident
-              // while typing was costing real chats.
-              <button
-                onClick={skip}
-                className="flex-shrink-0 bg-ink text-paper-cool border-[1.2px] border-ink px-3.5 py-1.5 rounded-full font-sans text-[13px] font-bold tracking-tight shadow-hard-xs"
-                title="skip and find another"
-              >
-                skip →
-              </button>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                {/* Keep this one → save as a connection (match). */}
+                <button
+                  onClick={keep}
+                  disabled={keeping}
+                  className={
+                    matched
+                      ? "bg-red text-paper-cool border-[1.2px] border-ink px-3 py-1.5 rounded-full font-sans text-[13px] font-bold tracking-tight shadow-hard-xs"
+                      : "bg-paper-cool text-ink border-[1.2px] border-ink px-3 py-1.5 rounded-full font-sans text-[13px] font-bold tracking-tight shadow-hard-xs disabled:opacity-50"
+                  }
+                  title={matched ? "saved to your connections" : "keep this one"}
+                >
+                  {matched ? "kept ✓" : keeping ? "saving…" : "keep 💘"}
+                </button>
+                {/* Skip lives up here, away from the input — accidental taps mid-type cost chats. */}
+                <button
+                  onClick={skip}
+                  className="bg-ink text-paper-cool border-[1.2px] border-ink px-3.5 py-1.5 rounded-full font-sans text-[13px] font-bold tracking-tight shadow-hard-xs"
+                  title="skip and find another"
+                >
+                  skip →
+                </button>
+              </div>
             )}
           </div>
 
