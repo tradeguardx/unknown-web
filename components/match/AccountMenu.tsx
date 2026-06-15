@@ -31,15 +31,6 @@ export function AccountMenu() {
           ? `unknown+ · ${acct.usage.includedUsed.toLocaleString()} / ${acct.usage.includedQuota.toLocaleString()} messages`
           : "free plan"}
       </div>
-      <button
-        onClick={async () => {
-          await matchApi.signOut();
-          window.location.href = "/";
-        }}
-        className="mt-2 font-sans text-[15px] font-semibold text-red tracking-[-0.015em]"
-      >
-        log out
-      </button>
     </div>
   );
 }

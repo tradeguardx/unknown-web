@@ -214,6 +214,18 @@ export function MenuDrawer({ open, onClose }: Props) {
           )}
         </div>
 
+        {loggedIn && (
+          <button
+            onClick={async () => {
+              await matchApi.signOut();
+              window.location.href = "/";
+            }}
+            className="flex-shrink-0 px-5 py-3.5 border-t-[1.5px] border-dashed border-paper-deep text-left w-full font-sans text-[15px] font-semibold text-ink-mute hover:text-red"
+          >
+            log out
+          </button>
+        )}
+
         <div className="px-5 py-5 border-t-[1.5px] border-dashed border-paper-deep text-center font-display text-sm text-ink-mute">
           made for the strange &amp; sleepless ♡
         </div>
