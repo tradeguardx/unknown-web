@@ -1,23 +1,23 @@
 "use client";
 
-// The "say something first?" empty state. Shown when the user has connected to a
-// stranger who did NOT open first. A "set a vibe" button opens a full vibe popup
-// (re-rolls the stranger to match the chosen mood); then they say hi to start.
+// The "say something first?" empty state. A "set your vibe" button opens a
+// slide-up sheet (vibe + language + into); applying re-rolls a matched stranger.
+// Then they say hi to start.
 
 import { useState } from "react";
 import type { ChatIntent } from "@/lib/prefs";
-import { VibePicker, VIBES } from "./VibePicker";
+import { VibeSheet, VIBES } from "./VibeSheet";
 
 export function OpenerStarters({
   onPick,
   currentIntent,
-  onSetVibe,
+  onReroll,
 }: {
   onPick: (text: string) => void;
   currentIntent?: ChatIntent;
-  onSetVibe?: (intent: ChatIntent) => void;
+  onReroll?: () => void;
 }) {
-  const [pickerOpen, setPickerOpen] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
   const currentLabel = VIBES.find((v) => v.intent === currentIntent)?.label;
 
   return (
@@ -30,13 +30,12 @@ export function OpenerStarters({
         no names, no history. it vanishes when you leave.
       </p>
 
-      {/* Set a vibe — opens the full picker; re-rolls the stranger to match. */}
-      {onSetVibe && (
+      {onReroll && (
         <button
-          onClick={() => setPickerOpen(true)}
+          onClick={() => setSheetOpen(true)}
           className="mt-5 rounded-full border-[1.5px] border-ink bg-paper-cool px-4 py-2 font-sans text-[13px] font-bold tracking-tight text-ink shadow-hard-xs"
         >
-          🎚 {currentLabel ? `vibe: ${currentLabel}` : "set a vibe"} ▾
+          🎚 {currentLabel ? `vibe: ${currentLabel}` : "set your vibe"} ▾
         </button>
       )}
 
@@ -45,7 +44,6 @@ export function OpenerStarters({
           onClick={() => onPick("hi 👋")}
           className="relative w-full rounded-2xl border-2 border-ink bg-paper-cool px-5 py-4 shadow-hard-sm transition-transform hover:-translate-y-0.5 active:translate-y-0"
         >
-          {/* little tape strip */}
           <span
             className="absolute -top-2 left-1/2 h-4 w-10 -translate-x-1/2 rotate-[-4deg] rounded-[2px] bg-yellow/70 border border-ink/20"
             aria-hidden
@@ -54,15 +52,14 @@ export function OpenerStarters({
         </button>
       </div>
 
-      {onSetVibe && (
-        <VibePicker
-          open={pickerOpen}
-          current={currentIntent}
-          onSelect={(i) => {
-            setPickerOpen(false);
-            onSetVibe(i);
+      {onReroll && (
+        <VibeSheet
+          open={sheetOpen}
+          onApplied={() => {
+            setSheetOpen(false);
+            onReroll();
           }}
-          onClose={() => setPickerOpen(false)}
+          onClose={() => setSheetOpen(false)}
         />
       )}
     </div>

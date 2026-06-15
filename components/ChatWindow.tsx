@@ -7,7 +7,7 @@ import { TypingIndicator } from "./TypingIndicator";
 import { CaptchaModal } from "./CaptchaModal";
 import { LookingView } from "./landing/LookingView";
 import { MenuDrawer } from "./landing/MenuDrawer";
-import { loadPrefs, savePrefs } from "@/lib/clientPrefs";
+import { loadPrefs } from "@/lib/clientPrefs";
 import { OpenerStarters } from "./chat/OpenerStarters";
 import { matchApi } from "@/lib/matchApi";
 import { MatchedOverlay } from "./match/MatchedOverlay";
@@ -735,11 +735,10 @@ export function ChatWindow() {
     }
   }
 
-  // Set a vibe from the opener screen → persist the intent and re-roll a fresh
-  // stranger matched to that mood (connect() reads the saved prefs).
-  function pickVibe(intent: ChatIntent) {
-    savePrefs({ ...loadPrefs(), intent });
-    setIntent(intent);
+  // After the vibe sheet saves new prefs (vibe/language/into), re-roll a fresh
+  // stranger matched to them (connect() reads the saved prefs).
+  function reroll() {
+    setIntent(loadPrefs().intent);
     clearAllTimeouts();
     connect();
   }
@@ -935,7 +934,7 @@ export function ChatWindow() {
           {/* Thread, OR the "say something first?" starters when the stranger
               hasn't opened and the user hasn't said anything yet. */}
           {noConversationYet && !typing ? (
-            <OpenerStarters onPick={(t) => send(t)} currentIntent={intent} onSetVibe={pickVibe} />
+            <OpenerStarters onPick={(t) => send(t)} currentIntent={intent} onReroll={reroll} />
           ) : (
             <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-4 font-mono text-[13.5px] leading-[1.7]">
               {threadMessages.map((m, i) => (
