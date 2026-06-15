@@ -28,6 +28,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "session not found" }, { status: 404 });
   }
 
+  // Carry over the conversation so far (last ~40 turns) so the matched chat
+  // continues from where they left off instead of restarting empty.
+  const transcript = session.messages
+    .filter((m) => m.role === "user" || m.role === "assistant")
+    .slice(-40)
+    .map((m) => ({ role: m.role, content: m.content }));
+
   // Freeze the full persona snapshot so the same person returns on resume.
   const res = await fetch(`${MATCH_API}/matches`, {
     method: "POST",
@@ -36,6 +43,7 @@ export async function POST(req: Request) {
       persona: session.persona,
       displayName: session.persona.name,
       vibe: personaVibe(session.persona),
+      transcript,
     }),
   });
 
