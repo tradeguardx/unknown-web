@@ -116,22 +116,34 @@ export function ConnectionsSidebar() {
         )}
       </div>
 
-      {/* Account status footer — plan + messages used */}
+      {/* Account status footer — plan + messages used + logout */}
       {acct && !acct.isAnonymous && (
-        <div className="flex-shrink-0 border-t-[1.5px] border-dashed border-paper-deep px-4 py-3">
-          {acct.subscription.active ? (
-            <div className="font-sans text-[12px] text-ink">
-              <span className="font-bold text-red">unknown+</span>{" "}
-              <span className="text-ink-mute">
-                · {acct.usage.includedUsed.toLocaleString()} / {acct.usage.includedQuota.toLocaleString()} messages
-                {acct.usage.topUpRemaining > 0 ? ` · +${acct.usage.topUpRemaining.toLocaleString()} top-up` : ""}
-              </span>
-            </div>
-          ) : (
-            <div className="font-sans text-[12px] text-ink-mute">
-              <span className="font-bold text-ink">free plan</span> · subscribe for unlimited
-            </div>
-          )}
+        <div className="flex-shrink-0 border-t-[1.5px] border-dashed border-paper-deep px-4 py-3 flex items-center justify-between gap-2">
+          <div className="min-w-0">
+            {acct.subscription.active ? (
+              <div className="font-sans text-[12px] text-ink truncate">
+                <span className="font-bold text-red">unknown+</span>{" "}
+                <span className="text-ink-mute">
+                  · {acct.usage.includedUsed.toLocaleString()} / {acct.usage.includedQuota.toLocaleString()}
+                  {acct.usage.topUpRemaining > 0 ? ` · +${acct.usage.topUpRemaining.toLocaleString()}` : ""}
+                </span>
+              </div>
+            ) : (
+              <div className="font-sans text-[12px] text-ink-mute truncate">
+                <span className="font-bold text-ink">free plan</span> · subscribe for unlimited
+              </div>
+            )}
+            {acct.email && <div className="font-display text-[11px] text-ink-mute truncate">{acct.email}</div>}
+          </div>
+          <button
+            onClick={async () => {
+              await matchApi.signOut();
+              window.location.href = "/connections";
+            }}
+            className="flex-shrink-0 font-display text-[12px] text-ink-mute hover:text-red underline"
+          >
+            log out
+          </button>
         </div>
       )}
     </div>

@@ -87,6 +87,9 @@ export const matchApi = {
     getSupabase().auth.updateUser({ email, password }),
   loginPassword: (email: string, password: string) =>
     getSupabase().auth.signInWithPassword({ email, password }),
+  // Sign out → next match-service call auto-creates a fresh anonymous session,
+  // so the user becomes a guest again (their account's matches drop out of view).
+  signOut: () => getSupabase().auth.signOut(),
 
   // Account status — login state, subscription, usage.
   me: () =>
