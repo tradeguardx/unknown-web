@@ -21,7 +21,7 @@ export function AccountMenu() {
   if (!acct || acct.isAnonymous) return null;
 
   return (
-    <div className="mb-2 pb-3 border-b-[1.5px] border-dashed border-paper-deep">
+    <div>
       <div className="font-sans text-[11px] font-bold uppercase tracking-wider text-ink-mute mb-1">account</div>
       {acct.email && (
         <div className="font-sans text-[15px] text-ink truncate">{acct.email}</div>
