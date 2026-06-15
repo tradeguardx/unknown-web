@@ -16,6 +16,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { AccountMenu } from "@/components/match/AccountMenu";
 
 interface Props {
   open: boolean;
@@ -159,6 +160,8 @@ export function MenuDrawer({ open, onClose }: Props) {
               </button>
             </>
           )}
+
+          <AccountMenu />
         </div>
 
         <div className="px-5 py-5 border-t-[1.5px] border-dashed border-paper-deep text-center font-display text-sm text-ink-mute">
