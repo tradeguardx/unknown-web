@@ -22,11 +22,11 @@ export function AccountMenu() {
 
   return (
     <div className="mb-2 pb-3 border-b-[1.5px] border-dashed border-paper-deep">
-      <div className="font-display text-[15px] text-ink-mute mb-1 font-bold">account</div>
+      <div className="font-sans text-[11px] font-bold uppercase tracking-wider text-ink-mute mb-1">account</div>
       {acct.email && (
         <div className="font-sans text-[15px] text-ink truncate">{acct.email}</div>
       )}
-      <div className="font-display text-[12px] text-ink-mute mt-0.5">
+      <div className="font-sans text-[12px] text-ink-mute mt-0.5">
         {acct.subscription.active
           ? `unknown+ · ${acct.usage.includedUsed.toLocaleString()} / ${acct.usage.includedQuota.toLocaleString()} messages`
           : "free plan"}

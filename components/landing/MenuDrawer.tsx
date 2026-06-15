@@ -17,6 +17,8 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { AccountMenu } from "@/components/match/AccountMenu";
+import { UpgradeAccount } from "@/components/match/UpgradeAccount";
+import { matchApi } from "@/lib/matchApi";
 
 interface Props {
   open: boolean;
@@ -28,6 +30,26 @@ const NOTIFY_KEY = "unknownchat:notify:v1";
 export function MenuDrawer({ open, onClose }: Props) {
   const [notifyPerm, setNotifyPerm] = useState<NotificationPermission | "unsupported">("default");
   const [notifyPref, setNotifyPref] = useState(false);
+  // Auth state → drives the auth-aware menu (account-first for logged-in users).
+  const [loggedIn, setLoggedIn] = useState<boolean | null>(null);
+  const [subscribed, setSubscribed] = useState(false);
+  const [loginOpen, setLoginOpen] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    let alive = true;
+    matchApi
+      .me()
+      .then((m) => {
+        if (!alive) return;
+        setLoggedIn(!m.isAnonymous);
+        setSubscribed(m.subscription.active);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [open]);
 
   // Probe Notification API state every time the drawer opens — cheap, and
   // catches the case where the user changes browser permissions while we're
@@ -94,6 +116,7 @@ export function MenuDrawer({ open, onClose }: Props) {
     : "enable notifications";
 
   return (
+    <>
     <div
       className="fixed inset-0 z-50 flex justify-end bg-ink/45 backdrop-blur-[3px]"
       onClick={onClose}
@@ -127,22 +150,50 @@ export function MenuDrawer({ open, onClose }: Props) {
               your connections 💘
             </span>
           </Link>
+          {/* Plan — contextual: manage if subscribed, else upgrade / unknown+ */}
           <Link
             href="/plus"
             onClick={onClose}
             className="flex items-center justify-between py-3 border-b-[1.5px] border-dashed border-paper-deep"
           >
             <span className="font-sans text-[17px] font-bold tracking-[-0.015em] text-red">
-              unknown+ ✨
+              {subscribed ? "manage unknown+ ✨" : loggedIn ? "upgrade to unknown+ ✨" : "unknown+ ✨"}
             </span>
-            <span className="rounded-full border-[1.5px] border-ink bg-yellow px-2 py-0.5 font-display text-[11px] font-bold text-ink -rotate-2">
-              soon
-            </span>
+            {!subscribed && (
+              <span className="rounded-full border-[1.5px] border-ink bg-yellow px-2 py-0.5 font-display text-[11px] font-bold text-ink -rotate-2">
+                soon
+              </span>
+            )}
           </Link>
-          <DrawerLink href="/about" onClick={onClose}>about</DrawerLink>
-          <DrawerLink href="/faq" onClick={onClose}>faq</DrawerLink>
-          <DrawerLink href="/terms" onClick={onClose}>terms</DrawerLink>
-          <DrawerLink href="/privacy" onClick={onClose}>privacy</DrawerLink>
+
+          {/* Guest → prominent log in / sign up (opens a sheet). */}
+          {loggedIn === false && (
+            <button
+              onClick={() => setLoginOpen(true)}
+              className="flex items-center justify-between py-3 border-b-[1.5px] border-dashed border-paper-deep text-left w-full"
+            >
+              <span className="font-sans text-[17px] font-bold tracking-[-0.015em] text-ink">
+                log in / sign up
+              </span>
+            </button>
+          )}
+
+          {/* Info links: compact row for logged-in users, full links for guests. */}
+          {loggedIn ? (
+            <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1.5 font-sans text-[13px] text-ink-mute">
+              <Link href="/about" onClick={onClose} className="hover:text-ink underline">about</Link>
+              <Link href="/faq" onClick={onClose} className="hover:text-ink underline">faq</Link>
+              <Link href="/terms" onClick={onClose} className="hover:text-ink underline">terms</Link>
+              <Link href="/privacy" onClick={onClose} className="hover:text-ink underline">privacy</Link>
+            </div>
+          ) : (
+            <>
+              <DrawerLink href="/about" onClick={onClose}>about</DrawerLink>
+              <DrawerLink href="/faq" onClick={onClose}>faq</DrawerLink>
+              <DrawerLink href="/terms" onClick={onClose}>terms</DrawerLink>
+              <DrawerLink href="/privacy" onClick={onClose}>privacy</DrawerLink>
+            </>
+          )}
 
           {notifyPerm !== "unsupported" && (
             <>
@@ -168,12 +219,33 @@ export function MenuDrawer({ open, onClose }: Props) {
         </div>
       </aside>
     </div>
+
+    {/* Guest login / sign-up sheet (opened from the menu). */}
+    {loginOpen && (
+      <div
+        className="fixed inset-0 z-[60] flex items-center justify-center bg-ink/60 px-6"
+        onClick={() => setLoginOpen(false)}
+      >
+        <div className="w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
+          <UpgradeAccount
+            forceShow
+            title="log in or sign up"
+            subtitle="save your matches across every device 💘"
+            onDone={() => {
+              setLoginOpen(false);
+              setLoggedIn(true);
+            }}
+          />
+        </div>
+      </div>
+    )}
+    </>
   );
 }
 
 function Section({ children }: { children: React.ReactNode }) {
   return (
-    <div className="font-display text-[15px] text-ink-mute mt-3.5 mb-1 font-bold">
+    <div className="font-sans text-[11px] font-bold uppercase tracking-wider text-ink-mute mt-4 mb-1">
       {children}
     </div>
   );
