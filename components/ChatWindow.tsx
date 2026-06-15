@@ -10,6 +10,7 @@ import { MenuDrawer } from "./landing/MenuDrawer";
 import { loadPrefs } from "@/lib/clientPrefs";
 import { OpenerStarters } from "./chat/OpenerStarters";
 import { matchApi } from "@/lib/matchApi";
+import { MatchedOverlay } from "./match/MatchedOverlay";
 import type { ChatIntent } from "@/lib/prefs";
 
 // Friendly label for the bottom "mood:" line, derived from the user's intent.
@@ -135,9 +136,11 @@ export function ChatWindow() {
   const [messages, setMessages] = useState<DisplayMsg[]>([]);
   const [typing, setTyping] = useState(false);
   const [input, setInput] = useState("");
-  // "Keep this one" (match) state — saves the current persona as a connection.
+  // Match state — saves the current persona as a connection + celebration overlay.
   const [matched, setMatched] = useState(false);
   const [keeping, setKeeping] = useState(false);
+  const [showMatchOverlay, setShowMatchOverlay] = useState(false);
+  const [matchedName, setMatchedName] = useState("them");
   const [ended, setEnded] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
   const [showFollow, setShowFollow] = useState(false);
@@ -587,6 +590,7 @@ export function ChatWindow() {
       chatStartRef.current = Date.now();
       setShowFeedback(false);
       setMatched(false); // fresh stranger → not yet a saved match
+      setShowMatchOverlay(false);
       pushMsg({ role: "system", text: "you're now chatting with a random stranger." });
 
       let openerEnd = 0;
@@ -713,16 +717,19 @@ export function ChatWindow() {
     }
   }
 
-  // "Keep this one" — freeze the current persona as a saved match (free). The
-  // persona stays server-side; we just pass the sessionId + our Supabase token.
+  // "Match" — freeze the current persona as a saved connection (free). The
+  // persona stays server-side; we pass the sessionId + our Supabase token, then
+  // celebrate with the full-screen overlay.
   async function keep() {
     if (!sessionId || matched || keeping) return;
     setKeeping(true);
     try {
-      await matchApi.keepChat(sessionId);
+      const res = await matchApi.keepChat(sessionId);
+      setMatchedName(res.match?.displayName ?? "them");
       setMatched(true);
+      setShowMatchOverlay(true);
     } catch {
-      pushMsg({ role: "system", text: "couldn't save them — try again in a sec" });
+      pushMsg({ role: "system", text: "couldn't match — try again in a sec" });
     } finally {
       setKeeping(false);
     }
@@ -900,9 +907,9 @@ export function ChatWindow() {
                       ? "bg-red text-paper-cool border-[1.2px] border-ink px-3 py-1.5 rounded-full font-sans text-[13px] font-bold tracking-tight shadow-hard-xs"
                       : "bg-paper-cool text-ink border-[1.2px] border-ink px-3 py-1.5 rounded-full font-sans text-[13px] font-bold tracking-tight shadow-hard-xs disabled:opacity-50"
                   }
-                  title={matched ? "saved to your connections" : "keep this one"}
+                  title={matched ? "matched — in your connections" : "match with this stranger"}
                 >
-                  {matched ? "kept ✓" : keeping ? "saving…" : "keep 💘"}
+                  {matched ? "matched ✓" : keeping ? "matching…" : "match 💘"}
                 </button>
                 {/* Skip lives up here, away from the input — accidental taps mid-type cost chats. */}
                 <button
@@ -1035,6 +1042,10 @@ export function ChatWindow() {
       )}
 
       <MenuDrawer open={menuOpen} onClose={() => setMenuOpen(false)} />
+
+      {showMatchOverlay && (
+        <MatchedOverlay name={matchedName} onClose={() => setShowMatchOverlay(false)} />
+      )}
     </div>
   );
 }
