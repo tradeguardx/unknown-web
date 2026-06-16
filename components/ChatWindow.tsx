@@ -141,6 +141,10 @@ export function ChatWindow() {
   const [keeping, setKeeping] = useState(false);
   const [showMatchOverlay, setShowMatchOverlay] = useState(false);
   const [matchedName, setMatchedName] = useState("them");
+  // Conversion nudges: a long chat → "match to save it"; lots of skips → day pass.
+  const [matchNudge, setMatchNudge] = useState<number | null>(null); // the minute mark
+  const [skipNudge, setSkipNudge] = useState(false);
+  const nudgedMarkRef = useRef(0);
   const [ended, setEnded] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
   const [showFollow, setShowFollow] = useState(false);
@@ -267,6 +271,21 @@ export function ChatWindow() {
     const id = window.setInterval(() => setNowTick(t => t + 1), 10_000);
     return () => window.clearInterval(id);
   }, [ended, sessionId]);
+
+  // Long-chat → "match to save it" nudge. First a 25-min heads-up, then a
+  // stronger 30-min prompt and every ~10 min after. Skipped once matched. The
+  // 10s nowTick re-runs this so it fires within ~10s of crossing a mark.
+  useEffect(() => {
+    if (matched || ended || chatStartRef.current <= 0) return;
+    const mins = Math.floor((Date.now() - chatStartRef.current) / 60_000);
+    let mark = 0;
+    if (mins >= 30) mark = 30 + Math.floor((mins - 30) / 10) * 10; // 30, 40, 50…
+    else if (mins >= 25) mark = 25;
+    if (mark > nudgedMarkRef.current) {
+      nudgedMarkRef.current = mark;
+      setMatchNudge(mark);
+    }
+  }, [nowTick, matched, ended]);
 
   // Bump lastSeenAt whenever the persona is "active" — typing indicator turns
   // on, or a new assistant message lands in the thread. These two signals
@@ -591,6 +610,8 @@ export function ChatWindow() {
       setShowFeedback(false);
       setMatched(false); // fresh stranger → not yet a saved match
       setShowMatchOverlay(false);
+      setMatchNudge(null); // reset the long-chat match nudge for the new stranger
+      nudgedMarkRef.current = 0;
       pushMsg({ role: "system", text: "you're now chatting with a random stranger." });
 
       let openerEnd = 0;
@@ -728,6 +749,7 @@ export function ChatWindow() {
       setMatchedName(res.match?.displayName ?? "them");
       setMatched(true);
       setShowMatchOverlay(true);
+      setMatchNudge(null); // matched → no more "save it" nudges
     } catch {
       pushMsg({ role: "system", text: "couldn't match — try again in a sec" });
     } finally {
@@ -743,6 +765,18 @@ export function ChatWindow() {
     connect();
   }
 
+  // Count confirmed skips (persisted across re-rolls); every 10th, surface the
+  // $1 day-pass nudge — a heavy skipper is searching, so pitch keeping someone.
+  function bumpSkipCount() {
+    try {
+      const n = (parseInt(localStorage.getItem("uc:skipCount") || "0", 10) || 0) + 1;
+      localStorage.setItem("uc:skipCount", String(n));
+      if (n % 10 === 0) setSkipNudge(true);
+    } catch {
+      /* localStorage disabled — skip the nudge */
+    }
+  }
+
   function skip() {
     // If the chat has had real activity (any non-system message from either side),
     // confirm before disconnecting. Skipping right after connecting is fine — no prompt.
@@ -754,6 +788,7 @@ export function ChatWindow() {
       }
       // Record the abandoned session before we spin up a new one.
       notifyServerEnd("skip");
+      bumpSkipCount(); // lots of skips → suggest a $1 day pass
 
       // If there's a post-chat ask to show (per the duration tiers), end HERE so
       // the ended effect shows it; the user taps "find another" afterwards.
@@ -972,6 +1007,42 @@ export function ChatWindow() {
                 {" to change it (flirty, deep, hype…)"}
               </p>
             )}
+
+            {/* Long-chat → "match to save it" nudge (dismissible). */}
+            {!ended && matchNudge && !matched && (
+              <div className="mb-2 flex items-center gap-2 rounded-xl border-2 border-ink bg-yellow-soft px-3 py-2 shadow-hard-xs">
+                <span className="flex-1 font-sans text-[12px] font-semibold text-ink leading-snug">
+                  {matchNudge >= 30
+                    ? "you've been talking a while 💘 match to keep them before they go"
+                    : "heads up — strangers can leave. match to save this chat 💘"}
+                </span>
+                <button
+                  onClick={keep}
+                  disabled={keeping}
+                  className="flex-shrink-0 rounded-full border-[1.5px] border-ink bg-red text-paper-cool px-3 py-1 font-sans text-[11px] font-bold shadow-hard-xs disabled:opacity-50"
+                >
+                  match 💘
+                </button>
+                <button onClick={() => setMatchNudge(null)} aria-label="dismiss" className="flex-shrink-0 text-ink-mute hover:text-ink text-sm leading-none">✕</button>
+              </div>
+            )}
+
+            {/* Skipped a lot → $1 day-pass nudge (dismissible). */}
+            {!ended && skipNudge && (
+              <div className="mb-2 flex items-center gap-2 rounded-xl border-2 border-ink bg-lilac/50 px-3 py-2 shadow-hard-xs">
+                <span className="flex-1 font-sans text-[12px] font-semibold text-ink leading-snug">
+                  skipping a lot? 🎟️ match someone you vibe with &amp; chat unlimited — day pass $1
+                </span>
+                <Link
+                  href="/plus"
+                  className="flex-shrink-0 rounded-full border-[1.5px] border-ink bg-ink text-paper-cool px-3 py-1 font-sans text-[11px] font-bold shadow-hard-xs"
+                >
+                  day pass →
+                </Link>
+                <button onClick={() => setSkipNudge(false)} aria-label="dismiss" className="flex-shrink-0 text-ink-mute hover:text-ink text-sm leading-none">✕</button>
+              </div>
+            )}
+
             <div
               // Tapping anywhere in the row focuses the actual input — fixes
               // an iOS bug where the first tap occasionally lands on the
