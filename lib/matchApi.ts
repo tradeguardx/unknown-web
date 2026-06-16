@@ -5,6 +5,7 @@
 // paywall so the UI can react. The service wraps responses as {success, data}.
 
 import { getSupabase } from "./supabaseClient";
+import { detectCountry } from "./geo";
 
 const BASE = process.env.NEXT_PUBLIC_MATCH_API_URL || "https://api.unknown.chat/match";
 
@@ -109,9 +110,12 @@ export const matchApi = {
   portal: (returnUrl?: string) =>
     call<{ url: string }>("/portal", { method: "POST", body: JSON.stringify({ returnUrl }) }),
 
-  // Public geo-resolved price for display (no auth).
+  // Public geo-resolved price for display (no auth). We pass the browser-detected
+  // country since the API isn't behind Cloudflare (no cf-ipcountry server-side).
   async pricing() {
-    const res = await fetch(`${BASE}/pricing`);
+    const country = await detectCountry();
+    const qs = country ? `?country=${encodeURIComponent(country)}` : "";
+    const res = await fetch(`${BASE}/pricing${qs}`);
     const json = await res.json().catch(() => ({}));
     return (json.data ?? {}) as {
       country: string | null;
@@ -153,10 +157,13 @@ export const matchApi = {
       body: JSON.stringify({ message }),
     }),
 
-  // Payments — geo-priced; returns a Dodo checkout URL to redirect to.
-  checkout: (kind: "subscription" | "topup", urls: { successUrl: string; cancelUrl: string }) =>
-    call<{ checkoutUrl: string; price: { label: string; currency: string } }>("/checkout", {
+  // Payments — geo-priced; returns a Dodo checkout URL to redirect to. We send the
+  // detected country so the backend bills the correct tier (no cf-ipcountry there).
+  async checkout(kind: "subscription" | "topup", urls: { successUrl: string; cancelUrl: string }) {
+    const country = await detectCountry();
+    return call<{ checkoutUrl: string; price: { label: string; currency: string } }>("/checkout", {
       method: "POST",
-      body: JSON.stringify({ kind, ...urls }),
-    }),
+      body: JSON.stringify({ kind, country, ...urls }),
+    });
+  },
 };
