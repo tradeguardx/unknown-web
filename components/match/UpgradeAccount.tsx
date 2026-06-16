@@ -54,23 +54,50 @@ export function UpgradeAccount({
     await matchApi.signInWithGoogle(redirectTo);
   }
 
+  // True when "create" failed only because the email already has an account.
+  function alreadyRegistered(msg?: string): boolean {
+    return !!msg && /already|registered|exists|in use/i.test(msg);
+  }
+
+  function finish() {
+    setDone(true);
+    onDone?.();
+  }
+
   async function run(kind: "create" | "login") {
-    if (!email.trim() || password.length < 6) {
-      setError("enter an email and a password (6+ chars)");
+    const mail = email.trim();
+    if (!mail || password.length < 6) {
+      setError("enter your email and a password (at least 6 characters)");
       return;
     }
     setBusy(true);
     setError(null);
-    const { error } =
-      kind === "create"
-        ? await matchApi.createPassword(email.trim(), password)
-        : await matchApi.loginPassword(email.trim(), password);
-    setBusy(false);
-    if (error) setError(error.message);
-    else {
-      setDone(true);
-      onDone?.();
+
+    if (kind === "login") {
+      const { error } = await matchApi.loginPassword(mail, password);
+      setBusy(false);
+      if (error) setError("wrong email or password — try again");
+      else finish();
+      return;
     }
+
+    // create: link the email to the current (anonymous) user.
+    const { error } = await matchApi.createPassword(mail, password);
+    if (!error) {
+      setBusy(false);
+      finish();
+      return;
+    }
+    // Email already belongs to an account → just log them into it.
+    if (alreadyRegistered(error.message)) {
+      const { error: loginErr } = await matchApi.loginPassword(mail, password);
+      setBusy(false);
+      if (!loginErr) finish();
+      else setError("you already have an account with this email — that password didn't match.");
+      return;
+    }
+    setBusy(false);
+    setError(error.message || "couldn't create your account — try again");
   }
 
   if (done) {
@@ -118,7 +145,7 @@ export function UpgradeAccount({
           placeholder="password (6+ chars)"
           className="w-full rounded-xl border-2 border-ink bg-paper px-3 py-2 font-sans text-[13px] text-ink outline-none"
         />
-        {error && <p className="font-display text-[12px] text-red">{error}</p>}
+        {error && <p className="font-sans text-[12px] font-semibold text-red">{error}</p>}
         <div className="flex gap-2">
           <button
             onClick={() => run("create")}
