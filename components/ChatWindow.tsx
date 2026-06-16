@@ -149,6 +149,9 @@ export function ChatWindow() {
   // Logged-out users get a hard cap of 10 skips, then must log in to keep going.
   const [loggedIn, setLoggedIn] = useState<boolean | null>(null);
   const [skipBlocked, setSkipBlocked] = useState(false);
+  // Paying users (active subscription OR day pass) have NO limits — no skip cap,
+  // no 30-min cap, no nudges.
+  const [paid, setPaid] = useState(false);
   const [ended, setEnded] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
   const [showFollow, setShowFollow] = useState(false);
@@ -280,7 +283,9 @@ export function ChatWindow() {
   // (every 5 min → 20, 25), then HARD-END at 30. Matched chats are exempt (that's
   // the incentive). The 10s nowTick re-runs this so it fires within ~10s.
   useEffect(() => {
-    if (matched || ended || chatStartRef.current <= 0) return;
+    // Paid users (subscription/day pass) and matched chats are exempt — no caps,
+    // no match nudges. (The post-chat follow/review prompts are separate.)
+    if (matched || paid || ended || chatStartRef.current <= 0) return;
     const mins = Math.floor((Date.now() - chatStartRef.current) / 60_000);
 
     // 30-min hard cap → end the chat; matched connections never expire.
@@ -302,12 +307,27 @@ export function ChatWindow() {
       nudgedMarkRef.current = mark;
       setMatchNudge(mark);
     }
-  }, [nowTick, matched, ended]);
+  }, [nowTick, matched, ended, paid]);
 
-  // Detect a real (non-anonymous) login → logged-out users get a 10-skip cap.
+  // Detect login + purchase state. Logged-out → 10-skip cap. Paid (subscription
+  // or day pass) → no limits at all. Only logged-in users hit /me (no anon
+  // session is created just to browse the stranger chat).
   useEffect(() => {
     let alive = true;
-    matchApi.currentUser().then((u) => alive && setLoggedIn(!!u && !u.is_anonymous));
+    (async () => {
+      const u = await matchApi.currentUser();
+      if (!alive) return;
+      const isLoggedIn = !!u && !u.is_anonymous;
+      setLoggedIn(isLoggedIn);
+      if (isLoggedIn) {
+        try {
+          const m = await matchApi.me();
+          if (alive) setPaid(m.subscription.active || m.pass.active);
+        } catch {
+          /* ignore */
+        }
+      }
+    })();
     return () => {
       alive = false;
     };
@@ -807,8 +827,9 @@ export function ChatWindow() {
     try {
       const n = getSkipCount() + 1;
       localStorage.setItem("uc:skipCount", String(n));
-      // Logged-in users aren't capped → soft day-pass nudge every 10 skips.
-      if (loggedIn && n % 10 === 0) setSkipNudge(true);
+      // Logged-in, non-paid users → soft day-pass nudge every 10 skips.
+      // (Paid users get no nudges.)
+      if (loggedIn && !paid && n % 10 === 0) setSkipNudge(true);
     } catch {
       /* localStorage disabled */
     }
