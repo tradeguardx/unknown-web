@@ -176,6 +176,7 @@ export function MenuDrawer({ open, onClose }: Props) {
             <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1.5 font-sans text-[13px] text-ink-mute">
               <Link href="/about" onClick={onClose} className="hover:text-ink underline">about</Link>
               <Link href="/faq" onClick={onClose} className="hover:text-ink underline">faq</Link>
+              <Link href="/support" onClick={onClose} className="hover:text-ink underline">support</Link>
               <Link href="/terms" onClick={onClose} className="hover:text-ink underline">terms</Link>
               <Link href="/privacy" onClick={onClose} className="hover:text-ink underline">privacy</Link>
             </div>
@@ -183,6 +184,7 @@ export function MenuDrawer({ open, onClose }: Props) {
             <>
               <DrawerLink href="/about" onClick={onClose}>about</DrawerLink>
               <DrawerLink href="/faq" onClick={onClose}>faq</DrawerLink>
+              <DrawerLink href="/support" onClick={onClose}>support</DrawerLink>
               <DrawerLink href="/terms" onClick={onClose}>terms</DrawerLink>
               <DrawerLink href="/privacy" onClick={onClose}>privacy</DrawerLink>
             </>
