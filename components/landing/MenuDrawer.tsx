@@ -154,11 +154,6 @@ export function MenuDrawer({ open, onClose }: Props) {
             <span className="font-sans text-[17px] font-bold tracking-[-0.015em] text-red">
               {subscribed ? "manage unknown+ ✨" : loggedIn ? "upgrade to unknown+ ✨" : "unknown+ ✨"}
             </span>
-            {!subscribed && (
-              <span className="rounded-full border-[1.5px] border-ink bg-yellow px-2 py-0.5 font-display text-[11px] font-bold text-ink -rotate-2">
-                soon
-              </span>
-            )}
           </Link>
 
           {/* Guest → prominent log in / sign up (opens a sheet). */}

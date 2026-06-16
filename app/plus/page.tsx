@@ -3,16 +3,16 @@ import type { Metadata } from "next";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SITE_URL } from "@/lib/site";
-import { PlusBetaForm } from "@/components/landing/PlusBetaForm";
+import { PlusSubscribe } from "@/components/match/PlusSubscribe";
 
 export const metadata: Metadata = {
-  title: { absolute: "unknown+ — coming soon | unknown.chat" },
+  title: { absolute: "unknown+ — unlimited chats, saved forever | unknown.chat" },
   description:
-    "unknown+ is coming soon: save your chats, no skips, build your own personas, and better matches — for about $5/month.",
+    "unknown+ keeps your conversations going: save & resume any chat, unlimited messages, strangers who never skip out — from $2.99/month, local currency at checkout.",
   alternates: { canonical: `${SITE_URL}/plus` },
   openGraph: {
-    title: "unknown+ — coming soon",
-    description: "Save chats, no skips, build your own personas, better match — ~$5/mo.",
+    title: "unknown+ — unlimited chats, saved forever",
+    description: "Save & resume chats, unlimited messages, no skips. From $2.99/mo.",
     url: `${SITE_URL}/plus`,
   },
 };
@@ -20,15 +20,15 @@ export const metadata: Metadata = {
 // The ONE hero feature (Apple-style — make one bigger than the rest).
 const HERO_FEATURE = {
   emoji: "💾",
-  title: "Save Chats",
-  line: "The conversations that usually disappear… don’t anymore.",
+  title: "Chats that don't disappear",
+  line: "Save anyone you click with and pick the conversation right back up — days later, on any device.",
 };
 
-// Supporting trio.
+// Supporting trio — what unknown+ actually unlocks today.
 const FEATURES: { emoji: string; title: string; desc: string }[] = [
-  { emoji: "🚫", title: "No skips", desc: "Strangers stay. No ghosting, no leaving you mid-chat." },
-  { emoji: "🎨", title: "Build your own personas", desc: "Design your stranger — their vibe, backstory, the way they text." },
-  { emoji: "💘", title: "Better match", desc: "Pick the exact mood, energy & personality — not a random draw." },
+  { emoji: "♾️", title: "Unlimited messages", desc: "Talk as long as you want. No daily caps, no running out mid-conversation." },
+  { emoji: "🚫", title: "No skips", desc: "Your strangers stay. No ghosting, no one leaving you mid-chat." },
+  { emoji: "💘", title: "Deeper connection", desc: "They remember your chats and grow with them — not a fresh stranger every time." },
 ];
 
 export default function PlusPage() {
@@ -44,29 +44,17 @@ export default function PlusPage() {
 
           {/* Hero */}
           <div className="mt-6 text-center">
-            <span className="inline-block rounded-full border-2 border-ink bg-yellow px-3 py-1 font-display text-sm font-bold text-ink -rotate-2 shadow-hard-xs">
-              coming soon ✦
-            </span>
-            <h1 className="mt-4 font-sans text-4xl lg:text-5xl font-bold tracking-tight">
+            <h1 className="font-sans text-4xl lg:text-5xl font-bold tracking-tight">
               unknown<span className="text-red">+</span>
             </h1>
             <p className="mt-3 font-serif italic text-lg text-ink-soft max-w-md mx-auto">
               everything you love about unknown.chat — turned up. for the people who don&apos;t want the chat to end.
             </p>
+          </div>
 
-            <div className="mt-5 inline-flex items-baseline gap-1.5 rounded-2xl border-2 border-ink bg-paper-cool px-5 py-3 shadow-hard-sm rotate-[0.5deg]">
-              <span className="font-sans text-3xl font-bold text-ink">$5</span>
-              <span className="font-display text-ink-mute">/ month</span>
-            </div>
-
-            <div className="mt-3">
-              <span className="inline-flex items-center gap-1.5 rounded-full border-2 border-ink bg-lilac px-3.5 py-1 font-display text-sm font-bold text-ink shadow-hard-xs -rotate-1">
-                <span className="h-[6px] w-[6px] rounded-full bg-red live-blink" aria-hidden />
-                3,200 people waiting
-              </span>
-            </div>
-
-            <p className="mt-2.5 font-display text-xs text-ink-mute">cancel anytime · 7-day money-back guarantee</p>
+          {/* Live subscribe card — geo-priced, account-aware */}
+          <div className="mt-7 max-w-sm mx-auto">
+            <PlusSubscribe />
           </div>
 
           {/* Hero feature — one bigger than the rest (Apple-style) */}
@@ -95,13 +83,12 @@ export default function PlusPage() {
             ))}
           </div>
 
-          {/* Beta registration */}
-          <div className="mt-10">
-            <PlusBetaForm />
-            <p className="mt-4 text-center font-display text-xs text-ink-mute">
-              see our <Link href="/refund" className="underline text-red">refund policy</Link>
-            </p>
-          </div>
+          <p className="mt-8 text-center font-display text-xs text-ink-mute">
+            questions? see our{" "}
+            <Link href="/refund" className="underline text-red">refund policy</Link>
+            {" · "}
+            <Link href="/faq" className="underline text-red">faq</Link>
+          </p>
         </div>
       </main>
 

@@ -34,10 +34,17 @@ export function Paywall({
   }, [reason]);
 
   async function go() {
+    const here = typeof window !== "undefined" ? window.location.href : "";
+    // Free-taster paywall → the full unknown+ page (price, features, login),
+    // carrying this chat's URL so Dodo returns here and the conversation resumes.
+    if (reason === "paywall") {
+      window.location.href = `/plus?return=${encodeURIComponent(here)}`;
+      return;
+    }
+    // Quota top-up → straight to checkout (no /plus page for top-ups).
     setLoading(true);
     setError(false);
     try {
-      const here = typeof window !== "undefined" ? window.location.href : "";
       const { checkoutUrl } = await matchApi.checkout(kind, { successUrl: here, cancelUrl: here });
       if (checkoutUrl) window.location.href = checkoutUrl;
       else throw new Error("no checkout url");

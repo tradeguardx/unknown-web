@@ -144,9 +144,9 @@ export function ConnectionsSidebar() {
               </span>
             </div>
           ) : (
-            <div className="font-sans text-[12px] text-ink-mute truncate">
-              <span className="font-bold text-ink">free plan</span> · subscribe for unlimited
-            </div>
+            <Link href="/plus" className="block font-sans text-[12px] text-ink-mute truncate hover:text-ink">
+              <span className="font-bold text-ink">free plan</span> · <span className="text-red font-bold">get unknown+ →</span>
+            </Link>
           )}
           {acct.email && <div className="font-sans text-[11px] text-ink-mute truncate">{acct.email}</div>}
         </div>

@@ -6,6 +6,7 @@
 //   none   → free plan
 // Uses the shared cached account state (no per-open refetch).
 
+import Link from "next/link";
 import { matchApi } from "@/lib/matchApi";
 import { useAccount } from "@/lib/useAccount";
 
@@ -59,7 +60,12 @@ export function AccountMenu() {
           </button>
         </>
       ) : (
-        <div className="font-sans text-[12px] text-ink-mute mt-0.5">free plan</div>
+        <div className="mt-0.5">
+          <div className="font-sans text-[12px] text-ink-mute">free plan</div>
+          <Link href="/plus" className="mt-1 inline-block font-sans text-[12px] font-bold text-red underline">
+            get unknown+ →
+          </Link>
+        </div>
       )}
     </div>
   );
