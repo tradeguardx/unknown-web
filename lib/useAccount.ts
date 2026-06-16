@@ -28,10 +28,22 @@ export interface Account {
 
 let cache: Account | null = null;
 let inflight: Promise<Account | null> | null = null;
+// Mounted useAccount consumers, so refreshAccount() can push fresh usage/plan to
+// all of them live (e.g. the sidebar footer count after sending a message).
+const listeners = new Set<(a: Account | null) => void>();
 
 export function clearAccountCache() {
   cache = null;
   inflight = null;
+}
+
+// Re-fetch /me and broadcast to every mounted useAccount() — used after a chat
+// send so the message-count footer updates without a reload.
+export async function refreshAccount(): Promise<void> {
+  cache = null;
+  inflight = null;
+  const a = await load();
+  if (a) listeners.forEach((fn) => fn(a));
 }
 
 async function load(): Promise<Account | null> {
@@ -59,9 +71,13 @@ export function useAccount(): Account | null {
 
   useEffect(() => {
     let alive = true;
+    listeners.add(setAcct); // receive live refreshes (refreshAccount)
     if (cache) {
       setAcct(cache);
-      return;
+      return () => {
+        alive = false;
+        listeners.delete(setAcct);
+      };
     }
 
     // Instant basic state from the persisted session (no network) so the menu
@@ -92,6 +108,7 @@ export function useAccount(): Account | null {
 
     return () => {
       alive = false;
+      listeners.delete(setAcct);
     };
   }, []);
 

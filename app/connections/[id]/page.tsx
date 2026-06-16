@@ -10,6 +10,7 @@ import { useParams } from "next/navigation";
 import { MessageBubble } from "@/components/MessageBubble";
 import { TypingIndicator } from "@/components/TypingIndicator";
 import { matchApi, isPaywall, type MatchMessage, type MatchedPersona } from "@/lib/matchApi";
+import { refreshAccount } from "@/lib/useAccount";
 import { Paywall } from "@/components/match/Paywall";
 import { UpgradeAccount } from "@/components/match/UpgradeAccount";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -92,6 +93,8 @@ export default function ConnectionChatPage() {
         setMsgs((m) => [...m, { role: "system", text: warnText }]);
       } else if (reply) {
         setMsgs((m) => [...m, { role: "assistant", text: tidy(reply) }]);
+        // Refresh the plan/usage so the message-count footer updates live.
+        void refreshAccount();
       }
     } catch (e) {
       const err = e as { code?: string; status?: number; message?: string };
