@@ -6,7 +6,7 @@
 // On confirm, creates a Dodo checkout and redirects to it. Success/cancel return
 // to the current page so the chat resumes after payment.
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { matchApi } from "@/lib/matchApi";
 
 export function Paywall({
@@ -20,7 +20,18 @@ export function Paywall({
 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
+  const [priceLabel, setPriceLabel] = useState<string | null>(null);
   const kind = reason === "quota" ? "topup" : "subscription";
+
+  // Fetch the geo-resolved price for display ($2.99 / $4.99 by country).
+  useEffect(() => {
+    if (reason !== "paywall") return;
+    let alive = true;
+    matchApi.pricing().then((p) => alive && setPriceLabel(p.subscription.label)).catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [reason]);
 
   async function go() {
     setLoading(true);
@@ -47,8 +58,10 @@ export function Paywall({
       : {
           emoji: "💘",
           title: `keep talking to ${name}`,
-          body: "you've used your free messages. subscribe to keep the conversation going — unlimited, cancel anytime.",
-          cta: "subscribe & continue →",
+          body: `you've used your free messages. ${
+            priceLabel ? `unlimited for ${priceLabel}/mo` : "subscribe"
+          } — cancel anytime.`,
+          cta: priceLabel ? `subscribe ${priceLabel}/mo →` : "subscribe & continue →",
         };
 
   return (

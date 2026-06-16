@@ -109,6 +109,16 @@ export const matchApi = {
   portal: (returnUrl?: string) =>
     call<{ url: string }>("/portal", { method: "POST", body: JSON.stringify({ returnUrl }) }),
 
+  // Public geo-resolved price for display (no auth).
+  async pricing() {
+    const res = await fetch(`${BASE}/pricing`);
+    const json = await res.json().catch(() => ({}));
+    return (json.data ?? {}) as {
+      country: string | null;
+      subscription: { label: string; amount: number; currency: string; tier: string };
+    };
+  },
+
   // Matches (free)
   listMatches: () => call<{ matches: MatchedPersona[] }>("/matches"),
   unmatch: (id: string) => call<{ deleted: boolean }>(`/matches/${id}`, { method: "DELETE" }),
