@@ -163,7 +163,7 @@ export function ChatWindow() {
   // arrives. Combined with the now-tick state below, the label drifts
   // "online" → "active 30s ago" → "active 2m ago" naturally over time.
   const [lastSeenAt, setLastSeenAt] = useState<number | null>(null);
-  const [, setNowTick] = useState(0);
+  const [nowTick, setNowTick] = useState(0);
   // Unread counter — increments when a stranger message arrives while the tab is
   // hidden (user switched apps/tabs). Reflected in document.title so the user can
   // see "(2) unknown.chat" in their tab bar without needing OS notification permission.
