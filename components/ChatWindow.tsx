@@ -9,6 +9,8 @@ import { LookingView } from "./landing/LookingView";
 import { MenuDrawer } from "./landing/MenuDrawer";
 import { loadPrefs } from "@/lib/clientPrefs";
 import { OpenerStarters } from "./chat/OpenerStarters";
+import { matchApi } from "@/lib/matchApi";
+import { MatchedOverlay } from "./match/MatchedOverlay";
 import type { ChatIntent } from "@/lib/prefs";
 
 // Friendly label for the bottom "mood:" line, derived from the user's intent.
@@ -134,6 +136,11 @@ export function ChatWindow() {
   const [messages, setMessages] = useState<DisplayMsg[]>([]);
   const [typing, setTyping] = useState(false);
   const [input, setInput] = useState("");
+  // Match state — saves the current persona as a connection + celebration overlay.
+  const [matched, setMatched] = useState(false);
+  const [keeping, setKeeping] = useState(false);
+  const [showMatchOverlay, setShowMatchOverlay] = useState(false);
+  const [matchedName, setMatchedName] = useState("them");
   const [ended, setEnded] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
   const [showFollow, setShowFollow] = useState(false);
@@ -582,6 +589,8 @@ export function ChatWindow() {
       setVibe(data.vibe);
       chatStartRef.current = Date.now();
       setShowFeedback(false);
+      setMatched(false); // fresh stranger → not yet a saved match
+      setShowMatchOverlay(false);
       pushMsg({ role: "system", text: "you're now chatting with a random stranger." });
 
       let openerEnd = 0;
@@ -706,6 +715,32 @@ export function ChatWindow() {
     } finally {
       schedule(() => { replyInFlightRef.current = false; }, 200);
     }
+  }
+
+  // "Match" — freeze the current persona as a saved connection (free). The
+  // persona stays server-side; we pass the sessionId + our Supabase token, then
+  // celebrate with the full-screen overlay.
+  async function keep() {
+    if (!sessionId || matched || keeping) return;
+    setKeeping(true);
+    try {
+      const res = await matchApi.keepChat(sessionId);
+      setMatchedName(res.match?.displayName ?? "them");
+      setMatched(true);
+      setShowMatchOverlay(true);
+    } catch {
+      pushMsg({ role: "system", text: "couldn't match — try again in a sec" });
+    } finally {
+      setKeeping(false);
+    }
+  }
+
+  // After the vibe sheet saves new prefs (vibe/language/into), re-roll a fresh
+  // stranger matched to them (connect() reads the saved prefs).
+  function reroll() {
+    setIntent(loadPrefs().intent);
+    clearAllTimeouts();
+    connect();
   }
 
   function skip() {
@@ -870,22 +905,36 @@ export function ChatWindow() {
               </div>
             </div>
             {!ended && (
-              // Skip lives up here, away from the input — tapping it by accident
-              // while typing was costing real chats.
-              <button
-                onClick={skip}
-                className="flex-shrink-0 bg-ink text-paper-cool border-[1.2px] border-ink px-3.5 py-1.5 rounded-full font-sans text-[13px] font-bold tracking-tight shadow-hard-xs"
-                title="skip and find another"
-              >
-                skip →
-              </button>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                {/* Keep this one → save as a connection (match). */}
+                <button
+                  onClick={keep}
+                  disabled={keeping}
+                  className={
+                    matched
+                      ? "bg-red text-paper-cool border-[1.2px] border-ink px-3 py-1.5 rounded-full font-sans text-[13px] font-bold tracking-tight shadow-hard-xs"
+                      : "bg-paper-cool text-ink border-[1.2px] border-ink px-3 py-1.5 rounded-full font-sans text-[13px] font-bold tracking-tight shadow-hard-xs disabled:opacity-50"
+                  }
+                  title={matched ? "matched — in your connections" : "match with this stranger"}
+                >
+                  {matched ? "matched ✓" : keeping ? "matching…" : "match 💘"}
+                </button>
+                {/* Skip lives up here, away from the input — accidental taps mid-type cost chats. */}
+                <button
+                  onClick={skip}
+                  className="bg-ink text-paper-cool border-[1.2px] border-ink px-3.5 py-1.5 rounded-full font-sans text-[13px] font-bold tracking-tight shadow-hard-xs"
+                  title="skip and find another"
+                >
+                  skip →
+                </button>
+              </div>
             )}
           </div>
 
           {/* Thread, OR the "say something first?" starters when the stranger
               hasn't opened and the user hasn't said anything yet. */}
           {noConversationYet && !typing ? (
-            <OpenerStarters onPick={(t) => send(t)} />
+            <OpenerStarters onPick={(t) => send(t)} currentIntent={intent} onReroll={reroll} />
           ) : (
             <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-4 font-mono text-[13.5px] leading-[1.7]">
               {threadMessages.map((m, i) => (
@@ -917,7 +966,7 @@ export function ChatWindow() {
                 changing vibes there would mean abandoning the current stranger. */}
             {ended && (
               <p className="mb-2 px-1 font-sans text-[12px] text-ink-mute">
-                🎚 next chat&apos;s mood: <span className="font-bold text-ink">{MOOD_LABELS[intent ?? "casual"]}</span>
+                next chat&apos;s mood: <span className="font-bold text-ink">{MOOD_LABELS[intent ?? "casual"]}</span>
                 {" — tap "}
                 <Link href="/" className="underline font-semibold text-ink hover:text-red">vibes</Link>
                 {" to change it (flirty, deep, hype…)"}
@@ -1001,6 +1050,10 @@ export function ChatWindow() {
       )}
 
       <MenuDrawer open={menuOpen} onClose={() => setMenuOpen(false)} />
+
+      {showMatchOverlay && (
+        <MatchedOverlay name={matchedName} onClose={() => setShowMatchOverlay(false)} />
+      )}
     </div>
   );
 }

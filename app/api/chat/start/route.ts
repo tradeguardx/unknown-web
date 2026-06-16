@@ -90,9 +90,11 @@ export async function POST(req: Request) {
   // dimensions, lands in our own store.
   void emitChatStarted(req, session);
 
-  // Whether the persona starts is determined by the persona's mood (set in the generator).
-  // chatty/flirty open often, shy/grumpy rarely. This makes "user types first" actually common.
-  const personaStarts = Math.random() < session.persona.startsConversationProbability;
+  // The user ALWAYS sends the first message — so they always get the opener
+  // starters ("say something first" + "set your vibe") and can set the tone
+  // before the persona replies. (Persona-opens-first is disabled on purpose; it
+  // pre-empted the vibe-setting step.)
+  const personaStarts = false;
 
   let opener:
     | { willSendFirst: true; text: string; delayMs: number; preTypingMs: number }

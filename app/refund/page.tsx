@@ -7,11 +7,11 @@ import { SITE_URL, SUPPORT_EMAIL } from "@/lib/site";
 export const metadata: Metadata = {
   title: "refund policy",
   description:
-    "unknown+ refund policy — a 7-day money-back guarantee on your first subscription. How to request a refund and what's eligible.",
+    "unknown plus refund policy — a 7-day money-back guarantee on your first subscription. How to request a refund and what's eligible.",
   alternates: { canonical: `${SITE_URL}/refund` },
   openGraph: {
     title: "refund policy · unknown.chat",
-    description: "7-day money-back guarantee on unknown+ subscriptions.",
+    description: "7-day money-back guarantee on unknown plus subscriptions.",
     url: `${SITE_URL}/refund`,
   },
 };
@@ -35,7 +35,7 @@ export default function RefundPage() {
             <div className="rounded-2xl border-2 border-ink bg-yellow-soft p-4 shadow-hard-sm">
               <p className="font-sans font-bold text-ink">7-day money-back guarantee</p>
               <p className="mt-1 text-[15px]">
-                If you&apos;re not happy with an <strong>unknown+</strong> subscription, you can request a full
+                If you&apos;re not happy with an <strong>unknown plus</strong> subscription, you can request a full
                 refund within <strong>7 days</strong> of your purchase — no hard questions asked.
               </p>
             </div>
@@ -43,7 +43,7 @@ export default function RefundPage() {
             <div>
               <h2 className="text-lg font-bold text-ink">What&apos;s covered</h2>
               <ul className="mt-2 list-disc pl-5 space-y-1.5 text-[15px]">
-                <li>Your <strong>first</strong> unknown+ purchase, if you request within 7 days of the charge.</li>
+                <li>Your <strong>first</strong> unknown plus purchase, if you request within 7 days of the charge.</li>
                 <li>Refunds are issued in full to your original payment method.</li>
               </ul>
             </div>
@@ -80,13 +80,13 @@ export default function RefundPage() {
             <div>
               <h2 className="text-lg font-bold text-ink">Cancelling</h2>
               <p className="mt-2 text-[15px]">
-                You can cancel unknown+ at any time. After cancelling, you keep access until the end of your
+                You can cancel unknown plus at any time. After cancelling, you keep access until the end of your
                 current billing period, and you won&apos;t be charged again.
               </p>
             </div>
 
             <p className="text-sm text-ink-mute">
-              Note: unknown+ is not live yet. This policy applies to unknown+ subscriptions once they launch.
+              Note: unknown plus is not live yet. This policy applies to unknown plus subscriptions once they launch.
             </p>
           </section>
         </div>
