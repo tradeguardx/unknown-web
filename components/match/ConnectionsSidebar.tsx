@@ -70,9 +70,13 @@ export function ConnectionsSidebar() {
       <MenuDrawer open={menuOpen} onClose={() => setMenuOpen(false)} />
 
       <div className="flex-1 overflow-y-auto">
-        <div className="px-3 pt-3">
-          <UpgradeAccount />
-        </div>
+        {/* Login pitch — only when no chat is open, so it doesn't duplicate the
+            chat-pane "log in to chat" gate on desktop's two-pane view. */}
+        {!activeId && (
+          <div className="px-3 pt-3">
+            <UpgradeAccount />
+          </div>
+        )}
 
         {state === "loading" && (
           <p className="text-center font-serif italic text-ink-mute mt-10">loading…</p>

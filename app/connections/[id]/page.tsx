@@ -147,14 +147,17 @@ export default function ConnectionChatPage() {
           </div>
 
           {anon === true ? (
-            // Anonymous → must log in to chat. Show the gate with the free-message pitch.
+            // Anonymous → must log in to chat. Centered, constrained card so it
+            // doesn't stretch across the wide desktop pane.
             <div className="px-4 pt-3 pb-5 flex-shrink-0">
-              <UpgradeAccount
-                forceShow
-                title={`log in to chat with ${name}`}
-                subtitle="you've got 10 free messages to start 💘 — log in to send them."
-                onDone={() => setAnon(false)}
-              />
+              <div className="mx-auto w-full max-w-sm">
+                <UpgradeAccount
+                  forceShow
+                  title={`log in to chat with ${name}`}
+                  subtitle="you've got 10 free messages to start 💘 — log in to send them."
+                  onDone={() => setAnon(false)}
+                />
+              </div>
             </div>
           ) : (
           <div className="px-4 pt-3 pb-5 flex-shrink-0">
