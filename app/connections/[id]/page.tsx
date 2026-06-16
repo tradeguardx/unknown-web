@@ -30,6 +30,7 @@ export default function ConnectionChatPage() {
   const [typing, setTyping] = useState(false);
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
   const [paywall, setPaywall] = useState<null | "paywall" | "quota">(null);
+  const [closed, setClosed] = useState(false); // content-policy close → input locked
   const [anon, setAnon] = useState<boolean | null>(null); // must log in to chat
   const [confirmUnmatch, setConfirmUnmatch] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -83,14 +84,25 @@ export default function ConnectionChatPage() {
     setSending(true);
     setTyping(true);
     try {
-      const { reply } = await matchApi.send(convoId, text);
-      setMsgs((m) => [...m, { role: "assistant", text: tidy(reply) }]);
+      const res = await matchApi.send(convoId, text);
+      const warnText = res.warning?.text;
+      const reply = res.reply;
+      if (warnText) {
+        // Content-filter warning (no reply) — show it as a system line.
+        setMsgs((m) => [...m, { role: "system", text: warnText }]);
+      } else if (reply) {
+        setMsgs((m) => [...m, { role: "assistant", text: tidy(reply) }]);
+      }
     } catch (e) {
-      const code = (e as { code?: string; status?: number }).code;
+      const err = e as { code?: string; status?: number; message?: string };
       if (isPaywall(e)) {
-        setPaywall(code === "QUOTA_EXHAUSTED" ? "quota" : "paywall");
-      } else if (code === "LOGIN_REQUIRED") {
+        setPaywall(err.code === "QUOTA_EXHAUSTED" ? "quota" : "paywall");
+      } else if (err.code === "LOGIN_REQUIRED") {
         setAnon(true); // backend says log in → show the gate
+      } else if (err.status === 451) {
+        // Content-policy violation → end the chat, lock the input.
+        setMsgs((m) => [...m, { role: "system", text: err.message || "this chat has been ended." }]);
+        setClosed(true);
       } else {
         setMsgs((m) => [...m, { role: "system", text: "couldn't send — try again" }]);
       }
@@ -158,6 +170,10 @@ export default function ConnectionChatPage() {
                   onDone={() => setAnon(false)}
                 />
               </div>
+            </div>
+          ) : closed ? (
+            <div className="px-4 pt-3 pb-6 flex-shrink-0 text-center font-serif italic text-ink-mute text-sm">
+              this chat has ended.
             </div>
           ) : (
           <div className="px-4 pt-3 pb-5 flex-shrink-0">

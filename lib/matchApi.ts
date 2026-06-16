@@ -153,8 +153,14 @@ export const matchApi = {
       `/matches/${matchId}/resume`,
       { method: "POST" },
     ),
+  // Returns a reply, OR a content-filter warning (no reply). A hard content-policy
+  // violation throws MatchApiError with status 451 + code "CONTENT_POLICY".
   send: (conversationId: string, message: string) =>
-    call<{ reply: string; billed: string }>(`/conversations/${conversationId}/messages`, {
+    call<{
+      reply?: string;
+      billed?: string;
+      warning?: { text: string; reason: string };
+    }>(`/conversations/${conversationId}/messages`, {
       method: "POST",
       body: JSON.stringify({ message }),
     }),
