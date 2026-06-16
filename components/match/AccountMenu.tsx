@@ -59,6 +59,15 @@ export function AccountMenu() {
             manage subscription
           </button>
         </>
+      ) : acct.passActive ? (
+        <div className="mt-0.5">
+          <div className="font-sans text-[12px] text-ink">
+            <span className="font-bold text-red">🎟️ explore pass</span> · unlimited today
+          </div>
+          <Link href="/plus" className="mt-1 inline-block font-sans text-[12px] font-bold text-red underline">
+            make it permanent →
+          </Link>
+        </div>
       ) : (
         <div className="mt-0.5">
           <div className="font-sans text-[12px] text-ink-mute">free plan</div>

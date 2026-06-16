@@ -11,10 +11,19 @@
 // rest). On success Dodo returns to ?return=<url> (the chat the user came from)
 // so the conversation resumes after paying; otherwise back here.
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { matchApi } from "@/lib/matchApi";
 import { useAccount, clearAccountCache } from "@/lib/useAccount";
 import { UpgradeAccount } from "./UpgradeAccount";
+
+function fmtExpiry(iso: string): string {
+  try {
+    const h = Math.round((new Date(iso).getTime() - Date.now()) / 3_600_000);
+    return h <= 1 ? "expires within an hour" : `${h}h left`;
+  } catch {
+    return "";
+  }
+}
 
 function fmtDate(iso: string | null): string {
   if (!iso) return "";
@@ -31,6 +40,7 @@ export function PlusSubscribe() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
+  const pendingKind = useRef<"subscription" | "daypass">("subscription");
 
   // Geo price for display.
   useEffect(() => {
@@ -54,11 +64,11 @@ export function PlusSubscribe() {
     return typeof window !== "undefined" ? window.location.href : "";
   }
 
-  async function startCheckout() {
+  async function startCheckout(kind: "subscription" | "daypass") {
     setBusy(true);
     setError(false);
     try {
-      const { checkoutUrl } = await matchApi.checkout("subscription", {
+      const { checkoutUrl } = await matchApi.checkout(kind, {
         successUrl: successUrl(),
         cancelUrl: here(),
       });
@@ -67,6 +77,15 @@ export function PlusSubscribe() {
     } catch {
       setError(true);
       setBusy(false);
+    }
+  }
+
+  // Guest taps a buy button → log in first, then continue to that checkout.
+  function buy(kind: "subscription" | "daypass") {
+    if (acct?.loggedIn) startCheckout(kind);
+    else {
+      pendingKind.current = kind;
+      setLoginOpen(true);
     }
   }
 
@@ -130,6 +149,26 @@ export function PlusSubscribe() {
     );
   }
 
+  // ── Active 1-day explore pass (one-time) ──
+  if (acct?.passActive) {
+    return (
+      <Card>
+        <div className="text-3xl">🎟️</div>
+        <h3 className="mt-2 font-sans text-xl font-bold tracking-tight text-ink">explore pass active</h3>
+        <p className="mt-1.5 font-display text-[14px] leading-relaxed text-ink-soft">
+          unlimited chats{acct.passExpiresAt ? ` · ${fmtExpiry(acct.passExpiresAt)}` : ""}.
+        </p>
+        <button
+          onClick={() => buy("subscription")}
+          disabled={busy}
+          className="mt-4 w-full rounded-xl border-2 border-ink bg-ink px-5 py-3 font-sans font-bold tracking-tight text-paper-cool shadow-hard disabled:opacity-60"
+        >
+          {busy ? "opening…" : "make it permanent — subscribe →"}
+        </button>
+      </Card>
+    );
+  }
+
   // ── Not subscribed (or still loading) — the subscribe CTA ──
   const priceSuffix = priceLabel ? `${priceLabel}/mo` : "";
   const cta = priceLabel ? `subscribe · ${priceSuffix} →` : "subscribe →";
@@ -146,18 +185,36 @@ export function PlusSubscribe() {
         </p>
 
         <button
-          onClick={acct?.loggedIn ? startCheckout : () => setLoginOpen(true)}
+          onClick={() => buy("subscription")}
           disabled={busy || acct === null}
           className="mt-4 w-full rounded-xl border-2 border-ink bg-ink px-5 py-3 font-sans font-bold tracking-tight text-paper-cool shadow-hard transition-transform hover:-translate-y-0.5 disabled:opacity-60"
         >
           {busy ? "opening checkout…" : acct === null ? "…" : acct.loggedIn ? cta : "log in to subscribe →"}
         </button>
+
+        {/* Low-commitment alternative — a $1 one-time day pass. */}
+        <div className="my-3 flex items-center gap-2 text-ink-mute">
+          <span className="h-px flex-1 bg-ink/15" />
+          <span className="font-display text-[11px]">not ready to commit?</span>
+          <span className="h-px flex-1 bg-ink/15" />
+        </div>
+        <button
+          onClick={() => buy("daypass")}
+          disabled={busy || acct === null}
+          className="w-full rounded-xl border-2 border-ink bg-paper-cool px-5 py-2.5 font-sans text-[14px] font-bold tracking-tight text-ink shadow-hard-xs disabled:opacity-60"
+        >
+          🎟️ 1-day explore pass · $1
+        </button>
+        <p className="mt-1.5 font-display text-[12px] text-ink-mute">
+          unlimited chats for 24 hours · one-time, no subscription
+        </p>
+
         {error && (
           <p className="mt-2 font-display text-[13px] text-red">couldn&apos;t start checkout — try again?</p>
         )}
         {acct?.loggedIn === false && (
           <p className="mt-2 font-display text-[12px] text-ink-mute">
-            you&apos;ll log in first so your subscription sticks to your account.
+            you&apos;ll log in first so your purchase sticks to your account.
           </p>
         )}
       </Card>
@@ -176,7 +233,7 @@ export function PlusSubscribe() {
               onDone={() => {
                 setLoginOpen(false);
                 clearAccountCache();
-                startCheckout();
+                startCheckout(pendingKind.current);
               }}
             />
           </div>

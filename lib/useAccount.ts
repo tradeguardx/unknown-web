@@ -18,6 +18,8 @@ export interface Account {
   subscriptionActive: boolean;
   subState: "active" | "grace" | "none";
   renewsAt: string | null;
+  passActive: boolean; // 1-day explore pass
+  passExpiresAt: string | null;
   usage: {
     includedUsed: number;
     includedQuota: number;
@@ -58,6 +60,8 @@ async function load(): Promise<Account | null> {
       subscriptionActive: m.subscription.active,
       subState: m.subscription.state,
       renewsAt: m.subscription.currentPeriodEnd,
+      passActive: m.pass?.active ?? false,
+      passExpiresAt: m.pass?.expiresAt ?? null,
       usage: m.usage,
     };
     return cache;
@@ -94,6 +98,8 @@ export function useAccount(): Account | null {
               subscriptionActive: false,
               subState: "none",
               renewsAt: null,
+              passActive: false,
+              passExpiresAt: null,
               usage: null,
             },
           );

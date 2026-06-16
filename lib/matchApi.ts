@@ -188,6 +188,7 @@ export const matchApi = {
         status: string | null;
         currentPeriodEnd: string | null;
       };
+      pass: { active: boolean; expiresAt: string | null };
       usage: { includedUsed: number; includedQuota: number; includedRemaining: number; topUpRemaining: number };
     }>("/me"),
 
@@ -252,7 +253,7 @@ export const matchApi = {
 
   // Payments — geo-priced; returns a Dodo checkout URL to redirect to. We send the
   // detected country so the backend bills the correct tier (no cf-ipcountry there).
-  async checkout(kind: "subscription" | "topup", urls: { successUrl: string; cancelUrl: string }) {
+  async checkout(kind: "subscription" | "topup" | "daypass", urls: { successUrl: string; cancelUrl: string }) {
     const country = await detectCountry();
     return call<{ checkoutUrl: string; price: { label: string; currency: string } }>("/checkout", {
       method: "POST",
