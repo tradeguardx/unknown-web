@@ -40,7 +40,7 @@ export function AccountMenu() {
       {acct.subState === "grace" ? (
         <div className="mt-1.5">
           <div className="font-sans text-[12px] font-bold text-red">⚠ payment failed</div>
-          <div className="font-sans text-[12px] text-ink-mute">update your card to keep unknown+</div>
+          <div className="font-sans text-[12px] text-ink-mute">update your card to keep unknown plus</div>
           <button
             onClick={openPortal}
             className="mt-1.5 rounded-full border-[1.5px] border-ink bg-red text-paper-cool px-3 py-1 font-sans text-[12px] font-bold shadow-hard-xs"
@@ -51,7 +51,7 @@ export function AccountMenu() {
       ) : acct.subState === "active" ? (
         <>
           <div className="font-sans text-[12px] text-ink-mute mt-0.5">
-            <span className="font-bold text-red">unknown+</span>
+            <span className="font-bold text-red">unknown plus</span>
             {acct.usage ? ` · ${acct.usage.includedUsed.toLocaleString()}/${acct.usage.includedQuota.toLocaleString()} msgs` : ""}
             {acct.renewsAt ? ` · renews ${fmtDate(acct.renewsAt)}` : ""}
           </div>
@@ -63,7 +63,7 @@ export function AccountMenu() {
         <div className="mt-0.5">
           <div className="font-sans text-[12px] text-ink-mute">free plan</div>
           <Link href="/plus" className="mt-1 inline-block font-sans text-[12px] font-bold text-red underline">
-            get unknown+ →
+            get unknown plus →
           </Link>
         </div>
       )}

@@ -21,7 +21,7 @@ export function SiteFooter() {
         <span aria-hidden className="text-ink-faint">·</span>
         <Link href="/faq" className="text-ink-mute hover:text-ink">faq</Link>
         <span aria-hidden className="text-ink-faint">·</span>
-        <Link href="/plus" className="text-ink-mute hover:text-ink">unknown+</Link>
+        <Link href="/plus" className="text-ink-mute hover:text-ink">unknown plus</Link>
         <span aria-hidden className="text-ink-faint">·</span>
         <Link href="/terms" className="text-ink-mute hover:text-ink">terms</Link>
         <span aria-hidden className="text-ink-faint">·</span>

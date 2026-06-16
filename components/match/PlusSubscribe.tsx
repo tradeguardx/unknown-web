@@ -87,7 +87,7 @@ export function PlusSubscribe() {
       <Card>
         <div className="text-3xl">✓</div>
         <h3 className="mt-2 font-sans text-xl font-bold tracking-tight text-ink">
-          you&apos;re on unknown<span className="text-red">+</span>
+          you&apos;re on unknown <span className="text-red">plus</span>
         </h3>
         <p className="mt-1.5 font-display text-[14px] leading-relaxed text-ink-soft">
           unlimited chats, no skips, every connection saved.
@@ -117,7 +117,7 @@ export function PlusSubscribe() {
         <div className="text-3xl">⚠</div>
         <h3 className="mt-2 font-sans text-xl font-bold tracking-tight text-red">payment failed</h3>
         <p className="mt-1.5 font-display text-[14px] leading-relaxed text-ink-soft">
-          we couldn&apos;t charge your card. update your payment method to keep unknown+ — you still have access for now.
+          we couldn&apos;t charge your card. update your payment method to keep unknown plus — you still have access for now.
         </p>
         <button
           onClick={openPortal}

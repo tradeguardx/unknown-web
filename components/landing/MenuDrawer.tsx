@@ -145,15 +145,16 @@ export function MenuDrawer({ open, onClose }: Props) {
               your connections 💘
             </span>
           </Link>
-          {/* Plan — contextual: manage if subscribed, else upgrade / unknown+ */}
+          {/* Plan — a standout CTA card (contextual: manage / upgrade / discover). */}
           <Link
             href="/plus"
             onClick={onClose}
-            className="flex items-center justify-between py-3 border-b-[1.5px] border-dashed border-paper-deep"
+            className="my-2 flex items-center justify-between rounded-2xl border-2 border-ink bg-lilac px-4 py-3 shadow-hard-xs transition-transform hover:-translate-y-0.5"
           >
-            <span className="font-sans text-[17px] font-bold tracking-[-0.015em] text-red">
-              {subscribed ? "manage unknown+ ✨" : loggedIn ? "upgrade to unknown+ ✨" : "unknown+ ✨"}
+            <span className="font-sans text-[16px] font-bold tracking-[-0.015em] text-ink">
+              {subscribed ? "manage unknown plus" : loggedIn ? "upgrade to unknown plus" : "unknown plus"}
             </span>
+            <span className="text-lg" aria-hidden>✨</span>
           </Link>
 
           {/* Guest → prominent log in / sign up (opens a sheet). */}

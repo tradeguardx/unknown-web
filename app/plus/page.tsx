@@ -6,12 +6,12 @@ import { SITE_URL } from "@/lib/site";
 import { PlusSubscribe } from "@/components/match/PlusSubscribe";
 
 export const metadata: Metadata = {
-  title: { absolute: "unknown+ — unlimited chats, saved forever | unknown.chat" },
+  title: { absolute: "unknown plus — unlimited chats, saved forever | unknown.chat" },
   description:
-    "unknown+ keeps your conversations going: save & resume any chat, unlimited messages, strangers who never skip out — from $2.99/month, local currency at checkout.",
+    "unknown plus keeps your conversations going: save & resume any chat, unlimited messages, strangers who never skip out — from $2.99/month, local currency at checkout.",
   alternates: { canonical: `${SITE_URL}/plus` },
   openGraph: {
-    title: "unknown+ — unlimited chats, saved forever",
+    title: "unknown plus — unlimited chats, saved forever",
     description: "Save & resume chats, unlimited messages, no skips. From $2.99/mo.",
     url: `${SITE_URL}/plus`,
   },
@@ -45,7 +45,7 @@ export default function PlusPage() {
           {/* Hero */}
           <div className="mt-6 text-center">
             <h1 className="font-sans text-4xl lg:text-5xl font-bold tracking-tight">
-              unknown<span className="text-red">+</span>
+              unknown <span className="text-red">plus</span>
             </h1>
             <p className="mt-3 font-serif italic text-lg text-ink-soft max-w-md mx-auto">
               everything you love about unknown.chat — turned up. for the people who don&apos;t want the chat to end.

@@ -141,7 +141,7 @@ export function ConnectionsSidebar() {
             </div>
           ) : acct.subState === "active" && acct.usage ? (
             <div className="font-sans text-[12px] text-ink truncate">
-              <span className="font-bold text-red">unknown+</span>{" "}
+              <span className="font-bold text-red">unknown plus</span>{" "}
               <span className="text-ink-mute">
                 · {acct.usage.includedUsed.toLocaleString()} / {acct.usage.includedQuota.toLocaleString()} messages
                 {acct.usage.topUpRemaining > 0 ? ` · +${acct.usage.topUpRemaining.toLocaleString()} top-up` : ""}
@@ -149,7 +149,7 @@ export function ConnectionsSidebar() {
             </div>
           ) : (
             <Link href="/plus" className="block font-sans text-[12px] text-ink-mute truncate hover:text-ink">
-              <span className="font-bold text-ink">free plan</span> · <span className="text-red font-bold">get unknown+ →</span>
+              <span className="font-bold text-ink">free plan</span> · <span className="text-red font-bold">get unknown plus →</span>
             </Link>
           )}
           {acct.email && <div className="font-sans text-[11px] text-ink-mute truncate">{acct.email}</div>}

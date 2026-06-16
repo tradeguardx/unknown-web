@@ -42,7 +42,7 @@ export function MobileLanding({ testimonials }: { testimonials?: TestimonialsDat
 
         <Link
           href="/plus"
-          aria-label="unknown+ — coming soon"
+          aria-label="unknown plus"
           className="group mt-9 lg:mt-14 block overflow-hidden rounded-2xl border-[2.5px] border-ink bg-gradient-to-br from-lilac/60 via-paper-cool to-yellow/45 shadow-hard -rotate-[0.4deg] transition-transform hover:-translate-y-0.5"
         >
           <div className="flex items-center justify-between gap-4 p-4 lg:p-5">
@@ -58,7 +58,7 @@ export function MobileLanding({ testimonials }: { testimonials?: TestimonialsDat
               </div>
 
               <div className="font-sans text-xl lg:text-2xl font-bold tracking-tight text-ink leading-tight">
-                unknown<span className="text-red">+</span>
+                unknown <span className="text-red">plus</span>
                 <span className="ml-1.5 font-display text-sm lg:text-base font-normal text-ink-soft">
                   — turn the chat all the way up
                 </span>
