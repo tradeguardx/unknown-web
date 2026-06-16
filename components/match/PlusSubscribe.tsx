@@ -175,6 +175,38 @@ export function PlusSubscribe() {
 
   return (
     <>
+      {/* Day pass card — shown first (lowest-friction entry, $1) */}
+      <Card>
+        <div className="font-sans text-[11px] font-bold uppercase tracking-[0.18em] text-ink-mute">day pass</div>
+        <div className="mt-1.5 inline-flex items-baseline gap-1.5">
+          <span className="font-sans text-4xl font-bold text-ink">$1</span>
+          <span className="font-display text-ink-mute">one-time</span>
+        </div>
+        <p className="mt-1.5 font-display text-[12px] text-ink-mute">
+          24 hours of plus · no subscription · no autorenew
+        </p>
+
+        <ul className="mt-3.5 space-y-2.5">
+          <Feature icon="🎟️">everything in plus, for 24 hours</Feature>
+          <Feature icon="👻">perfect if you&apos;re not sure yet</Feature>
+        </ul>
+
+        <button
+          onClick={() => buy("daypass")}
+          disabled={busy || acct === null}
+          className="mt-5 w-full rounded-xl border-2 border-ink bg-ink px-5 py-3 font-sans font-bold tracking-tight text-paper-cool shadow-hard transition-transform hover:-translate-y-0.5 disabled:opacity-60"
+        >
+          {busy ? "opening…" : acct === null ? "…" : acct.loggedIn ? "get day pass · $1" : "log in to get day pass →"}
+        </button>
+      </Card>
+
+      {/* Divider */}
+      <div className="my-4 flex items-center gap-3 text-ink-mute">
+        <span className="h-px flex-1 bg-ink/15" />
+        <span className="font-display text-[12px] italic">or go all-in</span>
+        <span className="h-px flex-1 bg-ink/15" />
+      </div>
+
       {/* Subscription card */}
       <Card>
         <div className="inline-flex items-baseline gap-1.5">
@@ -194,41 +226,9 @@ export function PlusSubscribe() {
         <button
           onClick={() => buy("subscription")}
           disabled={busy || acct === null}
-          className="mt-5 w-full rounded-xl border-2 border-ink bg-ink px-5 py-3 font-sans font-bold tracking-tight text-paper-cool shadow-hard transition-transform hover:-translate-y-0.5 disabled:opacity-60"
-        >
-          {busy ? "opening checkout…" : acct === null ? "…" : acct.loggedIn ? cta : "log in to subscribe →"}
-        </button>
-      </Card>
-
-      {/* Divider */}
-      <div className="my-4 flex items-center gap-3 text-ink-mute">
-        <span className="h-px flex-1 bg-ink/15" />
-        <span className="font-display text-[12px] italic">or just dip in</span>
-        <span className="h-px flex-1 bg-ink/15" />
-      </div>
-
-      {/* Day pass card */}
-      <Card>
-        <div className="font-sans text-[11px] font-bold uppercase tracking-[0.18em] text-ink-mute">day pass</div>
-        <div className="mt-1.5 inline-flex items-baseline gap-1.5">
-          <span className="font-sans text-4xl font-bold text-ink">$1</span>
-          <span className="font-display text-ink-mute">one-time</span>
-        </div>
-        <p className="mt-1.5 font-display text-[12px] text-ink-mute">
-          24 hours of plus · no subscription · no autorenew
-        </p>
-
-        <ul className="mt-3.5 space-y-2.5">
-          <Feature icon="🎟️">everything in plus, for 24 hours</Feature>
-          <Feature icon="👻">perfect if you&apos;re not sure yet</Feature>
-        </ul>
-
-        <button
-          onClick={() => buy("daypass")}
-          disabled={busy || acct === null}
           className="mt-5 w-full rounded-xl border-2 border-ink bg-paper-cool px-5 py-3 font-sans font-bold tracking-tight text-ink shadow-hard-xs transition-transform hover:-translate-y-0.5 disabled:opacity-60"
         >
-          {busy ? "opening…" : "get day pass · $1"}
+          {busy ? "opening checkout…" : acct === null ? "…" : acct.loggedIn ? cta : "log in to subscribe →"}
         </button>
       </Card>
 
