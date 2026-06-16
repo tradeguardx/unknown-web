@@ -91,14 +91,23 @@ export const matchApi = {
   // so the user becomes a guest again (their account's matches drop out of view).
   signOut: () => getSupabase().auth.signOut(),
 
-  // Account status — login state, subscription, usage.
+  // Account status — login state, subscription lifecycle, usage.
   me: () =>
     call<{
       isAnonymous: boolean;
       email: string | null;
-      subscription: { active: boolean };
+      subscription: {
+        active: boolean;
+        state: "active" | "grace" | "none";
+        status: string | null;
+        currentPeriodEnd: string | null;
+      };
       usage: { includedUsed: number; includedQuota: number; includedRemaining: number; topUpRemaining: number };
     }>("/me"),
+
+  // Dodo customer-portal link (update payment / fix failed renewal / cancel).
+  portal: (returnUrl?: string) =>
+    call<{ url: string }>("/portal", { method: "POST", body: JSON.stringify({ returnUrl }) }),
 
   // Matches (free)
   listMatches: () => call<{ matches: MatchedPersona[] }>("/matches"),

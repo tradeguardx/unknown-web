@@ -16,6 +16,8 @@ export interface Account {
   loggedIn: boolean;
   email: string | null;
   subscriptionActive: boolean;
+  subState: "active" | "grace" | "none";
+  renewsAt: string | null;
   usage: {
     includedUsed: number;
     includedQuota: number;
@@ -39,6 +41,8 @@ async function load(): Promise<Account | null> {
       loggedIn: !m.isAnonymous,
       email: m.email,
       subscriptionActive: m.subscription.active,
+      subState: m.subscription.state,
+      renewsAt: m.subscription.currentPeriodEnd,
       usage: m.usage,
     };
     return cache;
@@ -65,7 +69,14 @@ export function useAccount(): Account | null {
         const u = data.session?.user;
         if (alive && u && !cache) {
           setAcct((a) =>
-            a ?? { loggedIn: !u.is_anonymous, email: u.email ?? null, subscriptionActive: false, usage: null },
+            a ?? {
+              loggedIn: !u.is_anonymous,
+              email: u.email ?? null,
+              subscriptionActive: false,
+              subState: "none",
+              renewsAt: null,
+              usage: null,
+            },
           );
         }
       });

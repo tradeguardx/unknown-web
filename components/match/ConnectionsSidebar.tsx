@@ -130,7 +130,12 @@ export function ConnectionsSidebar() {
       {/* Account status footer — plan + messages used. (Log out lives in the ☰ menu.) */}
       {acct && acct.loggedIn && (
         <div className="flex-shrink-0 border-t-[1.5px] border-dashed border-paper-deep px-4 py-3 min-w-0">
-          {acct.subscriptionActive && acct.usage ? (
+          {acct.subState === "grace" ? (
+            <div className="font-sans text-[12px] truncate">
+              <span className="font-bold text-red">⚠ payment failed</span>{" "}
+              <span className="text-ink-mute">· fix it in the menu</span>
+            </div>
+          ) : acct.subState === "active" && acct.usage ? (
             <div className="font-sans text-[12px] text-ink truncate">
               <span className="font-bold text-red">unknown+</span>{" "}
               <span className="text-ink-mute">
