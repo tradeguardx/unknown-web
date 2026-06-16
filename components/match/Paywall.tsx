@@ -27,7 +27,10 @@ export function Paywall({
   useEffect(() => {
     if (reason !== "paywall") return;
     let alive = true;
-    matchApi.pricing().then((p) => alive && setPriceLabel(p.subscription.label)).catch(() => {});
+    matchApi
+      .pricing()
+      .then((p) => alive && setPriceLabel(p.subscription.localLabel ?? p.subscription.label))
+      .catch(() => {});
     return () => {
       alive = false;
     };
