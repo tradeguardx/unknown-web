@@ -14,6 +14,15 @@ RUN npm ci
 ARG NEXT_PUBLIC_TURNSTILE_SITE_KEY
 ENV NEXT_PUBLIC_TURNSTILE_SITE_KEY=$NEXT_PUBLIC_TURNSTILE_SITE_KEY
 
+# Supabase (match/subscription feature) — URL + anon/publishable key are public
+# (they ship in the client bundle). Match-service base URL for the same feature.
+ARG NEXT_PUBLIC_SUPABASE_URL
+ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
+ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
+ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
+ARG NEXT_PUBLIC_MATCH_API_URL
+ENV NEXT_PUBLIC_MATCH_API_URL=$NEXT_PUBLIC_MATCH_API_URL
+
 # Sentry. The DSN is public (ships to the browser) and comes from fly.toml
 # build args. SENTRY_ORG/PROJECT/AUTH_TOKEN are only used to upload source maps
 # at build time for readable stack traces — AUTH_TOKEN is passed via CI as a

@@ -22,6 +22,10 @@ primary_region = 'ams'
     NEXT_PUBLIC_SENTRY_DSN = 'https://13224c6e43545ca6f3fecc9c7fd9a2e0@o4511279556919296.ingest.de.sentry.io/4511536155328592'
     SENTRY_ORG = 'rdx'
     SENTRY_PROJECT = 'unknown-nextjs'
+    # Supabase (match / unknown plus) — URL + anon/publishable key are public.
+    NEXT_PUBLIC_SUPABASE_URL = 'https://eppdibglxxapupwgssxu.supabase.co'
+    NEXT_PUBLIC_SUPABASE_ANON_KEY = 'sb_publishable_oTj42nfSRNLidR1L4EcksA_CuAeVurQ'
+    NEXT_PUBLIC_MATCH_API_URL = 'https://api.unknown.chat/match'
 
 [env]
   NODE_ENV = 'production'
