@@ -54,7 +54,30 @@ async function stashPrevAnon(): Promise<void> {
   }
 }
 
+// If a guest just logged in, a claim is pending. Run it (deduped) BEFORE any
+// authenticated read so the migrated matches are in place — otherwise listMatches
+// /resume can fire first and return nothing (the "empty until refresh" bug).
+let claimInFlight: Promise<void> | null = null;
+async function ensureClaimed(): Promise<void> {
+  if (claimInFlight) return claimInFlight;
+  let prev: string | null = null;
+  try {
+    prev = localStorage.getItem(PREV_TOKEN_KEY);
+  } catch {
+    /* ignore */
+  }
+  if (!prev) return; // nothing pending
+  claimInFlight = matchApi
+    .claimPending()
+    .then(() => undefined)
+    .finally(() => {
+      claimInFlight = null;
+    });
+  return claimInFlight;
+}
+
 async function call<T = unknown>(path: string, init: RequestInit = {}): Promise<T> {
+  if (path !== "/claim") await ensureClaimed();
   const token = await getToken();
   const res = await fetch(`${BASE}${path}`, {
     ...init,

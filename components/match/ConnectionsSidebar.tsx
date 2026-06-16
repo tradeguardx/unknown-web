@@ -74,7 +74,7 @@ export function ConnectionsSidebar() {
             chat-pane "log in to chat" gate on desktop's two-pane view. */}
         {!activeId && (
           <div className="px-3 pt-3">
-            <UpgradeAccount />
+            <UpgradeAccount onDone={() => window.location.reload()} />
           </div>
         )}
 
