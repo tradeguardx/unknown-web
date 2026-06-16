@@ -6,7 +6,6 @@
 
 import { getSupabase } from "./supabaseClient";
 import { detectCountry } from "./geo";
-import { localizeUsd } from "./currency";
 
 const BASE = process.env.NEXT_PUBLIC_MATCH_API_URL || "https://api.unknown.chat/match";
 
@@ -113,25 +112,16 @@ export const matchApi = {
 
   // Public geo-resolved price for display (no auth). We pass the browser-detected
   // country since the API isn't behind Cloudflare (no cf-ipcountry server-side),
-  // and attach a localCurrency estimate (₹/Rp/…) for display — exact at checkout.
+  // so the correct tier ($2.99 IN/PK/ID/PH, $4.99 rest) is shown. Price is shown
+  // in USD; Dodo localizes to the exact local currency at checkout.
   async pricing() {
     const country = await detectCountry();
     const qs = country ? `?country=${encodeURIComponent(country)}` : "";
     const res = await fetch(`${BASE}/pricing${qs}`);
     const json = await res.json().catch(() => ({}));
-    const data = (json.data ?? {}) as {
+    return (json.data ?? {}) as {
       country: string | null;
       subscription: { label: string; amount: number; currency: string; tier: string };
-    };
-    const local = data.subscription?.amount ? await localizeUsd(data.subscription.amount) : null;
-    return {
-      ...data,
-      subscription: {
-        ...data.subscription,
-        // local-currency display label (≈), falling back to the USD label.
-        localLabel: local?.label ?? data.subscription?.label ?? null,
-        localCurrency: local?.currency ?? null,
-      },
     };
   },
 

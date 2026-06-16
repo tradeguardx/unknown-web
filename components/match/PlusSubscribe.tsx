@@ -37,7 +37,7 @@ export function PlusSubscribe() {
     let alive = true;
     matchApi
       .pricing()
-      .then((p) => alive && setPriceLabel(p.subscription?.localLabel ?? p.subscription?.label ?? null))
+      .then((p) => alive && setPriceLabel(p.subscription?.label ?? null))
       .catch(() => {});
     return () => {
       alive = false;
@@ -142,7 +142,7 @@ export function PlusSubscribe() {
           <span className="font-display text-ink-mute">/ month</span>
         </div>
         <p className="mt-2 font-display text-[13px] text-ink-mute">
-          billed in your local currency · cancel anytime · 7-day money-back
+          shown in your local currency at checkout · cancel anytime · 7-day money-back
         </p>
 
         <button

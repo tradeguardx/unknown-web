@@ -29,7 +29,7 @@ export function Paywall({
     let alive = true;
     matchApi
       .pricing()
-      .then((p) => alive && setPriceLabel(p.subscription.localLabel ?? p.subscription.label))
+      .then((p) => alive && setPriceLabel(p.subscription.label))
       .catch(() => {});
     return () => {
       alive = false;
