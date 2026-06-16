@@ -29,6 +29,12 @@ const COUNTRY_CURRENCY: Record<string, string> = {
   US: "USD", EC: "USD", SV: "USD", PA: "USD",
 };
 
+// Dodo's adaptive currency converts at its own rate, which carries an FX spread
+// (~4%) over the mid-market rate our FX source reports. Without this, our display
+// reads low vs the actual charge (e.g. ₹283 shown vs ₹295 billed). Calibrated
+// from a real checkout: $2.99 → ₹295 → effective rate ≈ 98.7 vs mid 94.7 ≈ +4.2%.
+const DODO_FX_SPREAD = 0.042;
+
 interface FxCache {
   rates: Record<string, number>;
   ts: number;
@@ -99,7 +105,8 @@ export async function localizeUsd(usd: number): Promise<LocalPrice | null> {
   const rate = rates?.[currency];
   if (!rate) return null;
 
-  const amount = niceRound(usd * rate);
+  // Match Dodo's effective rate (mid-market + FX spread) so display ≈ checkout.
+  const amount = niceRound(usd * rate * (1 + DODO_FX_SPREAD));
   try {
     const label = new Intl.NumberFormat(undefined, {
       style: "currency",
