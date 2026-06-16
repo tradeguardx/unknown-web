@@ -11,6 +11,7 @@ import { loadPrefs } from "@/lib/clientPrefs";
 import { OpenerStarters } from "./chat/OpenerStarters";
 import { matchApi } from "@/lib/matchApi";
 import { MatchedOverlay } from "./match/MatchedOverlay";
+import { UpgradeAccount } from "./match/UpgradeAccount";
 import type { ChatIntent } from "@/lib/prefs";
 
 // Friendly label for the bottom "mood:" line, derived from the user's intent.
@@ -145,6 +146,9 @@ export function ChatWindow() {
   const [matchNudge, setMatchNudge] = useState<number | null>(null); // the minute mark
   const [skipNudge, setSkipNudge] = useState(false);
   const nudgedMarkRef = useRef(0);
+  // Logged-out users get a hard cap of 10 skips, then must log in to keep going.
+  const [loggedIn, setLoggedIn] = useState<boolean | null>(null);
+  const [skipBlocked, setSkipBlocked] = useState(false);
   const [ended, setEnded] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
   const [showFollow, setShowFollow] = useState(false);
@@ -272,20 +276,42 @@ export function ChatWindow() {
     return () => window.clearInterval(id);
   }, [ended, sessionId]);
 
-  // Long-chat → "match to save it" nudge. First a 25-min heads-up, then a
-  // stronger 30-min prompt and every ~10 min after. Skipped once matched. The
-  // 10s nowTick re-runs this so it fires within ~10s of crossing a mark.
+  // Stranger chats are capped at 30 min. Prompt to "match to save it" from 20 min
+  // (every 5 min → 20, 25), then HARD-END at 30. Matched chats are exempt (that's
+  // the incentive). The 10s nowTick re-runs this so it fires within ~10s.
   useEffect(() => {
     if (matched || ended || chatStartRef.current <= 0) return;
     const mins = Math.floor((Date.now() - chatStartRef.current) / 60_000);
-    let mark = 0;
-    if (mins >= 30) mark = 30 + Math.floor((mins - 30) / 10) * 10; // 30, 40, 50…
-    else if (mins >= 25) mark = 25;
+
+    // 30-min hard cap → end the chat; matched connections never expire.
+    if (mins >= 30) {
+      notifyServerEnd("too_long");
+      clearAllTimeouts();
+      setMatchNudge(null);
+      pushMsg({
+        role: "system",
+        text: "30 minutes flew by — strangers don't stay forever. match someone and you can talk anytime 💘",
+      });
+      setEnded(true);
+      return;
+    }
+
+    // Match prompts at 20 and 25 min.
+    const mark = mins >= 25 ? 25 : mins >= 20 ? 20 : 0;
     if (mark > nudgedMarkRef.current) {
       nudgedMarkRef.current = mark;
       setMatchNudge(mark);
     }
   }, [nowTick, matched, ended]);
+
+  // Detect a real (non-anonymous) login → logged-out users get a 10-skip cap.
+  useEffect(() => {
+    let alive = true;
+    matchApi.currentUser().then((u) => alive && setLoggedIn(!!u && !u.is_anonymous));
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   // Bump lastSeenAt whenever the persona is "active" — typing indicator turns
   // on, or a new assistant message lands in the thread. These two signals
@@ -519,7 +545,7 @@ export function ChatWindow() {
   // server otherwise only knows about ends it drives itself. Uses sendBeacon on
   // unload (survives teardown), falls back to fetch+keepalive. Safe to call
   // repeatedly; the server de-dupes per session.
-  const notifyServerEnd = useCallback((reason: "skip" | "page_leave") => {
+  const notifyServerEnd = useCallback((reason: "skip" | "page_leave" | "too_long") => {
     const sid = sessionIdRef.current;
     if (!sid) return;
     const payload = JSON.stringify({ sessionId: sid, reason });
@@ -767,13 +793,24 @@ export function ChatWindow() {
 
   // Count confirmed skips (persisted across re-rolls); every 10th, surface the
   // $1 day-pass nudge — a heavy skipper is searching, so pitch keeping someone.
+  const SKIP_LIMIT = 10; // logged-out cap
+
+  function getSkipCount(): number {
+    try {
+      return parseInt(localStorage.getItem("uc:skipCount") || "0", 10) || 0;
+    } catch {
+      return 0;
+    }
+  }
+
   function bumpSkipCount() {
     try {
-      const n = (parseInt(localStorage.getItem("uc:skipCount") || "0", 10) || 0) + 1;
+      const n = getSkipCount() + 1;
       localStorage.setItem("uc:skipCount", String(n));
-      if (n % 10 === 0) setSkipNudge(true);
+      // Logged-in users aren't capped → soft day-pass nudge every 10 skips.
+      if (loggedIn && n % 10 === 0) setSkipNudge(true);
     } catch {
-      /* localStorage disabled — skip the nudge */
+      /* localStorage disabled */
     }
   }
 
@@ -788,7 +825,16 @@ export function ChatWindow() {
       }
       // Record the abandoned session before we spin up a new one.
       notifyServerEnd("skip");
-      bumpSkipCount(); // lots of skips → suggest a $1 day pass
+
+      // Logged-out users get a hard 10-skip cap → must log in to keep going.
+      if (loggedIn === false && getSkipCount() >= SKIP_LIMIT) {
+        clearAllTimeouts();
+        pushMsg({ role: "system", text: "you've used your free skips." });
+        setSkipBlocked(true);
+        setEnded(true);
+        return;
+      }
+      bumpSkipCount(); // logged-in: lots of skips → suggest a $1 day pass
 
       // If there's a post-chat ask to show (per the duration tiers), end HERE so
       // the ended effect shows it; the user taps "find another" afterwards.
@@ -1012,9 +1058,9 @@ export function ChatWindow() {
             {!ended && matchNudge && !matched && (
               <div className="mb-2 flex items-center gap-2 rounded-xl border-2 border-ink bg-yellow-soft px-3 py-2 shadow-hard-xs">
                 <span className="flex-1 font-sans text-[12px] font-semibold text-ink leading-snug">
-                  {matchNudge >= 30
-                    ? "you've been talking a while 💘 match to keep them before they go"
-                    : "heads up — strangers can leave. match to save this chat 💘"}
+                  {matchNudge >= 25
+                    ? "⏳ ~5 min left — match to keep them before the chat ends"
+                    : "match to save this chat 💘 — strangers don't stay forever"}
                 </span>
                 <button
                   onClick={keep}
@@ -1124,6 +1170,25 @@ export function ChatWindow() {
 
       {showMatchOverlay && (
         <MatchedOverlay name={matchedName} onClose={() => setShowMatchOverlay(false)} />
+      )}
+
+      {/* Logged-out skip cap reached → log in to keep meeting strangers (free). */}
+      {skipBlocked && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-ink/60 px-6">
+          <div className="w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
+            <UpgradeAccount
+              forceShow
+              title="that's your free skips for now 👋"
+              subtitle="log in (it's free) to keep meeting new strangers — and your matches save across devices."
+              onDone={() => {
+                setLoggedIn(true);
+                setSkipBlocked(false);
+                setEnded(false);
+                connect();
+              }}
+            />
+          </div>
+        </div>
       )}
     </div>
   );
