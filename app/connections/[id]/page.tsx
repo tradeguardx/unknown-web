@@ -16,6 +16,10 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 
 type Msg = { role: "user" | "assistant" | "system"; text: string };
 
+// Keep replies texting-tight: collapse blank lines so a "greeting ⏎⏎ question"
+// reply doesn't render as a big gap (matches the strangers chat's compact feel).
+const tidy = (s: string) => s.replace(/\n{2,}/g, "\n").trim();
+
 export default function ConnectionChatPage() {
   const id = String(useParams()?.id ?? "");
   const [match, setMatch] = useState<MatchedPersona | null>(null);
@@ -57,7 +61,7 @@ export default function ConnectionChatPage() {
         if (!alive) return;
         setMatch(d.match);
         setConvoId(d.conversation.id);
-        setMsgs((d.messages ?? []).map((m: MatchMessage) => ({ role: m.role, text: m.content })));
+        setMsgs((d.messages ?? []).map((m: MatchMessage) => ({ role: m.role, text: tidy(m.content) })));
         setState("ready");
       })
       .catch(() => alive && setState("error"));
@@ -80,7 +84,7 @@ export default function ConnectionChatPage() {
     setTyping(true);
     try {
       const { reply } = await matchApi.send(convoId, text);
-      setMsgs((m) => [...m, { role: "assistant", text: reply }]);
+      setMsgs((m) => [...m, { role: "assistant", text: tidy(reply) }]);
     } catch (e) {
       const code = (e as { code?: string; status?: number }).code;
       if (isPaywall(e)) {
