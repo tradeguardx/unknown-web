@@ -301,8 +301,8 @@ export function ChatWindow() {
       return;
     }
 
-    // Match prompts at 20 and 25 min.
-    const mark = mins >= 25 ? 25 : mins >= 20 ? 20 : 0;
+    // Match prompts from 15 min (every 5: 15, 20, 25), then the 30-min cap.
+    const mark = mins >= 25 ? 25 : mins >= 20 ? 20 : mins >= 15 ? 15 : 0;
     if (mark > nudgedMarkRef.current) {
       nudgedMarkRef.current = mark;
       setMatchNudge(mark);
