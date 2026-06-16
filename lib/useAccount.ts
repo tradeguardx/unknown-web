@@ -36,6 +36,9 @@ export function clearAccountCache() {
 
 async function load(): Promise<Account | null> {
   try {
+    // If the user just logged in (incl. via OAuth redirect), migrate any matches
+    // they made as a guest into this account before reading /me.
+    await matchApi.claimPending();
     const m = await matchApi.me();
     cache = {
       loggedIn: !m.isAnonymous,

@@ -167,7 +167,7 @@ export default function ConnectionChatPage() {
                   forceShow
                   title={`log in to chat with ${name}`}
                   subtitle="you've got 10 free messages to start 💘 — log in to send them."
-                  onDone={() => setAnon(false)}
+                  onDone={() => window.location.reload()}
                 />
               </div>
             </div>

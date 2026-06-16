@@ -59,7 +59,9 @@ export function UpgradeAccount({
     return !!msg && /already|registered|exists|in use/i.test(msg);
   }
 
-  function finish() {
+  async function finish() {
+    // Migrate matches made as a guest into the account just logged into.
+    await matchApi.claimPending().catch(() => {});
     setDone(true);
     onDone?.();
   }

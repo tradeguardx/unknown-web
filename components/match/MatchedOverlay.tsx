@@ -38,7 +38,7 @@ export function MatchedOverlay({ name, onClose }: { name: string; onClose: () =>
           >
             keep chatting
           </button>
-          <Link href="/connections" className="font-display text-[13px] text-paper-cool/90 underline">
+          <Link href="/connections" className="font-sans text-[13px] font-bold text-paper-cool underline">
             view your connections →
           </Link>
         </div>

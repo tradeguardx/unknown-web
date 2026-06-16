@@ -38,6 +38,22 @@ async function getToken(): Promise<string> {
   return session.access_token;
 }
 
+// Before logging into an EXISTING account, remember the current guest (anonymous)
+// token so we can migrate its matches afterwards (see claimPending). Survives the
+// OAuth redirect because it's in localStorage.
+const PREV_TOKEN_KEY = "uc:prevAnonToken";
+async function stashPrevAnon(): Promise<void> {
+  try {
+    const { data } = await getSupabase().auth.getSession();
+    const s = data.session;
+    if (s?.user?.is_anonymous && s.access_token) {
+      localStorage.setItem(PREV_TOKEN_KEY, s.access_token);
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
 async function call<T = unknown>(path: string, init: RequestInit = {}): Promise<T> {
   const token = await getToken();
   const res = await fetch(`${BASE}${path}`, {
@@ -85,6 +101,7 @@ export const matchApi = {
   // sync error), we fall back to a normal Google sign-in so the button still works.
   async signInWithGoogle(redirectTo?: string) {
     const sb = getSupabase();
+    await stashPrevAnon(); // in case Google goes to an existing account → claim later
     const { data } = await sb.auth.getSession();
     if (data.session?.user?.is_anonymous) {
       const { error } = await sb.auth.linkIdentity({ provider: "google", options: { redirectTo } });
@@ -94,11 +111,45 @@ export const matchApi = {
   },
 
   // Email + password (no OTP). "create" links the credentials to the CURRENT
-  // (anonymous) user — keeps their matches. "login" signs into an existing account.
-  createPassword: (email: string, password: string) =>
-    getSupabase().auth.updateUser({ email, password }),
-  loginPassword: (email: string, password: string) =>
-    getSupabase().auth.signInWithPassword({ email, password }),
+  // (anonymous) user — keeps their matches. "login" signs into an existing account
+  // (different id) — so we stash the guest token first, then claimPending migrates.
+  async createPassword(email: string, password: string) {
+    await stashPrevAnon();
+    return getSupabase().auth.updateUser({ email, password });
+  },
+  async loginPassword(email: string, password: string) {
+    await stashPrevAnon();
+    return getSupabase().auth.signInWithPassword({ email, password });
+  },
+
+  // Migrate the matches made as a guest into the account just logged into. Reads
+  // the stashed guest token; no-op if there isn't one or we're still anonymous.
+  claim: (previousToken: string) =>
+    call<{ migrated: number }>("/claim", { method: "POST", body: JSON.stringify({ previousToken }) }),
+  async claimPending(): Promise<number> {
+    let prev: string | null = null;
+    try {
+      prev = localStorage.getItem(PREV_TOKEN_KEY);
+    } catch {
+      /* ignore */
+    }
+    if (!prev) return 0;
+    try {
+      const { data } = await getSupabase().auth.getSession();
+      if (data.session?.user && !data.session.user.is_anonymous) {
+        const r = await matchApi.claim(prev).catch(() => ({ migrated: 0 }));
+        try {
+          localStorage.removeItem(PREV_TOKEN_KEY);
+        } catch {
+          /* ignore */
+        }
+        return r.migrated;
+      }
+    } catch {
+      /* ignore */
+    }
+    return 0;
+  },
   // Sign out → next match-service call auto-creates a fresh anonymous session,
   // so the user becomes a guest again (their account's matches drop out of view).
   signOut: () => getSupabase().auth.signOut(),
