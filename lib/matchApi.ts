@@ -79,8 +79,19 @@ export const matchApi = {
     const { data } = await getSupabase().auth.getUser();
     return data.user; // null until anon session created
   },
-  signInWithGoogle: (redirectTo?: string) =>
-    getSupabase().auth.signInWithOAuth({ provider: "google", options: { redirectTo } }),
+  // Google OAuth. For a guest (anonymous) we LINK Google to the existing user so
+  // their matches survive (same id) — mirrors the email "create account" flow.
+  // Linking needs "Manual linking" enabled in Supabase; if it's off (or any other
+  // sync error), we fall back to a normal Google sign-in so the button still works.
+  async signInWithGoogle(redirectTo?: string) {
+    const sb = getSupabase();
+    const { data } = await sb.auth.getSession();
+    if (data.session?.user?.is_anonymous) {
+      const { error } = await sb.auth.linkIdentity({ provider: "google", options: { redirectTo } });
+      if (!error) return; // redirects to Google; on return the anon id (+ matches) is kept
+    }
+    await sb.auth.signInWithOAuth({ provider: "google", options: { redirectTo } });
+  },
 
   // Email + password (no OTP). "create" links the credentials to the CURRENT
   // (anonymous) user — keeps their matches. "login" signs into an existing account.
