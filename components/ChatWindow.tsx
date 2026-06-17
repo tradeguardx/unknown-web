@@ -142,6 +142,7 @@ export function ChatWindow() {
   const [keeping, setKeeping] = useState(false);
   const [showMatchOverlay, setShowMatchOverlay] = useState(false);
   const [matchedName, setMatchedName] = useState("them");
+  const [matchedId, setMatchedId] = useState<string | null>(null); // for "continue in connections"
   // Conversion nudges: a long chat → "match to save it"; lots of skips → day pass.
   const [matchNudge, setMatchNudge] = useState<number | null>(null); // the minute mark
   const [skipNudge, setSkipNudge] = useState(false);
@@ -283,31 +284,36 @@ export function ChatWindow() {
   // (every 5 min → 20, 25), then HARD-END at 30. Matched chats are exempt (that's
   // the incentive). The 10s nowTick re-runs this so it fires within ~10s.
   useEffect(() => {
-    // Paid users (subscription/day pass) and matched chats are exempt — no caps,
-    // no match nudges. (The post-chat follow/review prompts are separate.)
-    if (matched || paid || ended || chatStartRef.current <= 0) return;
+    // Paid users (subscription/day pass) are exempt — unlimited, no caps/nudges.
+    // (Post-chat follow/review prompts are separate.)
+    if (paid || ended || chatStartRef.current <= 0) return;
     const mins = Math.floor((Date.now() - chatStartRef.current) / 60_000);
 
-    // 30-min hard cap → end the chat; matched connections never expire.
+    // 30-min hard cap → end the random chat. If they MATCHED, point them to
+    // continue with that person in connections; if not, it's just over.
     if (mins >= 30) {
       notifyServerEnd("too_long");
       clearAllTimeouts();
       setMatchNudge(null);
       pushMsg({
         role: "system",
-        text: "30 minutes flew by — strangers don't stay forever. match someone and you can talk anytime 💘",
+        text: matched
+          ? `that's 30 minutes together 💘 keep talking to ${matchedName} anytime — continue in your connections.`
+          : "30 minutes flew by — strangers don't stay forever. match someone next time so you can talk anytime 💘",
       });
       setEnded(true);
       return;
     }
 
-    // Match prompts from 15 min (every 5: 15, 20, 25), then the 30-min cap.
-    const mark = mins >= 25 ? 25 : mins >= 20 ? 20 : mins >= 15 ? 15 : 0;
-    if (mark > nudgedMarkRef.current) {
-      nudgedMarkRef.current = mark;
-      setMatchNudge(mark);
+    // Match-to-save prompts (15/20/25) — only while they HAVEN'T matched yet.
+    if (!matched) {
+      const mark = mins >= 25 ? 25 : mins >= 20 ? 20 : mins >= 15 ? 15 : 0;
+      if (mark > nudgedMarkRef.current) {
+        nudgedMarkRef.current = mark;
+        setMatchNudge(mark);
+      }
     }
-  }, [nowTick, matched, ended, paid]);
+  }, [nowTick, matched, ended, paid, matchedName]);
 
   // Detect login + purchase state. Logged-out → 10-skip cap. Paid (subscription
   // or day pass) → no limits at all. Only logged-in users hit /me (no anon
@@ -655,6 +661,7 @@ export function ChatWindow() {
       chatStartRef.current = Date.now();
       setShowFeedback(false);
       setMatched(false); // fresh stranger → not yet a saved match
+      setMatchedId(null);
       setShowMatchOverlay(false);
       setMatchNudge(null); // reset the long-chat match nudge for the new stranger
       nudgedMarkRef.current = 0;
@@ -793,6 +800,7 @@ export function ChatWindow() {
     try {
       const res = await matchApi.keepChat(sessionId);
       setMatchedName(res.match?.displayName ?? "them");
+      setMatchedId(res.match?.id ?? null);
       setMatched(true);
       setShowMatchOverlay(true);
       setMatchNudge(null); // matched → no more "save it" nudges
@@ -1066,6 +1074,16 @@ export function ChatWindow() {
             {/* Mood line — only AFTER a chat ends (skipped/closed), so the user
                 can change the vibe for their NEXT stranger. Hidden mid-chat:
                 changing vibes there would mean abandoning the current stranger. */}
+            {/* Matched chat ended (e.g. 30-min cap) → continue with them in connections. */}
+            {ended && matchedId && (
+              <Link
+                href={`/connections/${matchedId}`}
+                className="mb-2 block rounded-xl border-2 border-ink bg-red px-4 py-2.5 text-center font-sans text-[13px] font-bold tracking-tight text-paper-cool shadow-hard"
+              >
+                continue with {matchedName} in your connections →
+              </Link>
+            )}
+
             {ended && (
               <p className="mb-2 px-1 font-sans text-[12px] text-ink-mute">
                 next chat&apos;s mood: <span className="font-bold text-ink">{MOOD_LABELS[intent ?? "casual"]}</span>
