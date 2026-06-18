@@ -19,7 +19,7 @@ import { isLanguage, isIndicLanguage, type UserPrefs } from "./prefs";
 import type { UserMemory } from "./sessions";
 import { buildSystemPrompt, memorySection } from "./prompts";
 import { buildSystemPromptDeepSeek } from "./promptsDeepSeek";
-import { cachedSystem, getAnthropic, MODEL } from "./anthropic";
+import { cachedSystem, anthropicFetch } from "./anthropic";
 import { deepseekChat } from "./deepseek";
 import { sarvamChat } from "./sarvam";
 import { normalizeUsage, type TokenUsage } from "./usage";
@@ -141,13 +141,10 @@ export async function callLLM(req: LLMRequest): Promise<string> {
   // present) rides in the uncached memory block so it never breaks the cache.
   const staticPrompt = buildSystemPrompt(req.persona, req.prefs);
   const memory = memorySection(req.userMemory) + extra;
-  const resp = await getAnthropic().messages.create({
-    model: MODEL,
-    max_tokens: req.maxTokens,
+  return anthropicFetch({
     system: cachedSystem(staticPrompt, memory),
     messages: req.messages,
+    maxTokens: req.maxTokens,
+    onUsage: sink,
   });
-  if (resp.usage) sink?.(resp.usage);
-  const block = resp.content.find(b => b.type === "text");
-  return block && block.type === "text" ? block.text : "";
 }
