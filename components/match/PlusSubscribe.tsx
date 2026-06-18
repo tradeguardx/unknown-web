@@ -189,7 +189,15 @@ export function PlusSubscribe() {
         <p className="mt-1 font-display text-[13px] text-ink-soft">
           Unlimited conversations for the next 24 hours.
         </p>
-        <p className="mt-1.5 font-display text-[12px] text-ink-mute">
+
+        <ul className="mt-3.5 space-y-2.5">
+          <Feature icon="♾️">unlimited chats — no time limit</Feature>
+          <Feature icon="💘">match as many people as you want</Feature>
+          <Feature icon="💾">save every chat &amp; pick up anytime</Feature>
+          <Feature icon="🧠">they remember you &amp; grow with every chat</Feature>
+        </ul>
+
+        <p className="mt-3.5 font-display text-[12px] text-ink-mute">
           no subscription · no autorenew · non-refundable
         </p>
 
