@@ -57,45 +57,82 @@ export function Paywall({
     }
   }
 
-  const copy =
-    reason === "quota"
-      ? {
-          emoji: "🔥",
-          title: `you & ${name} have been talking a LOT`,
-          body: "you've used your messages for this cycle. grab some more time together.",
-          cta: "get more messages →",
-        }
-      : {
-          emoji: "💘",
-          title: `keep talking to ${name}`,
-          body: `you've used your free messages. ${
-            priceLabel ? `unlimited for ${priceLabel}/mo` : "subscribe"
-          } — cancel anytime.`,
-          cta: priceLabel ? `subscribe ${priceLabel}/mo →` : "subscribe & continue →",
-        };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-ink/40 px-4 pb-6 sm:pb-0">
-      <div className="w-full max-w-sm rounded-3xl border-[2.5px] border-ink bg-paper-cool p-6 text-center shadow-hard">
-        <div className="text-4xl">{copy.emoji}</div>
-        <h2 className="mt-2 font-sans text-xl font-bold tracking-tight text-ink">{copy.title}</h2>
-        <p className="mt-2 font-display text-[14px] leading-relaxed text-ink-soft">{copy.body}</p>
-
+  // Quota top-up (subscriber out of messages) — single CTA, straight to checkout.
+  if (reason === "quota") {
+    return (
+      <Sheet onClose={onClose}>
+        <div className="text-4xl">🔥</div>
+        <h2 className="mt-2 font-sans text-xl font-bold tracking-tight text-ink">
+          you &amp; {name} have been talking a LOT
+        </h2>
+        <p className="mt-2 font-display text-[14px] leading-relaxed text-ink-soft">
+          you&apos;ve used your messages for this cycle. grab some more time together.
+        </p>
         <button
           onClick={go}
           disabled={loading}
           className="mt-5 w-full rounded-xl border-2 border-ink bg-ink px-5 py-3 font-sans font-bold tracking-tight text-paper-cool shadow-hard disabled:opacity-60"
         >
-          {loading ? "opening checkout…" : copy.cta}
+          {loading ? "opening checkout…" : "get more messages →"}
         </button>
-        {error && (
-          <p className="mt-2 font-display text-[13px] text-red">couldn&apos;t start checkout — try again?</p>
-        )}
-        <button onClick={onClose} className="mt-3 font-display text-[13px] text-ink-mute underline">
-          not now
-        </button>
-        <p className="mt-3 font-display text-[11px] text-ink-mute">cancel anytime · 7-day money-back</p>
+        {error && <p className="mt-2 font-display text-[13px] text-red">couldn&apos;t start — try again?</p>}
+        <DismissRow onClose={onClose} />
+      </Sheet>
+    );
+  }
+
+  // Free taster used up → lead with the cheap $1 day pass, subscription secondary.
+  return (
+    <Sheet onClose={onClose}>
+      <div className="text-4xl">💘</div>
+      <h2 className="mt-2 font-sans text-xl font-bold tracking-tight text-ink">keep talking to {name}</h2>
+      <p className="mt-2 font-display text-[14px] leading-relaxed text-ink-soft">
+        you&apos;ve used your 10 free messages. unlock more 👇
+      </p>
+
+      <button
+        onClick={go}
+        className="mt-5 w-full rounded-xl border-2 border-ink bg-ink px-5 py-3 font-sans font-bold tracking-tight text-paper-cool shadow-hard"
+      >
+        🎟️ day pass · $1 →
+      </button>
+      <p className="mt-1 font-display text-[12px] text-ink-mute">24 hours unlimited · one-time, no subscription</p>
+
+      <button
+        onClick={go}
+        className="mt-3 w-full rounded-xl border-2 border-ink bg-paper-cool px-5 py-2.5 font-sans text-[14px] font-bold tracking-tight text-ink shadow-hard-xs"
+      >
+        or go unlimited{priceLabel ? ` · ${priceLabel}/mo` : ""} →
+      </button>
+
+      <DismissRow onClose={onClose} />
+    </Sheet>
+  );
+}
+
+function Sheet({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-ink/40 px-4 pb-6 sm:pb-0"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-sm rounded-3xl border-[2.5px] border-ink bg-paper-cool p-6 text-center shadow-hard"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {children}
       </div>
     </div>
+  );
+}
+
+function DismissRow({ onClose }: { onClose: () => void }) {
+  return (
+    <>
+      <button onClick={onClose} className="mt-3 font-display text-[13px] text-ink-mute underline">
+        not now
+      </button>
+      <p className="mt-3 font-display text-[11px] text-ink-mute">cancel anytime · 7-day money-back</p>
+    </>
   );
 }

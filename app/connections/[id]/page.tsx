@@ -39,6 +39,7 @@ export default function ConnectionChatPage() {
   const [taster, setTaster] = useState<number | null>(null); // free messages left
   const [confirmUnmatch, setConfirmUnmatch] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const autoPaywallRef = useRef(false); // show the paywall once when the taster hits 0
 
   // Account state — anonymous users can open a connection but must log in to chat.
   useEffect(() => {
@@ -88,6 +89,15 @@ export default function ConnectionChatPage() {
     const el = scrollRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [msgs, typing]);
+
+  // As soon as the free taster hits 0 (after the 10th message, or on a resume
+  // that's already used up), show the paywall — don't wait for the next send.
+  useEffect(() => {
+    if (state === "ready" && anon === false && !paid && taster === 0 && !autoPaywallRef.current) {
+      autoPaywallRef.current = true;
+      setPaywall("paywall");
+    }
+  }, [state, anon, paid, taster]);
 
   async function send() {
     const text = input.trim();
