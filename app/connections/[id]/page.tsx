@@ -209,7 +209,7 @@ export default function ConnectionChatPage() {
                   }
                 }}
                 placeholder={`message ${name}…`}
-                className="flex-1 bg-transparent border-none px-2 py-2 font-mono text-[13px] text-ink outline-none min-w-0 placeholder:font-serif placeholder:italic placeholder:text-ink-mute"
+                className="flex-1 bg-transparent border-none px-2 py-2 font-mono text-[16px] sm:text-[13px] text-ink outline-none min-w-0 placeholder:font-serif placeholder:italic placeholder:text-ink-mute"
               />
               <button
                 onClick={send}

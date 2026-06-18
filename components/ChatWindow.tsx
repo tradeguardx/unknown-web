@@ -1155,7 +1155,10 @@ export function ChatWindow() {
                 }}
                 disabled={ended || !sessionId}
                 placeholder={ended ? "they left. tap 'find another'" : "type something…"}
-                className="flex-1 bg-transparent border-none px-1 py-2 font-mono text-[13px] text-ink outline-none min-w-0 placeholder:font-serif placeholder:italic placeholder:text-ink-mute disabled:opacity-50"
+                // text-[16px] on phones is REQUIRED — iOS Safari zooms in on focus
+                // for any input under 16px and never zooms back. sm:text-[13px]
+                // keeps the small look on desktop.
+                className="flex-1 bg-transparent border-none px-1 py-2 font-mono text-[16px] sm:text-[13px] text-ink outline-none min-w-0 placeholder:font-serif placeholder:italic placeholder:text-ink-mute disabled:opacity-50"
               />
               {!ended && (
                 <button
