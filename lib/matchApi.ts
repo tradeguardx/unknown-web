@@ -235,10 +235,11 @@ export const matchApi = {
 
   // Resume + chat (entitlement-gated; send() throws MatchApiError 402 on paywall)
   resume: (matchId: string) =>
-    call<{ match: MatchedPersona; conversation: { id: string }; messages: MatchMessage[] }>(
-      `/matches/${matchId}/resume`,
-      { method: "POST" },
-    ),
+    call<{
+      match: MatchedPersona;
+      conversation: { id: string; freeMessagesUsed?: number };
+      messages: MatchMessage[];
+    }>(`/matches/${matchId}/resume`, { method: "POST" }),
   // Returns a reply, OR a content-filter warning (no reply). A hard content-policy
   // violation throws MatchApiError with status 451 + code "CONTENT_POLICY".
   send: (conversationId: string, message: string) =>

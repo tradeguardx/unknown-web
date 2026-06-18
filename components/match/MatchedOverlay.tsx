@@ -6,7 +6,15 @@
 
 import Link from "next/link";
 
-export function MatchedOverlay({ name, onClose }: { name: string; onClose: () => void }) {
+export function MatchedOverlay({
+  name,
+  href = "/connections",
+  onClose,
+}: {
+  name: string;
+  href?: string;
+  onClose: () => void;
+}) {
   return (
     <div
       className="fixed inset-0 z-[60] flex items-center justify-center bg-ink/70 px-6 overlay-fade"
@@ -32,15 +40,15 @@ export function MatchedOverlay({ name, onClose }: { name: string; onClose: () =>
         </p>
 
         <div className="mt-7 flex flex-col items-center gap-2.5">
-          <button
-            onClick={onClose}
+          <Link
+            href={href}
             className="rounded-full border-2 border-paper-cool bg-paper-cool px-6 py-2.5 font-sans text-sm font-bold tracking-tight text-ink shadow-hard"
           >
-            keep chatting
-          </button>
-          <Link href="/connections" className="font-sans text-[13px] font-bold text-paper-cool underline">
-            view your connections →
+            continue with {name} →
           </Link>
+          <button onClick={onClose} className="font-sans text-[13px] font-bold text-paper-cool/90 underline">
+            maybe later
+          </button>
         </div>
       </div>
 

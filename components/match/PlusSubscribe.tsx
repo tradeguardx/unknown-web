@@ -218,9 +218,10 @@ export function PlusSubscribe() {
         </p>
 
         <ul className="mt-4 space-y-2.5">
-          <Feature icon="♾️">unlimited chats with your connections</Feature>
-          <Feature icon="💾">save every connection — pick up anytime</Feature>
-          <Feature icon="💘">they remember your chats &amp; grow with them</Feature>
+          <Feature icon="♾️">unlimited chats — no 20-minute limit</Feature>
+          <Feature icon="💘">match as many people as you want</Feature>
+          <Feature icon="💾">save every chat &amp; pick up anytime</Feature>
+          <Feature icon="🧠">they remember you &amp; grow with every chat</Feature>
         </ul>
 
         <button

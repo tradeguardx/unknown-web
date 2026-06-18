@@ -21,6 +21,8 @@ type Msg = { role: "user" | "assistant" | "system"; text: string };
 // reply doesn't render as a big gap (matches the strangers chat's compact feel).
 const tidy = (s: string) => s.replace(/\n{2,}/g, "\n").trim();
 
+const FREE_TASTER = 10; // free messages per connection before the paywall
+
 export default function ConnectionChatPage() {
   const id = String(useParams()?.id ?? "");
   const [match, setMatch] = useState<MatchedPersona | null>(null);
@@ -33,13 +35,22 @@ export default function ConnectionChatPage() {
   const [paywall, setPaywall] = useState<null | "paywall" | "quota">(null);
   const [closed, setClosed] = useState(false); // content-policy close → input locked
   const [anon, setAnon] = useState<boolean | null>(null); // must log in to chat
+  const [paid, setPaid] = useState(false); // subscriber or day pass → unlimited
+  const [taster, setTaster] = useState<number | null>(null); // free messages left
   const [confirmUnmatch, setConfirmUnmatch] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
   // Account state — anonymous users can open a connection but must log in to chat.
   useEffect(() => {
     let alive = true;
-    matchApi.me().then((m) => alive && setAnon(m.isAnonymous)).catch(() => alive && setAnon(null));
+    matchApi
+      .me()
+      .then((m) => {
+        if (!alive) return;
+        setAnon(m.isAnonymous);
+        setPaid(m.subscription.active || m.pass.active);
+      })
+      .catch(() => alive && setAnon(null));
     return () => {
       alive = false;
     };
@@ -63,6 +74,7 @@ export default function ConnectionChatPage() {
         if (!alive) return;
         setMatch(d.match);
         setConvoId(d.conversation.id);
+        setTaster(Math.max(0, FREE_TASTER - (d.conversation.freeMessagesUsed ?? 0)));
         setMsgs((d.messages ?? []).map((m: MatchMessage) => ({ role: m.role, text: tidy(m.content) })));
         setState("ready");
       })
@@ -93,6 +105,9 @@ export default function ConnectionChatPage() {
         setMsgs((m) => [...m, { role: "system", text: warnText }]);
       } else if (reply) {
         setMsgs((m) => [...m, { role: "assistant", text: tidy(reply) }]);
+        // Track the free taster countdown; once subscribed/topped-up, stop showing it.
+        if (res.billed === "free_taster") setTaster((t) => (t == null ? t : Math.max(0, t - 1)));
+        else if (res.billed) setTaster(null);
         // Refresh the plan/usage so the message-count footer updates live.
         void refreshAccount();
       }
@@ -180,6 +195,18 @@ export default function ConnectionChatPage() {
             </div>
           ) : (
           <div className="px-4 pt-3 pb-5 flex-shrink-0">
+            {/* Free taster countdown — only for non-paying users. */}
+            {!paid && taster != null && (
+              <p className="mb-1.5 px-1 text-center font-sans text-[12px] font-semibold text-ink-mute">
+                {taster > 0 ? (
+                  <>
+                    <span className="text-red">{taster}</span> free message{taster === 1 ? "" : "s"} left with {name}
+                  </>
+                ) : (
+                  <>free messages used — <span className="text-red">subscribe or grab a day pass</span> to keep going</>
+                )}
+              </p>
+            )}
             <div
               onClick={() => document.getElementById("match-input")?.focus()}
               className="flex gap-1.5 items-center bg-paper-cool border-2 border-ink rounded-2xl p-[3px] shadow-hard-sm"
