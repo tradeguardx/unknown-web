@@ -37,10 +37,10 @@ export function FollowPrompt({
         )}
 
         <div className="mb-2 font-sans text-sm font-bold tracking-tight text-ink">
-          early users get unlimited new personas ✨
+          enjoying the chats? ✨
         </div>
         <p className="mb-3 font-display text-[13px] leading-relaxed text-ink-soft">
-          follow us on instagram to continue 👀
+          follow us on instagram for new personas + updates 👀
         </p>
 
         <div className="flex items-center gap-2">

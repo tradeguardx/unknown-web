@@ -208,12 +208,15 @@ export function ChatWindow() {
     const dur = Date.now() - chatStartRef.current;
     const followed = followDone();
     const reviewed = reviewGiven();
+    // Nothing blocks the next chat anymore — follow + review are both SOFT
+    // (skippable). Free chat stays frictionless; monetization is the connection
+    // paywall, and IG follows weren't converting from a hard gate anyway.
     if (dur < LONG_MIN_MS) {
-      // Short/medium chat → optional follow nudge (skippable).
+      // Short/medium chat → optional follow nudge.
       if (!followed) { setFollowGated(false); setShowFollow(true); }
     } else {
-      // Long (≥10min) → review to continue; once rated, a soft follow nudge.
-      if (!reviewed) { setReviewGated(true); setShowFeedback(true); }
+      // Long (≥10min) → optional review; once rated, a soft follow nudge.
+      if (!reviewed) { setReviewGated(false); setShowFeedback(true); }
       else if (!followed) { setFollowGated(false); setShowFollow(true); }
     }
   }, [ended]);
@@ -1095,7 +1098,7 @@ export function ChatWindow() {
             {skipNudge && (
               <div className="mb-2 flex items-center gap-2 rounded-xl border-2 border-ink bg-lilac/50 px-3 py-2 shadow-hard-xs">
                 <span className="flex-1 font-sans text-[12px] font-semibold text-ink leading-snug">
-                  🎟️ want unlimited chats &amp; to save the ones you like? grab a day pass — $1
+                  🎟️ save the ones you like + chat without limits — day pass, $1
                 </span>
                 <Link
                   href="/plus"

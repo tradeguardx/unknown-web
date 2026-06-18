@@ -182,14 +182,16 @@ export function PlusSubscribe() {
           <span className="font-sans text-4xl font-bold text-ink">$1</span>
           <span className="font-display text-ink-mute">one-time</span>
         </div>
-        <p className="mt-1.5 font-display text-[12px] text-ink-mute">
-          24 hours of plus · no subscription · no autorenew
-        </p>
 
-        <ul className="mt-3.5 space-y-2.5">
-          <Feature icon="🎟️">everything in plus, for 24 hours</Feature>
-          <Feature icon="👻">perfect if you&apos;re not sure yet</Feature>
-        </ul>
+        <p className="mt-2.5 font-sans text-[15px] font-bold leading-snug tracking-tight text-ink">
+          Keep talking. Keep matching. Keep every connection.
+        </p>
+        <p className="mt-1 font-display text-[13px] text-ink-soft">
+          Unlimited conversations for the next 24 hours.
+        </p>
+        <p className="mt-1.5 font-display text-[12px] text-ink-mute">
+          no subscription · no autorenew
+        </p>
 
         <button
           onClick={() => buy("daypass")}

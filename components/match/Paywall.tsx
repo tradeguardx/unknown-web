@@ -87,7 +87,7 @@ export function Paywall({
       <div className="text-4xl">💘</div>
       <h2 className="mt-2 font-sans text-xl font-bold tracking-tight text-ink">keep talking to {name}</h2>
       <p className="mt-2 font-display text-[14px] leading-relaxed text-ink-soft">
-        you&apos;ve used your 10 free messages. unlock more 👇
+        your free chat with {name} is up — unlock more 👇
       </p>
 
       <button
@@ -96,7 +96,7 @@ export function Paywall({
       >
         🎟️ day pass · $1 →
       </button>
-      <p className="mt-1 font-display text-[12px] text-ink-mute">24 hours unlimited · one-time, no subscription</p>
+      <p className="mt-1 font-display text-[12px] text-ink-mute">unlimited conversations for the next 24 hours · one-time</p>
 
       <button
         onClick={go}
@@ -132,7 +132,7 @@ function DismissRow({ onClose }: { onClose: () => void }) {
       <button onClick={onClose} className="mt-3 font-display text-[13px] text-ink-mute underline">
         not now
       </button>
-      <p className="mt-3 font-display text-[11px] text-ink-mute">cancel anytime · 7-day money-back</p>
+      <p className="mt-3 font-display text-[11px] text-ink-mute">instant access · secure checkout</p>
     </>
   );
 }
