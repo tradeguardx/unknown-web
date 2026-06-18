@@ -51,6 +51,11 @@ export default function RefundPage() {
             <div>
               <h2 className="text-lg font-bold text-ink">What&apos;s not covered</h2>
               <ul className="mt-2 list-disc pl-5 space-y-1.5 text-[15px]">
+                <li>
+                  <strong>Day passes and message top-ups</strong> — these are one-time purchases that
+                  unlock access immediately, so they&apos;re <strong>non-refundable</strong>. The 7-day
+                  money-back guarantee applies to <strong>subscriptions only</strong>.
+                </li>
                 <li>Requests made <strong>after 7 days</strong> from the charge date.</li>
                 <li>
                   <strong>Renewal</strong> charges after the first period — you can cancel anytime to stop future

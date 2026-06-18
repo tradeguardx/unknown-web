@@ -190,7 +190,7 @@ export function PlusSubscribe() {
           Unlimited conversations for the next 24 hours.
         </p>
         <p className="mt-1.5 font-display text-[12px] text-ink-mute">
-          no subscription · no autorenew
+          no subscription · no autorenew · non-refundable
         </p>
 
         <button
