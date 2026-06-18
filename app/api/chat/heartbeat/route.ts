@@ -7,7 +7,7 @@
 // response returns immediately and never blocks the chat UI.
 
 import { NextResponse } from "next/server";
-import { getSession, touchSession } from "@/lib/sessions";
+import { getSession, keepAlive } from "@/lib/sessions";
 import { sendPresence } from "@/lib/events";
 import { clientIp, rateLimit } from "@/lib/rateLimit";
 
@@ -25,10 +25,12 @@ export async function POST(req: Request) {
   const body = (await req.json().catch(() => ({}))) as HeartbeatBody;
   if (!body.sessionId) return NextResponse.json({ ok: true });
 
-  const session = getSession(body.sessionId);
+  const session = await getSession(body.sessionId);
   // Only count genuinely active chats.
   if (session && !session.ended) {
-    touchSession(session.id); // keeps the reaper from closing a live chat
+    // Bump liveness + TTL WITHOUT rewriting the message blob, so a heartbeat can't
+    // clobber a message a concurrent send/idle just appended.
+    await keepAlive(session.id);
     void sendPresence(req, session.id);
   }
   return NextResponse.json({ ok: true });

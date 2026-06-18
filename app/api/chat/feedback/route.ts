@@ -34,7 +34,7 @@ export async function POST(req: Request) {
   // Trim free-text; cap length so a single review can't blow up storage.
   const text = typeof body.text === "string" ? body.text.trim().slice(0, 1000) : undefined;
 
-  const session = body.sessionId ? getSession(body.sessionId) : undefined;
+  const session = body.sessionId ? await getSession(body.sessionId) : undefined;
 
   void emitFeedback(req, session, { kind, rating, text: text || undefined });
   return NextResponse.json({ ok: true });

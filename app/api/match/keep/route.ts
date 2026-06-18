@@ -23,7 +23,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "sessionId required" }, { status: 400 });
   }
 
-  const session = getSession(sessionId);
+  const session = await getSession(sessionId);
   if (!session) {
     return NextResponse.json({ error: "session not found" }, { status: 404 });
   }

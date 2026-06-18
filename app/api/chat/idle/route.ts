@@ -11,6 +11,7 @@ import {
   endSession,
   getSession,
   incrementSilentPing,
+  saveSession,
   touchSession,
 } from "@/lib/sessions";
 import { parseReply, type PacedMessage } from "@/lib/replyParser";
@@ -50,16 +51,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "sessionId and silenceMs required" }, { status: 400 });
   }
 
-  const session = getSession(sessionId);
+  const session = await getSession(sessionId);
   if (!session) return NextResponse.json({ error: "session not found" }, { status: 404 });
   if (session.ended) return NextResponse.json({ error: "session ended", reason: session.endReason }, { status: 410 });
-  touchSession(sessionId); // client is still polling → chat is alive
+  touchSession(session); // client is still polling → chat is alive
 
   // Increment the impatience counter BEFORE we ask the LLM what to do. The
   // marker we inject tells the model how many times the user has already
   // been pinged this round — so it can pick the right response (silent leave,
   // proactive bye, etc.) without endlessly looping pings.
-  const pingNumber = incrementSilentPing(sessionId);
+  const pingNumber = incrementSilentPing(session);
   const seconds = Math.round(silenceMs / 1000);
   const forceLeave = pingNumber > MAX_SILENT_PINGS;
 
@@ -101,6 +102,7 @@ export async function POST(req: Request) {
   // override the model — silence is silence, the chat ends. Otherwise pass
   // STAY through and let the client re-arm the idle timer.
   if (parsed.stay && !forceLeave) {
+    await saveSession(session); // persist the bumped ping count + touch
     return NextResponse.json({
       messages: [] as PacedMessage[],
       left: false,
@@ -108,8 +110,9 @@ export async function POST(req: Request) {
     });
   }
   if (parsed.stay && forceLeave) {
-    endSession(sessionId, "silent");
+    endSession(session, "silent");
     onChatEnded(req, session, "silent");
+    await saveSession(session);
     return NextResponse.json({
       messages: [] as PacedMessage[],
       left: true,
@@ -122,7 +125,7 @@ export async function POST(req: Request) {
   let cursor = Date.now();
   for (const m of parsed.messages) {
     cursor += m.preTypingMs + m.totalMs;
-    appendMessage(sessionId, { role: "assistant", content: m.text, ts: cursor });
+    appendMessage(session, { role: "assistant", content: m.text, ts: cursor });
   }
 
   // Force-leave fallback: if we told the model to leave (forceLeave) but it
@@ -132,9 +135,11 @@ export async function POST(req: Request) {
   const shouldEnd = parsed.left || forceLeave;
   const leaveReason = parsed.leaveReason || "silent";
   if (shouldEnd) {
-    endSession(sessionId, leaveReason);
+    endSession(session, leaveReason);
     onChatEnded(req, session, leaveReason);
   }
+
+  await saveSession(session);
 
   return NextResponse.json({
     messages: parsed.messages,

@@ -19,7 +19,10 @@ jobs:
       # SENTRY_AUTH_TOKEN is passed as a build-arg so Sentry can upload source
       # maps for readable stack traces. It's a repo secret (Settings → Secrets
       # and variables → Actions), never committed. Builds still work if unset.
-      - run: flyctl deploy --remote-only --build-arg SENTRY_AUTH_TOKEN="$SENTRY_AUTH_TOKEN"
+      # --strategy rolling: replace machines ONE AT A TIME, gated on the health
+      # check, so the other machine keeps serving (with shared Redis sessions)
+      # throughout. This is what makes a deploy zero-downtime / no dropped chats.
+      - run: flyctl deploy --remote-only --strategy rolling --build-arg SENTRY_AUTH_TOKEN="$SENTRY_AUTH_TOKEN"
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}

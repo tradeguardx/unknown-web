@@ -4,7 +4,7 @@
 // Returns sessionId, plus an opener (text + pacing) if the persona decided to speak first.
 
 import { NextResponse } from "next/server";
-import { createSession, appendMessage } from "@/lib/sessions";
+import { createSession, appendMessage, saveSession } from "@/lib/sessions";
 import { pickFirstMessage, personaVibe } from "@/lib/persona";
 import { computePacing } from "@/lib/pacing";
 import { intentRequiresAgeGate, type UserPrefs } from "@/lib/prefs";
@@ -80,7 +80,7 @@ export async function POST(req: Request) {
 
   recordChatStart(ip);
 
-  const session = createSession(body.prefs);
+  const session = await createSession(body.prefs);
   // Snapshot analytics context so the reaper can close + summarize this chat
   // later without an HTTP request (if the user just closes the tab).
   session.country = countryFrom(req);
@@ -103,7 +103,7 @@ export async function POST(req: Request) {
   if (personaStarts) {
     const text = pickFirstMessage(session.persona, body.prefs?.intent);
     const pacing = computePacing(session.persona, text);
-    appendMessage(session.id, { role: "assistant", content: text, ts: Date.now() + pacing.totalMs });
+    appendMessage(session, { role: "assistant", content: text, ts: Date.now() + pacing.totalMs });
     opener = {
       willSendFirst: true,
       text,
@@ -111,6 +111,9 @@ export async function POST(req: Request) {
       preTypingMs: pacing.preTypingMs,
     };
   }
+
+  // Persist analytics context (and the opener, if any) snapshotted above.
+  await saveSession(session);
 
   return NextResponse.json({
     sessionId: session.id,

@@ -10,7 +10,7 @@
 // (onChatEnded de-dupes via session.closeRecorded).
 
 import { NextResponse } from "next/server";
-import { endSession, getSession } from "@/lib/sessions";
+import { endSession, getSession, saveSession } from "@/lib/sessions";
 import { onChatEnded } from "@/lib/chatClose";
 import { clientIp, rateLimit } from "@/lib/rateLimit";
 
@@ -34,7 +34,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "sessionId required" }, { status: 400 });
   }
 
-  const session = getSession(body.sessionId);
+  const session = await getSession(body.sessionId);
   // Unknown or already-recorded session → nothing to do, but never error: this
   // is often called from a page-unload beacon where the response is ignored.
   if (!session || session.closeRecorded) return NextResponse.json({ ok: true });
@@ -42,8 +42,9 @@ export async function POST(req: Request) {
   const reason =
     body.reason && ALLOWED_REASONS.has(body.reason) ? body.reason : "user_left";
 
-  if (!session.ended) endSession(session.id, reason);
+  if (!session.ended) endSession(session, reason);
   onChatEnded(req, session, reason);
+  await saveSession(session);
 
   return NextResponse.json({ ok: true });
 }

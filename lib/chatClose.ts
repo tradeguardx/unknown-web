@@ -34,11 +34,11 @@ export function onChatEnded(req: Request, session: Session, reason: string): voi
   // 3: summary is an LLM round-trip — never block the request path on it.
   setImmediate(() => {
     summarizeChat(session)
-      .then((insight) => {
+      .then(async (insight) => {
         if (!insight) return;
         // Re-read in case the session object changed; either is fine since we
         // only read immutable-ish fields, but this keeps us honest.
-        const fresh = getSession(session.id) ?? session;
+        const fresh = (await getSession(session.id)) ?? session;
         return emitChatSummary(req, fresh, insight, reason);
       })
       .catch((err) =>

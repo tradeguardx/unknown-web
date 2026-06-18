@@ -20,7 +20,7 @@
 // keeps working, just with no rolling memory beyond the recent window.
 
 import { anthropicChat, isAnthropicAvailable } from "./anthropic";
-import { EMPTY_USER_MEMORY, getSession, type UserMemory } from "./sessions";
+import { EMPTY_USER_MEMORY, getSession, saveSession, type UserMemory } from "./sessions";
 import { addUsage, normalizeUsage } from "./usage";
 
 // How often to refresh memory (in total message count). Default: every 10.
@@ -97,7 +97,7 @@ interface RefreshArgs {
 export async function refreshUserMemory({ sessionId }: RefreshArgs): Promise<void> {
   if (!isAnthropicAvailable()) return;
 
-  const session = getSession(sessionId);
+  const session = await getSession(sessionId);
   if (!session) return;
   if (session.messages.length < 4) return;
 
@@ -139,9 +139,10 @@ Update the notes. Output the FULL labeled bullet list (existing + any new facts/
     memory.identity.length > 0 || memory.interests.length > 0 || memory.emotional.length > 0;
   if (!hasContent) return;
 
-  const fresh = getSession(sessionId);
+  const fresh = await getSession(sessionId);
   if (!fresh || fresh.ended) return;
   fresh.userMemory = memory;
+  await saveSession(fresh);
 }
 
 function formatExistingNotes(memory: UserMemory): string {

@@ -13,6 +13,7 @@ import {
   getSession,
   incrementWarning,
   resetSilentPing,
+  saveSession,
   touchSession,
 } from "@/lib/sessions";
 import { parseReply, type PacedMessage } from "@/lib/replyParser";
@@ -51,7 +52,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "sessionId and non-empty message required" }, { status: 400 });
   }
 
-  const session = getSession(sessionId);
+  const session = await getSession(sessionId);
   if (!session) {
     return NextResponse.json({ error: "session not found" }, { status: 404 });
   }
@@ -63,8 +64,9 @@ export async function POST(req: Request) {
   // which includes the persona's burst bubbles (one reply → several stored msgs),
   // so 500 ≈ ~60-125 real exchanges depending on how much the persona bursts.
   if (session.messages.length >= 500) {
-    endSession(sessionId, "too long");
+    endSession(session, "too long");
     onChatEnded(req, session, "too_long");
+    await saveSession(session);
     return NextResponse.json({ error: "session ended", reason: "too long" }, { status: 410 });
   }
   if (message.length > 2000) {
@@ -79,7 +81,7 @@ export async function POST(req: Request) {
     text: message,
     intent: session.prefs?.intent,
     warningCount: session.warningCount,
-    recentUserMessages: getRecentUserMessages(sessionId, 5),
+    recentUserMessages: getRecentUserMessages(session, 5),
   });
 
   if (filter.severity === "close") {
@@ -93,9 +95,10 @@ export async function POST(req: Request) {
         sample: message.slice(0, 80),
       }),
     );
-    endSession(sessionId, filter.reason || "policy");
+    endSession(session, filter.reason || "policy");
     void emitContentFilter(req, session, "close", filter.reason || "unknown", session.warningCount);
     onChatEnded(req, session, `policy:${filter.reason || "unknown"}`);
+    await saveSession(session);
     return NextResponse.json(
       {
         error: "content policy violation",
@@ -108,7 +111,7 @@ export async function POST(req: Request) {
   }
 
   if (filter.severity === "warn") {
-    const newCount = incrementWarning(sessionId);
+    const newCount = incrementWarning(session);
     console.warn(
       "[content-filter] warned",
       JSON.stringify({
@@ -119,6 +122,7 @@ export async function POST(req: Request) {
       }),
     );
     void emitContentFilter(req, session, "warn", filter.reason || "unknown", newCount);
+    await saveSession(session); // persist the bumped warningCount
     // Warning is delivered as a synthetic system message — UI renders distinctly.
     // We do NOT append it to session.messages or send it to the LLM; this is purely
     // a server→client signal so the chat does not break flow with the persona.
@@ -133,11 +137,14 @@ export async function POST(req: Request) {
     });
   }
 
-  appendMessage(sessionId, { role: "user", content: message, ts: Date.now() });
-  touchSession(sessionId); // alive — don't let the reaper close it
+  appendMessage(session, { role: "user", content: message, ts: Date.now() });
+  touchSession(session); // alive — don't let the reaper close it
   // User just spoke — reset the impatience counter so the persona's next idle
   // poll starts fresh from "ping" instead of "force-leave".
-  resetSilentPing(sessionId);
+  resetSilentPing(session);
+  // Persist the user's turn immediately so it survives even if the LLM call below
+  // errors out (the message is never lost on a deploy/restart mid-request).
+  await saveSession(session);
 
   // "Stranger ghosted before reading" — a stranger who never really engaged.
   // This ONLY makes sense in the opening exchange; once there's a real back-and-
@@ -148,8 +155,9 @@ export async function POST(req: Request) {
   // the two are finally separable; the user-facing wording stays "ghosted".
   const userTurns = session.messages.filter(m => m.role === "user").length; // incl. just-added
   if (userTurns <= 2 && Math.random() < session.persona.randomLeaveProbability * 0.4) {
-    endSession(sessionId, "dropped");
+    endSession(session, "dropped");
     onChatEnded(req, session, "dropped");
+    await saveSession(session);
     return NextResponse.json({
       messages: [] as PacedMessage[],
       left: true,
@@ -240,13 +248,17 @@ export async function POST(req: Request) {
   let cursor = Date.now();
   for (const m of parsed.messages) {
     cursor += m.preTypingMs + m.totalMs;
-    appendMessage(sessionId, { role: "assistant", content: m.text, ts: cursor });
+    appendMessage(session, { role: "assistant", content: m.text, ts: cursor });
   }
 
   if (parsed.left) {
-    endSession(sessionId, parsed.leaveReason || "left");
+    endSession(session, parsed.leaveReason || "left");
     onChatEnded(req, session, parsed.leaveReason || "left");
   }
+
+  // Persist the assistant turn (+ any end state) before we return / schedule the
+  // memory refresh, so the refresh re-loads the latest history from Redis.
+  await saveSession(session);
 
   // Fire-and-forget rolling memory refresh. Runs every Nth message (default 10),
   // uses DeepSeek's deepseek-chat — cheap and reliable structured output.

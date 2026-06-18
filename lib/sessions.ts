@@ -1,10 +1,25 @@
-// In-memory session store. Fine for single-instance dev / small deploys.
-// Swap to Redis (or any KV) when you need horizontal scaling or persistence.
+// Redis-backed session store. Sessions live in Redis (keyed `sess:<id>`) so they
+// survive a deploy/restart and are shared across multiple Fly machines — fixing
+// the "session not found" / dropped-chat problem that the old in-memory Map had
+// (every deploy spun up a fresh process with an empty Map).
+//
+// Access pattern is LOAD-ONCE → MUTATE-LOCAL → SAVE-ONCE:
+//   const s = await getSession(id);        // one Redis read, returns a snapshot
+//   appendMessage(s, msg);                 // pure, synchronous mutation of `s`
+//   endSession(s, "left");                 // ditto
+//   await saveSession(s);                  // one Redis write, refreshes TTL
+// The granular mutators operate on the Session OBJECT (not an id), so the route's
+// local copy and what we persist can never desync. Only create/get/save do I/O.
+//
+// A sorted-set index (`sessions:idx`, scored by lastActivityAt) tracks non-ended
+// sessions so the reaper (lib/reaper.ts) can find abandoned chats cheaply without
+// scanning every key.
 
 import { generatePersona, type Persona } from "./persona";
 import type { UserPrefs } from "./prefs";
 import { type LLMProvider, pickProviderForSession } from "./llmProvider";
 import type { ProviderUsage } from "./usage";
+import { getRedis } from "./redis";
 import { nanoid } from "nanoid";
 
 export interface ChatMessage {
@@ -72,26 +87,23 @@ export interface Session {
   usage: ProviderUsage;
 }
 
-// Stash the session map on globalThis so Next.js dev-mode hot reloads (which
-// re-evaluate this module) don't wipe in-flight sessions. Without this, every
-// edit to a route file would orphan every active chat with "session not found".
-const globalForSessions = globalThis as unknown as { __SESSIONS__?: Map<string, Session> };
-const SESSIONS: Map<string, Session> = globalForSessions.__SESSIONS__ ?? new Map<string, Session>();
-if (!globalForSessions.__SESSIONS__) globalForSessions.__SESSIONS__ = SESSIONS;
+const KEY_PREFIX = "sess:";
+const INDEX_KEY = "sessions:idx"; // sorted set: score=lastActivityAt, member=id
+const REAPER_LOCK_KEY = "reaper:lock";
 
-// Best-effort cap to avoid unbounded growth on a long-running dev server.
-const MAX_SESSIONS = 5_000;
+// How long an idle session lives in Redis before auto-expiring. Comfortably longer
+// than any real chat; every save refreshes it, so active chats never expire. The
+// reaper closes abandoned chats (for analytics) well before this fires.
+const TTL_SECONDS = Math.max(600, Number(process.env.SESSION_TTL_SECONDS) || 6 * 60 * 60);
 
-function evictIfNeeded() {
-  if (SESSIONS.size <= MAX_SESSIONS) return;
-  // Drop the oldest 10%.
-  const sorted = [...SESSIONS.entries()].sort((a, b) => a[1].createdAt - b[1].createdAt);
-  const toDrop = Math.ceil(MAX_SESSIONS * 0.1);
-  for (let i = 0; i < toDrop; i++) SESSIONS.delete(sorted[i][0]);
+function key(id: string): string {
+  return KEY_PREFIX + id;
 }
 
-export function createSession(prefs?: UserPrefs): Session {
-  evictIfNeeded();
+// ── I/O (async) ───────────────────────────────────────────────────────────────
+
+export async function createSession(prefs?: UserPrefs): Promise<Session> {
+  const now = Date.now();
   const session: Session = {
     id: nanoid(16),
     persona: generatePersona(prefs),
@@ -102,68 +114,103 @@ export function createSession(prefs?: UserPrefs): Session {
     warningCount: 0,
     silentPingCount: 0,
     ended: false,
-    createdAt: Date.now(),
-    lastActivityAt: Date.now(),
+    createdAt: now,
+    lastActivityAt: now,
     usage: {},
   };
-  SESSIONS.set(session.id, session);
+  await saveSession(session);
   return session;
 }
 
-// Mark a session as "still alive" — called on every user message, idle poll,
-// and heartbeat so the reaper only closes genuinely-abandoned chats.
-export function touchSession(id: string): void {
-  const s = SESSIONS.get(id);
-  if (s) s.lastActivityAt = Date.now();
+export async function getSession(id: string): Promise<Session | undefined> {
+  if (!id) return undefined;
+  const raw = await getRedis().get(key(id));
+  if (!raw) return undefined;
+  try {
+    return JSON.parse(raw) as Session;
+  } catch {
+    return undefined;
+  }
 }
 
-// Snapshot of all live sessions (for the reaper to scan).
-export function allSessions(): Session[] {
-  return [...SESSIONS.values()];
+// Persist the session and refresh its TTL. Keeps the reaper index in sync:
+// non-ended sessions are indexed by lastActivityAt; ended ones are removed.
+export async function saveSession(s: Session): Promise<void> {
+  const r = getRedis();
+  await r.set(key(s.id), JSON.stringify(s), "EX", TTL_SECONDS);
+  if (s.ended) {
+    await r.zrem(INDEX_KEY, s.id);
+  } else {
+    await r.zadd(INDEX_KEY, s.lastActivityAt, s.id);
+  }
 }
 
-export function getSession(id: string): Session | undefined {
-  return SESSIONS.get(id);
+// Lightweight liveness bump — refreshes the reaper index score + the key's TTL
+// WITHOUT rewriting the session blob. Used by the frequent heartbeat so it can
+// keep a chat "alive" for the reaper without risking clobbering a message that a
+// concurrent send/idle just appended (last-write-wins on the full blob).
+export async function keepAlive(id: string): Promise<void> {
+  const r = getRedis();
+  await r.zadd(INDEX_KEY, Date.now(), id);
+  await r.expire(key(id), TTL_SECONDS);
 }
 
-export function appendMessage(id: string, msg: ChatMessage): void {
-  const s = SESSIONS.get(id);
-  if (!s) return;
+// ── Pure synchronous mutators (operate on the loaded Session object) ────────────
+// Call one or more of these, then `await saveSession(s)` to persist.
+
+// Mark a session as "still alive" — call on every user message, idle poll, and
+// heartbeat so the reaper only closes genuinely-abandoned chats.
+export function touchSession(s: Session): void {
+  s.lastActivityAt = Date.now();
+}
+
+export function appendMessage(s: Session, msg: ChatMessage): void {
   s.messages.push(msg);
 }
 
-export function endSession(id: string, reason: string): void {
-  const s = SESSIONS.get(id);
-  if (!s) return;
+export function endSession(s: Session, reason: string): void {
   s.ended = true;
   s.endReason = reason;
 }
 
-export function incrementWarning(id: string): number {
-  const s = SESSIONS.get(id);
-  if (!s) return 0;
+export function incrementWarning(s: Session): number {
   s.warningCount += 1;
   return s.warningCount;
 }
 
-export function incrementSilentPing(id: string): number {
-  const s = SESSIONS.get(id);
-  if (!s) return 0;
+export function incrementSilentPing(s: Session): number {
   s.silentPingCount += 1;
   return s.silentPingCount;
 }
 
-export function resetSilentPing(id: string): void {
-  const s = SESSIONS.get(id);
-  if (!s) return;
+export function resetSilentPing(s: Session): void {
   s.silentPingCount = 0;
 }
 
-export function getRecentUserMessages(id: string, limit = 5): string[] {
-  const s = SESSIONS.get(id);
-  if (!s) return [];
+export function getRecentUserMessages(s: Session, limit = 5): string[] {
   return s.messages
     .filter(m => m.role === "user")
     .slice(-limit)
     .map(m => m.content);
+}
+
+// ── Reaper support ──────────────────────────────────────────────────────────
+
+// Ids of non-ended sessions whose last activity is older than `idleMs`.
+export async function getStaleSessionIds(idleMs: number): Promise<string[]> {
+  const cutoff = Date.now() - idleMs;
+  return getRedis().zrangebyscore(INDEX_KEY, "-inf", cutoff);
+}
+
+// Remove a session id from the reaper index (e.g. after it's reaped/closed).
+export async function dropFromIndex(id: string): Promise<void> {
+  await getRedis().zrem(INDEX_KEY, id);
+}
+
+// Best-effort distributed lock so only ONE machine runs a reaper sweep at a time
+// (Fly runs multiple machines; without this they'd double-fire chat_ended). The
+// lock auto-expires after `seconds`, so a crashed holder never wedges reaping.
+export async function tryReaperLock(seconds: number): Promise<boolean> {
+  const res = await getRedis().set(REAPER_LOCK_KEY, "1", "EX", seconds, "NX");
+  return res === "OK";
 }

@@ -15,7 +15,7 @@
 // anthropicChat), independent of which provider serves the chat.
 
 import type { Persona } from "./persona";
-import { isLanguage, isIndicLanguage, type UserPrefs } from "./prefs";
+import { isIndicLanguage, type UserPrefs } from "./prefs";
 import type { UserMemory } from "./sessions";
 import { buildSystemPrompt, memorySection } from "./prompts";
 import { buildSystemPromptDeepSeek } from "./promptsDeepSeek";
@@ -38,22 +38,16 @@ function getEnvConfig(): LLMProviderConfig {
 // Called at session creation. The provider is fixed for the chat's lifetime
 // (no mid-conversation voice switch).
 //
-// In "mixed" mode we route by LANGUAGE:
-//   - Indic languages (hinglish, punjabi, …) → Sarvam. Tuned for Indian
-//     languages + code-mixing.
-//   - English (or unset/stale, which is overwhelmingly English) → DeepSeek.
-//   - Every other (non-Indic, non-English) language → Claude/Anthropic for its
-//     stronger general multilingual quality.
+// In "mixed" mode we route by LANGUAGE (DeepSeek is OUT of auto-routing):
+//   - Indic languages (hinglish, punjabi, tamil, …) → Sarvam. India-built, tuned
+//     for Indian languages + code-mixing, and now brevity-disciplined (prompts.ts).
+//   - Everything else (English, unset/stale, every other language) → Claude. Best
+//     general quality + naturally short, human-paced replies.
 export function pickProviderForSession(prefs?: UserPrefs): LLMProvider {
   const cfg = getEnvConfig();
   if (cfg !== "mixed") return cfg; // forced single-provider mode
-  const lang = prefs?.language;
-  // Indic → Sarvam.
-  if (isIndicLanguage(lang)) return "sarvam";
-  // English, or unset / stale / unrecognized (default traffic is English) → DeepSeek.
-  if (!lang || lang === "english" || !isLanguage(lang)) return "deepseek";
-  // Every other recognized language → Claude.
-  return "anthropic";
+  // Indic → Sarvam; everything else → Claude.
+  return isIndicLanguage(prefs?.language) ? "sarvam" : "anthropic";
 }
 
 // Back-compat default picker. If "mixed" mode is on and this is called outside
