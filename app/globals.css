@@ -123,3 +123,14 @@ body {
   font-weight: 700;
   transform: rotate(-2deg);
 }
+
+/* iOS Safari auto-zooms any input/textarea with font-size < 16px on focus (and
+   doesn't zoom back). Force 16px on phones so tapping a field never zooms — the
+   chat inputs stay visually small on desktop. !important to beat Tailwind utils. */
+@media (max-width: 640px) {
+  input:not([type="checkbox"]):not([type="radio"]),
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
