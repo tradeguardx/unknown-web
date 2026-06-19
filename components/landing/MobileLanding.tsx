@@ -10,7 +10,7 @@
 // statically — they're just decorative.
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { PrefsSheet } from "./PrefsSheet";
 import { MenuDrawer } from "./MenuDrawer";
 import { Testimonials } from "./Testimonials";
@@ -136,10 +136,24 @@ function Wordmark({ size = "sm" }: { size?: "sm" | "lg" }) {
 }
 
 function LiveCounter() {
+  // Live-feel "awake" count. SSR renders a stable 1.2k (no hydration mismatch);
+  // on the client it picks a random starting point and gently drifts every few
+  // seconds so it reads as a real, moving number rather than a fixed label.
+  const [n, setN] = useState(1200);
+  useEffect(() => {
+    setN(1000 + Math.floor(Math.random() * 600)); // start somewhere in 1.0k–1.6k
+    const id = setInterval(() => {
+      setN((v) => {
+        const next = v + (Math.floor(Math.random() * 13) - 6); // drift ±6
+        return Math.min(1750, Math.max(950, next)); // keep it believable
+      });
+    }, 4000);
+    return () => clearInterval(id);
+  }, []);
   return (
     <div className="inline-flex items-center gap-1.5 px-2.5 py-[3px] bg-yellow border-[1.5px] border-ink rounded-full font-display text-[13px] text-ink font-bold -rotate-2 shadow-hard-xs">
       <span className="w-[5px] h-[5px] rounded-full bg-red live-blink" />
-      <span>1.2k awake</span>
+      <span>{(n / 1000).toFixed(1)}k awake</span>
     </div>
   );
 }
