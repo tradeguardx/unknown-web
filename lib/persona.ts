@@ -7,6 +7,7 @@
 
 import type { AgeBand, ChatIntent, Language, UserPrefs } from "./prefs";
 import { LANGUAGES } from "./prefs";
+import { getArchetypeWeights } from "./personaWeights";
 
 // Persona age window per USER age band. Overlapping but compatible — keeps an
 // 18yo away from a 40yo while still allowing some natural spread. min 18 always.
@@ -979,13 +980,39 @@ function rollRomanticType(intent?: ChatIntent): RomanticType | undefined {
   ]);
 }
 
+// Fraction of rolls that IGNORE performance weights (pure intent distribution).
+// Keeps variety alive and ensures every archetype keeps getting sampled, so the
+// performance data never ossifies into "only the current winners ever appear".
+const ARCHETYPE_EXPLORATION = 0.2;
+
+// Pick the persona's archetype. Stays within the intent-appropriate pool, but
+// biases toward archetypes that ENGAGE better (per-archetype weights from
+// analytics — lib/personaWeights.ts), with an exploration slice for diversity.
 function rollArchetypeForIntent(intent?: ChatIntent): Archetype {
+  const pool = archetypePool(intent);
+  // Exploration: plain uniform pick over the intent pool (the original behavior).
+  if (Math.random() < ARCHETYPE_EXPLORATION) return pick(pool);
+
+  // Otherwise weight each distinct archetype by (base frequency in the pool) ×
+  // (performance multiplier, default 1). Winners come up more; all still appear.
+  const perf = getArchetypeWeights();
+  const counts = new Map<Archetype, number>();
+  for (const a of pool) counts.set(a, (counts.get(a) ?? 0) + 1);
+  const items = [...counts.entries()].map(([archetype, base]) => ({
+    archetype,
+    weight: base * (perf[archetype] ?? 1),
+  }));
+  return weightedPick(items).archetype;
+}
+
+// The intent-appropriate archetype pool (repeats = higher base frequency).
+function archetypePool(intent?: ChatIntent): Archetype[] {
   switch (intent) {
     case "love":
       // Love biases SOFT/SHY/SINCERE. Soft cluster is ~75% of rolls so a user
       // picking "love" hits the cute-shy-romantic archetype within 1-2 chats.
       // outgoing/extrovert removed — they don't belong in a love-intent default.
-      return pick<Archetype>([
+      return ([
         "hopeless_romantic", "hopeless_romantic", "hopeless_romantic", "hopeless_romantic", "hopeless_romantic",
         "soft_hearted", "soft_hearted", "soft_hearted", "soft_hearted",
         "shy", "shy", "shy",
@@ -1000,7 +1027,7 @@ function rollArchetypeForIntent(intent?: ChatIntent): Archetype {
       // flirting is cute) but the dominant flavor is teasing/sweet/light.
       // outgoing/extrovert removed too — they distort the dynamic, the energy
       // comes from tsundere/golden_retriever instead.
-      return pick<Archetype>([
+      return ([
         "tsundere", "tsundere", "tsundere", "tsundere",
         "golden_retriever", "golden_retriever", "golden_retriever", "golden_retriever",
         "soft_hearted", "soft_hearted", "soft_hearted",
@@ -1012,7 +1039,7 @@ function rollArchetypeForIntent(intent?: ChatIntent): Archetype {
         "moody",
       ]);
     case "friends":
-      return pick<Archetype>([
+      return ([
         "golden_retriever", "golden_retriever", "golden_retriever",
         "caring", "caring",
         "loyal", "loyal",
@@ -1025,7 +1052,7 @@ function rollArchetypeForIntent(intent?: ChatIntent): Archetype {
         "extrovert",
       ]);
     case "vent":
-      return pick<Archetype>([
+      return ([
         "soft_hearted", "soft_hearted", "soft_hearted",
         "sensitive", "sensitive",
         "caring", "caring",
@@ -1034,7 +1061,7 @@ function rollArchetypeForIntent(intent?: ChatIntent): Archetype {
         "reserved",
       ]);
     case "deep":
-      return pick<Archetype>([
+      return ([
         "overthinker", "overthinker", "overthinker",
         "creative", "creative",
         "dreamer", "dreamer",
@@ -1047,7 +1074,7 @@ function rollArchetypeForIntent(intent?: ChatIntent): Archetype {
       ]);
     default:
       // casual / anything / unset — broad distribution
-      return pick<Archetype>([
+      return ([
         "introvert", "extrovert", "ambivert", "shy", "outgoing",
         "moody", "sensitive", "reserved", "overthinker", "calm", "soft_hearted",
         "caring", "loyal", "independent", "people_pleaser", "protective",
