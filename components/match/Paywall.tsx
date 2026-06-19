@@ -81,9 +81,11 @@ export function Paywall({
     );
   }
 
-  // Free taster used up → lead with the cheap $1 day pass, subscription secondary.
+  // Free taster used up → STICKY: can't be clicked away (no backdrop close, no
+  // "not now"). The only way to keep chatting is to pay. The only escape is
+  // leaving for /connections (where they're paywalled too — it's per-user now).
   return (
-    <Sheet onClose={onClose}>
+    <Sheet dismissible={false}>
       <div className="text-4xl">💘</div>
       <h2 className="mt-2 font-sans text-xl font-bold tracking-tight text-ink">keep talking to {name}</h2>
       <p className="mt-2 font-display text-[14px] leading-relaxed text-ink-soft">
@@ -105,16 +107,27 @@ export function Paywall({
         or go unlimited{priceLabel ? ` · ${priceLabel}/mo` : ""} →
       </button>
 
-      <DismissRow onClose={onClose} />
+      <a href="/connections" className="mt-4 block font-display text-[13px] text-ink-mute underline">
+        ← back to your connections
+      </a>
+      <p className="mt-3 font-display text-[11px] text-ink-mute">instant access · secure checkout</p>
     </Sheet>
   );
 }
 
-function Sheet({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
+function Sheet({
+  children,
+  onClose,
+  dismissible = true,
+}: {
+  children: React.ReactNode;
+  onClose?: () => void;
+  dismissible?: boolean;
+}) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-ink/40 px-4 pb-6 sm:pb-0"
-      onClick={onClose}
+      onClick={dismissible ? onClose : undefined}
     >
       <div
         className="w-full max-w-sm rounded-3xl border-[2.5px] border-ink bg-paper-cool p-6 text-center shadow-hard"
