@@ -161,7 +161,7 @@ export default function ConnectionChatPage() {
 
       {state === "ready" && (
         <>
-          <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-4 font-mono text-[16px] sm:text-[13.5px] leading-[1.7] flex flex-col">
+          <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto px-5 py-4 font-mono text-[13.5px] leading-[1.7] flex flex-col">
             {/* mt-auto bottom-anchors short chats just above the input. */}
             <div className="mt-auto">
               {msgs.length === 0 && (
@@ -212,7 +212,7 @@ export default function ConnectionChatPage() {
                   }
                 }}
                 placeholder={`message ${name}…`}
-                className="flex-1 bg-transparent border-none px-2 py-2 font-mono text-[16px] sm:text-[13px] text-ink outline-none min-w-0 placeholder:font-serif placeholder:italic placeholder:text-ink-mute"
+                className="flex-1 bg-transparent border-none px-2 py-2 font-mono text-[13px] text-ink outline-none min-w-0 placeholder:font-serif placeholder:italic placeholder:text-ink-mute"
               />
               <button
                 onClick={send}

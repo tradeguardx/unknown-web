@@ -134,7 +134,12 @@ export const viewport: Viewport = {
   themeColor: "#f5eedb",
   width: "device-width",
   initialScale: 1,
-  maximumScale: 5,
+  // Lock zoom so iOS Safari never auto-zooms when an input is focused. This lets
+  // inputs use a normal (sub-16px) font size without the zoom-in glitch — instead
+  // of bumping every field to 16px. Tradeoff: disables pinch-zoom (standard for a
+  // chat app where the keyboard + fixed input layout assume a stable viewport).
+  maximumScale: 1,
+  userScalable: false,
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

@@ -932,7 +932,7 @@ export function ChatWindow() {
     !!sessionId && !ended && !messages.some(m => m.role === "user" || m.role === "assistant");
 
   return (
-    <div className="min-h-screen flex flex-col max-w-md lg:max-w-2xl mx-auto w-full">
+    <div className="h-[100dvh] flex flex-col max-w-md lg:max-w-2xl mx-auto w-full">
       {/* Header — wordmark + a live status pill (connected / disconnected /
           live). Kept compact to match the landing chrome. */}
       <header className="flex items-center justify-between px-5 pt-4 pb-2 flex-shrink-0">
@@ -1049,7 +1049,7 @@ export function ChatWindow() {
           {noConversationYet && !typing ? (
             <OpenerStarters onPick={(t) => send(t)} currentIntent={intent} onReroll={reroll} />
           ) : (
-            <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-4 font-mono text-[16px] sm:text-[13.5px] leading-[1.7] flex flex-col">
+            <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto px-5 py-4 font-mono text-[13.5px] leading-[1.7] flex flex-col">
               {/* mt-auto bottom-anchors: a short chat sits just above the input
                   (no big empty gap); a long chat overflows + scrolls normally. */}
               <div className="mt-auto">
@@ -1187,10 +1187,9 @@ export function ChatWindow() {
                 }}
                 disabled={ended || !sessionId}
                 placeholder={ended ? "they left. tap 'find another'" : "type something…"}
-                // text-[16px] on phones is REQUIRED — iOS Safari zooms in on focus
-                // for any input under 16px and never zooms back. sm:text-[13px]
-                // keeps the small look on desktop.
-                className="flex-1 bg-transparent border-none px-1 py-2 font-mono text-[16px] sm:text-[13px] text-ink outline-none min-w-0 placeholder:font-serif placeholder:italic placeholder:text-ink-mute disabled:opacity-50"
+                // Compact input font; iOS focus-zoom is prevented at the viewport
+                // level (maximumScale=1), so no 16px workaround needed.
+                className="flex-1 bg-transparent border-none px-1 py-2 font-mono text-[13px] text-ink outline-none min-w-0 placeholder:font-serif placeholder:italic placeholder:text-ink-mute disabled:opacity-50"
               />
               {!ended && (
                 <button
