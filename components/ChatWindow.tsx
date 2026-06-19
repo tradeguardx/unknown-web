@@ -36,6 +36,17 @@ import { FollowPrompt } from "./FollowPrompt";
 //   <10min → SOFT follow nudge (optional — NEVER blocks the next chat)
 //   ≥10min → REVIEW gated (must rate to continue); once rated → soft follow
 // Follow is always soft; only the review is gated.
+// Warm, in-character "don't want to lose this" lines the persona drops once near
+// the cap (unpaid, unmatched) to nudge a match. NO product awareness — it's just a
+// real person not wanting a good chat to end. Picked at random for variety.
+const PERSONA_PULL_LINES = [
+  "ngl this has been one of the best convos i've had in a while… i kinda don't wanna lose this 🥺",
+  "ok random but — i really don't want this chat to just end. it's been so nice talking to you",
+  "i feel like we're properly vibing… don't really want this to be it 💛",
+  "honestly don't wanna lose this. been such a good chat",
+  "wait this has been lovely… i don't want it to just disappear ngl",
+];
+
 const LONG_MIN_MS = 10 * 60_000;   // >= this → long chat → review gate
 const REVIEW_GIVEN_KEY = "unknownchat:review:given:v1";
 const FOLLOW_DONE_KEY = "unknownchat:follow:done:v1";
@@ -147,6 +158,8 @@ export function ChatWindow() {
   const [matchNudge, setMatchNudge] = useState<number | null>(null); // the minute mark
   const [skipNudge, setSkipNudge] = useState(false);
   const nudgedMarkRef = useRef(0);
+  // Fire the persona's one-time "don't want to lose this" pull once, near the cap.
+  const personaPullRef = useRef(false);
   // Paying users (active subscription OR day pass) have NO limits — unlimited
   // chat, no 20-min cap, unlimited matches, no nudges.
   const [paid, setPaid] = useState(false);
@@ -280,9 +293,9 @@ export function ChatWindow() {
     return () => window.clearInterval(id);
   }, [ended, sessionId]);
 
-  // Stranger chats are capped at 30 min. Prompt to "match to save it" from 20 min
-  // (every 5 min → 20, 25), then HARD-END at 30. Matched chats are exempt (that's
-  // the incentive). The 10s nowTick re-runs this so it fires within ~10s.
+  // Stranger chats are capped at 10 min (free users): match-to-save prompts at 5
+  // and 8 min, then HARD auto-save at 10. Matched chats are exempt (that's the
+  // incentive). The 10s nowTick re-runs this so it fires within ~10s.
   useEffect(() => {
     // Paid users are exempt (unlimited). Matched chats are already closed (match
     // ends the random chat and sends them to connections). So this only governs
@@ -290,19 +303,30 @@ export function ChatWindow() {
     if (paid || matched || ended || chatStartRef.current <= 0) return;
     const mins = Math.floor((Date.now() - chatStartRef.current) / 60_000);
 
-    // 20-min cap (free users): AUTO-SAVE this chat as a connection and move them
+    // 10-min cap (free users): AUTO-SAVE this chat as a connection and move them
     // there — so an engaged chat never just vanishes.
-    if (mins >= 20) {
+    if (mins >= 10) {
       setMatchNudge(null);
       void saveConnection(false);
       return;
     }
 
-    // Match-to-save prompts at 10 and 15 min.
-    const mark = mins >= 15 ? 15 : mins >= 10 ? 10 : 0;
+    // Match-to-save prompts at 5 and 8 min.
+    const mark = mins >= 8 ? 8 : mins >= 5 ? 5 : 0;
     if (mark > nudgedMarkRef.current) {
       nudgedMarkRef.current = mark;
       setMatchNudge(mark);
+      // At the 8-min mark, the persona also drops a warm "don't want to lose this"
+      // line (once) — an emotional pull toward matching. Brief typing for realism.
+      if (mark >= 8 && !personaPullRef.current && !replyInFlightRef.current) {
+        personaPullRef.current = true;
+        const line = PERSONA_PULL_LINES[Math.floor(Math.random() * PERSONA_PULL_LINES.length)];
+        setTyping(true);
+        schedule(() => {
+          setTyping(false);
+          pushMsg({ role: "assistant", text: line });
+        }, 2200);
+      }
     }
   }, [nowTick, matched, ended, paid]);
 
@@ -657,6 +681,7 @@ export function ChatWindow() {
       setMatchNudge(null); // reset the long-chat match nudge for the new stranger
       setSkipNudge(false); // clear any day-pass promo from the previous skip
       nudgedMarkRef.current = 0;
+      personaPullRef.current = false;
       pushMsg({ role: "system", text: "you're now chatting with a random stranger." });
 
       let openerEnd = 0;
@@ -803,7 +828,7 @@ export function ChatWindow() {
       } else {
         pushMsg({
           role: "system",
-          text: `that's 20 minutes 💘 i saved this chat — find ${name} in your connections and pick up anytime.`,
+          text: `aw, time's up for this one 💘 i saved your chat — find ${name} in your connections and pick up anytime.`,
         });
       }
       setEnded(true); // close the random chat → continue in connections
@@ -1079,8 +1104,8 @@ export function ChatWindow() {
             {!ended && matchNudge && !matched && (
               <div className="mb-2 flex items-center gap-2 rounded-xl border-2 border-ink bg-yellow-soft px-3 py-2 shadow-hard-xs">
                 <span className="flex-1 font-sans text-[12px] font-semibold text-ink leading-snug">
-                  {matchNudge >= 15
-                    ? "⏳ ~5 min left — match now to keep talking to them 💘"
+                  {matchNudge >= 8
+                    ? "⏳ almost out of time — match now to keep talking to them 💘"
                     : "match to save this chat 💘 — strangers don't stay forever"}
                 </span>
                 <button
