@@ -1024,7 +1024,7 @@ export function ChatWindow() {
           {noConversationYet && !typing ? (
             <OpenerStarters onPick={(t) => send(t)} currentIntent={intent} onReroll={reroll} />
           ) : (
-            <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-4 font-mono text-[13.5px] leading-[1.7] flex flex-col">
+            <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-4 font-mono text-[16px] sm:text-[13.5px] leading-[1.7] flex flex-col">
               {/* mt-auto bottom-anchors: a short chat sits just above the input
                   (no big empty gap); a long chat overflows + scrolls normally. */}
               <div className="mt-auto">
