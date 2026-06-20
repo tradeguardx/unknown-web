@@ -37,6 +37,7 @@ function fmtDate(iso: string | null): string {
 export function PlusSubscribe() {
   const acct = useAccount();
   const [priceLabel, setPriceLabel] = useState<string | null>(null);
+  const [dayPassLabel, setDayPassLabel] = useState<string>("$1");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
@@ -47,7 +48,11 @@ export function PlusSubscribe() {
     let alive = true;
     matchApi
       .pricing()
-      .then((p) => alive && setPriceLabel(p.subscription?.label ?? null))
+      .then((p) => {
+        if (!alive) return;
+        setPriceLabel(p.subscription?.label ?? null);
+        if (p.dayPass?.label) setDayPassLabel(p.dayPass.label);
+      })
       .catch(() => {});
     return () => {
       alive = false;
@@ -179,7 +184,7 @@ export function PlusSubscribe() {
       <Card>
         <div className="font-sans text-[11px] font-bold uppercase tracking-[0.18em] text-ink-mute">day pass</div>
         <div className="mt-1.5 inline-flex items-baseline gap-1.5">
-          <span className="font-sans text-4xl font-bold text-ink">$1</span>
+          <span className="font-sans text-4xl font-bold text-ink">{dayPassLabel}</span>
           <span className="font-display text-ink-mute">one-time</span>
         </div>
 
@@ -206,7 +211,7 @@ export function PlusSubscribe() {
           disabled={busy || acct === null}
           className="mt-5 w-full rounded-xl border-2 border-ink bg-ink px-5 py-3 font-sans font-bold tracking-tight text-paper-cool shadow-hard transition-transform hover:-translate-y-0.5 disabled:opacity-60"
         >
-          {busy ? "opening…" : acct === null ? "…" : acct.loggedIn ? "get day pass · $1" : "log in to get day pass →"}
+          {busy ? "opening…" : acct === null ? "…" : acct.loggedIn ? `get day pass · ${dayPassLabel}` : "log in to get day pass →"}
         </button>
       </Card>
 

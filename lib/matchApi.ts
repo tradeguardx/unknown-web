@@ -208,6 +208,7 @@ export const matchApi = {
     return (json.data ?? {}) as {
       country: string | null;
       subscription: { label: string; amount: number; currency: string; tier: string };
+      dayPass?: { label: string; amount: number; currency: string; tier: string };
     };
   },
 

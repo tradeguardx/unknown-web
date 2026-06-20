@@ -21,15 +21,20 @@ export function Paywall({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
   const [priceLabel, setPriceLabel] = useState<string | null>(null);
+  const [dayPassLabel, setDayPassLabel] = useState<string>("$1");
   const kind = reason === "quota" ? "topup" : "subscription";
 
-  // Fetch the geo-resolved price for display ($2.99 / $4.99 by country).
+  // Fetch the geo-resolved price for display (sub $2.99/$4.99, day pass $1/$2).
   useEffect(() => {
     if (reason !== "paywall") return;
     let alive = true;
     matchApi
       .pricing()
-      .then((p) => alive && setPriceLabel(p.subscription.label))
+      .then((p) => {
+        if (!alive) return;
+        setPriceLabel(p.subscription.label);
+        if (p.dayPass?.label) setDayPassLabel(p.dayPass.label);
+      })
       .catch(() => {});
     return () => {
       alive = false;
@@ -96,7 +101,7 @@ export function Paywall({
         onClick={go}
         className="mt-5 w-full rounded-xl border-2 border-ink bg-ink px-5 py-3 font-sans font-bold tracking-tight text-paper-cool shadow-hard"
       >
-        🎟️ day pass · $1 →
+        🎟️ day pass · {dayPassLabel} →
       </button>
       <p className="mt-1 font-display text-[12px] text-ink-mute">unlimited conversations for the next 24 hours · one-time</p>
 

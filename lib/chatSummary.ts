@@ -9,12 +9,42 @@
 // Privacy: we summarize, we do NOT store the raw transcript. All inferred user
 // attributes are BUCKETED/BOOLEAN — no names, no exact ages, no quotes.
 //
-// Uses Claude (Haiku) like lib/userMemory.ts. If ANTHROPIC_API_KEY isn't set,
-// insight is silently skipped.
+// Summary model is the OPPOSITE of the chat model: Indic chats run on Sarvam,
+// so we summarize them on Claude; English/other chats run on Claude, so we
+// summarize them on Sarvam. DeepSeek is the last-resort fallback if neither of
+// the preferred two has a key. Silently skipped if nothing is available.
 
+import { anthropicChat, isAnthropicAvailable } from "./anthropic";
+import { sarvamChat, isSarvamAvailable } from "./sarvam";
 import { deepseekChat, isDeepSeekAvailable } from "./deepseek";
 import type { Session } from "./sessions";
 import { addUsage, normalizeUsage } from "./usage";
+
+type SummaryProvider = "anthropic" | "sarvam" | "deepseek";
+
+// Choose the summary model as the inverse of the chat provider, with graceful
+// fallback when a key is missing. Returns null if no provider is usable.
+function pickSummaryProvider(chatProvider: Session["provider"]): SummaryProvider | null {
+  // Indic chats were served by Sarvam → summarize on Claude (and vice-versa).
+  const preferred: SummaryProvider = chatProvider === "sarvam" ? "anthropic" : "sarvam";
+  const available: Record<SummaryProvider, boolean> = {
+    anthropic: isAnthropicAvailable(),
+    sarvam: isSarvamAvailable(),
+    deepseek: isDeepSeekAvailable(),
+  };
+  // preferred → the other of the two chat models → deepseek.
+  const order: SummaryProvider[] =
+    preferred === "anthropic"
+      ? ["anthropic", "sarvam", "deepseek"]
+      : ["sarvam", "anthropic", "deepseek"];
+  return order.find((p) => available[p]) ?? null;
+}
+
+const SUMMARY_CHAT = {
+  anthropic: anthropicChat,
+  sarvam: sarvamChat,
+  deepseek: deepseekChat,
+} as const;
 
 export type ArcMood =
   | "happy" | "excited" | "flirty" | "neutral" | "curious"
@@ -119,7 +149,8 @@ const VALID_CONN = new Set(["clicked", "lukewarm", "mismatch"]);
 const VALID_FLIRT = new Set(["none", "light", "heavy"]);
 
 export async function summarizeChat(session: Session): Promise<ChatInsight | null> {
-  if (!isDeepSeekAvailable()) return null;
+  const provider = pickSummaryProvider(session.provider);
+  if (!provider) return null;
   if (session.messages.length < 2) return null;
 
   const recent = session.messages.slice(-MAX_MESSAGES);
@@ -136,13 +167,13 @@ export async function summarizeChat(session: Session): Promise<ChatInsight | nul
 
   let raw: string;
   try {
-    raw = await deepseekChat({
+    raw = await SUMMARY_CHAT[provider]({
       system: SYSTEM_PROMPT,
       messages: [
         { role: "user", content: `CONTEXT: ${context}\n\nTRANSCRIPT:\n${transcript}\n\nReturn the JSON now.` },
       ],
       maxTokens: 450,
-      onUsage: (u) => addUsage(session.usage, "deepseek", normalizeUsage(u, "deepseek")),
+      onUsage: (u) => addUsage(session.usage, provider, normalizeUsage(u, provider)),
     });
   } catch (err) {
     console.warn("[chatSummary] failed:", err instanceof Error ? err.message : String(err));
