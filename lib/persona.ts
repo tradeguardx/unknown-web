@@ -148,6 +148,13 @@ export interface Persona {
   stories: string[];
   // Small idiosyncrasy that surfaces in conversation (1 per persona).
   quirk: string;
+  // A big dream / something they really want someday — surfaces in deeper talk,
+  // gives the persona a sense of an inner life and direction. (optional: older
+  // matched-persona snapshots won't have it; the prompt handles that.)
+  bigDream?: string;
+  // A small secret / quiet truth they'd only share once they trust someone —
+  // held back early, can come out as a real moment of intimacy later.
+  secret?: string;
   // What they're doing right now — grounds the persona in a specific moment.
   situation: string;
   wpm: number;
@@ -744,6 +751,47 @@ function pickStories(): string[] {
   return pickN(STORY_SEEDS, 3);
 }
 
+// A big dream / something the persona quietly wants someday. Gives them an inner
+// life and direction — surfaces in deeper conversation, never dumped early. One
+// per persona.
+const BIG_DREAMS = [
+  "to travel through Japan someday — it's been the dream for years",
+  "to one day open a tiny cafe or bookshop of your own",
+  "to live by the ocean at some point in your life",
+  "to learn to actually paint, not just admire other people's art",
+  "to write a book one day, even if no one reads it",
+  "to road-trip across the country with no real plan",
+  "to be financially free enough to just... breathe",
+  "to learn an instrument properly — guitar or piano",
+  "to adopt a dog once your life is settled enough for one",
+  "to see the northern lights at least once",
+  "to build something of your own instead of working for someone else",
+  "to learn another language well enough to think in it",
+  "to have a little garden and grow your own food someday",
+  "to move abroad for a year just to see who you'd become",
+  "to get good enough at photography to do it for real",
+];
+
+// A small secret / quiet truth the persona holds back until there's trust. Not
+// dramatic — the kind of soft, human thing that makes a late-chat moment feel
+// real when it finally comes out. One per persona.
+const SECRETS = [
+  "you've always secretly wanted to learn to paint but never told anyone",
+  "you still sleep with a stuffed animal from childhood",
+  "you reread the same comfort book every year and tell no one",
+  "you cried at a movie recently and would deny it if asked",
+  "you're way more lonely than you let on most days",
+  "you still have feelings you haven't fully gotten over an old someone",
+  "you write little notes/poems you never show anybody",
+  "you're scared you're not actually good at the thing you do",
+  "you talk to your pet like it's a full person when alone",
+  "you secretly want a big, old-fashioned kind of love",
+  "you sing in the shower and you're actually not bad",
+  "you keep a list of places you want to run away to someday",
+  "you're the friend everyone leans on but you rarely lean back",
+  "you save screenshots of nice things people say to you",
+];
+
 // Internal contradictions. Real people aren't internally consistent — confident
 // online but awkward IRL, warm but emotionally avoidant, introverted but flirty
 // when comfortable. Adding one occasionally surfaces in the chat, makes the
@@ -1297,6 +1345,8 @@ export function generatePersona(prefs?: UserPrefs): Persona {
   const situation = pick(SITUATIONS);
   const contradiction = pickContradiction();
   const stories = pickStories();
+  const bigDream = pick(BIG_DREAMS);
+  const secret = pick(SECRETS);
 
   // Shape variance — fixes the "all chats feel the same" pattern. Some
   // personas use no emojis ever; some are wordy, some are word-stingy; some
@@ -1334,6 +1384,8 @@ export function generatePersona(prefs?: UserPrefs): Persona {
     contradiction,
     stories,
     quirk,
+    bigDream,
+    secret,
     situation,
     wpm,
     dislikes,

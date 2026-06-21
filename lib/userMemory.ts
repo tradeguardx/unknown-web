@@ -50,6 +50,18 @@ Categories:
                what they're feeling lately, sensitive topics, what they
                joke about, what they avoid, their flirt cadence, etc.
 
+CAPTURE ESPECIALLY (these are the high-value, "favorite stranger" details — a
+persona that remembers THESE feels real; one that only remembers age/job does not):
+  - dreams & things they want someday        (interests or emotional)
+  - promises / "i'll do X" / plans they made  (emotional — worth calling back)
+  - pets, and people they love (family, friends, partner, ex)  (identity/emotional)
+  - funny moments & inside jokes from the chat (emotional)
+  - things they're proud of / achievements    (emotional)
+  - childhood / formative stories they shared  (emotional)
+  - fears, worries, what they're going through (emotional)
+De-prioritize purely temporary facts (what they ate today, the weather). Prefer
+the things a person would actually remember about someone they care about.
+
 The EMOTIONAL category is the most important. It's how the stranger should
 *feel toward this user* over time. Examples of good emotional bullets:
   - gets flirty late at night

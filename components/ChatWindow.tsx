@@ -1105,8 +1105,8 @@ export function ChatWindow() {
               <div className="mb-2 flex items-center gap-2 rounded-xl border-2 border-ink bg-yellow-soft px-3 py-2 shadow-hard-xs">
                 <span className="flex-1 font-sans text-[12px] font-semibold text-ink leading-snug">
                   {matchNudge >= 8
-                    ? "⏳ almost out of time — match now to keep talking to them 💘"
-                    : "match to save this chat 💘 — strangers don't stay forever"}
+                    ? "💘 don't let this become another forgotten chat — match to keep them"
+                    : "💘 enjoying this? match so it doesn't just disappear when you leave"}
                 </span>
                 <button
                   onClick={keep}

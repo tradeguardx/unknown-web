@@ -92,9 +92,9 @@ export function Paywall({
   return (
     <Sheet dismissible={false}>
       <div className="text-4xl">💘</div>
-      <h2 className="mt-2 font-sans text-xl font-bold tracking-tight text-ink">keep talking to {name}</h2>
+      <h2 className="mt-2 font-sans text-xl font-bold tracking-tight text-ink">don&apos;t lose {name} 💛</h2>
       <p className="mt-2 font-display text-[14px] leading-relaxed text-ink-soft">
-        your free chat with {name} is up — unlock more 👇
+        continue where you left off — unlock unlimited time together and never lose someone you enjoyed talking to 👇
       </p>
 
       <button

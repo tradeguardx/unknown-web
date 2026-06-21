@@ -22,8 +22,8 @@ function GoogleIcon() {
 }
 
 export function UpgradeAccount({
-  title = "save your connections 🔒",
-  subtitle = "you're a guest. add a login so your people are here on every device.",
+  title = "don't lose this one 💛",
+  subtitle = "this conversation is waiting for you. create your account and they'll be right here in your Connections — on every device.",
   onDone,
   forceShow = false,
 }: {

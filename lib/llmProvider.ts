@@ -18,6 +18,14 @@ import type { Persona } from "./persona";
 import { isIndicLanguage, type UserPrefs } from "./prefs";
 import type { UserMemory } from "./sessions";
 import { buildSystemPrompt, memorySection } from "./prompts";
+import { buildSystemPromptLean } from "./promptsLean";
+import { directorSection } from "./conversationDirector";
+
+// Modular lean prompt (<1k-token core + on-demand modules) vs the legacy monolith.
+// On this branch the DEFAULT is lean (for A/B vs production); set PROMPT_MODE=full
+// to force the legacy monolith. Same signature → drop-in.
+const buildStaticPrompt =
+  process.env.PROMPT_MODE === "full" ? buildSystemPrompt : buildSystemPromptLean;
 import { buildSystemPromptDeepSeek } from "./promptsDeepSeek";
 import { cachedSystem, anthropicFetch } from "./anthropic";
 import { deepseekChat } from "./deepseek";
@@ -101,7 +109,12 @@ export interface LLMRequest {
 
 export async function callLLM(req: LLMRequest): Promise<string> {
   const provider = req.provider ?? getActiveProvider();
-  const extra = req.extraDirective ? `\n\n${req.extraDirective}` : "";
+  // L3 Conversation Director — structured-state block. Rides in the uncached
+  // section (with memory) so it never busts the Claude cache. Pass the last user
+  // message so the "energy" field can mirror their length.
+  const lastUserText = [...req.messages].reverse().find((m) => m.role === "user")?.content;
+  const director = directorSection(req.messages.length, req.userMemory, req.prefs, lastUserText);
+  const extra = (req.extraDirective ? `\n\n${req.extraDirective}` : "") + director;
   // Provider-aware adapter: client gives us raw usage, we normalize + tag it.
   const sink = req.onUsage
     ? (raw: unknown) => req.onUsage!(normalizeUsage(raw, provider), provider)
@@ -120,7 +133,7 @@ export async function callLLM(req: LLMRequest): Promise<string> {
   // sarvam (TEST/EVAL only) — Indic-tuned. Uses the SAME prompt as Claude
   // (buildSystemPrompt + memorySection) for a fair language/persona comparison.
   if (provider === "sarvam") {
-    const system = buildSystemPrompt(req.persona, req.prefs) + memorySection(req.userMemory) + extra;
+    const system = buildStaticPrompt(req.persona, req.prefs) + memorySection(req.userMemory) + extra;
     return sarvamChat({
       system,
       messages: req.messages,
@@ -133,7 +146,7 @@ export async function callLLM(req: LLMRequest): Promise<string> {
   // separate (uncached) block after the cache breakpoint so memory refreshes
   // don't invalidate the cached persona prefix. The anti-echo directive (when
   // present) rides in the uncached memory block so it never breaks the cache.
-  const staticPrompt = buildSystemPrompt(req.persona, req.prefs);
+  const staticPrompt = buildStaticPrompt(req.persona, req.prefs);
   const memory = memorySection(req.userMemory) + extra;
   return anthropicFetch({
     system: cachedSystem(staticPrompt, memory),

@@ -18,7 +18,8 @@ import {
 } from "@/lib/sessions";
 import { parseReply, type PacedMessage } from "@/lib/replyParser";
 import { callLLM, trimHistory } from "@/lib/llmProvider";
-import { isEcho, ANTI_ECHO_NUDGE, loopRecoveryLine } from "@/lib/antiEcho";
+import { loopRecoveryLine } from "@/lib/antiEcho";
+import { scoreResponse, shouldRegenerate, correctionDirective } from "@/lib/responseScorer";
 import { addUsage } from "@/lib/usage";
 import { clientIp, rateLimit } from "@/lib/rateLimit";
 import { checkContent, getCloseText } from "@/lib/contentFilter";
@@ -207,16 +208,17 @@ export async function POST(req: Request) {
     return NextResponse.json(body, { status: 502 });
   }
 
-  // Anti-echo guard: if the reply substantially repeats a line the persona
-  // already said this chat (the #1 "I'm a bot" tell, and a top skip cause),
-  // regenerate ONCE with an explicit don't-repeat nudge. Best-effort — if the
-  // retry fails or still echoes, we fall back to the original draft.
+  // Response scorer (code-based quality gate): score the draft for repetition +
+  // AI-likelihood. If it fails, regenerate ONCE with a targeted correction. This
+  // subsumes the old anti-echo guard and costs zero prompt tokens. If the retry
+  // is still repetitive, drop in a natural recovery line so the chat never shows
+  // a 3rd repeat (e.g. Sarvam looping "yo still there?").
   const priorAssistant = session.messages
     .filter((m) => m.role === "assistant")
     .slice(-6)
     .map((m) => m.content);
-  if (isEcho(raw, priorAssistant)) {
-    let replaced = false;
+  let score = scoreResponse(raw, priorAssistant);
+  if (shouldRegenerate(score)) {
     try {
       const retry = await callLLM({
         persona: session.persona,
@@ -225,20 +227,22 @@ export async function POST(req: Request) {
         messages: llmMessages,
         maxTokens: 256,
         provider: session.provider,
-        extraDirective: ANTI_ECHO_NUDGE,
+        extraDirective: correctionDirective(score),
         onUsage: (u, p) => addUsage(session.usage, p, u),
       });
-      if (retry && !isEcho(retry, priorAssistant)) {
-        raw = retry;
-        replaced = true;
+      if (retry) {
+        const retryScore = scoreResponse(retry, priorAssistant);
+        // Accept the retry if it's no longer failing, or at least less repetitive.
+        if (!shouldRegenerate(retryScore) || retryScore.repetition < score.repetition) {
+          raw = retry;
+          score = retryScore;
+        }
       }
     } catch (err) {
-      console.warn("[anti-echo] retry failed:", err instanceof Error ? err.message : String(err));
+      console.warn("[scorer] retry failed:", err instanceof Error ? err.message : String(err));
     }
-    // The model is hard-stuck in a loop (e.g. Sarvam repeating "yo still there?")
-    // — even the regeneration echoed. Never show the user a 3rd repeat; drop in a
-    // natural recovery line so the chat can keep going instead of dying.
-    if (!replaced) raw = loopRecoveryLine(session.messages.length);
+    // Still looping after the retry → never show a 3rd repeat.
+    if (score.repetition > 7) raw = loopRecoveryLine(session.messages.length);
   }
 
   const parsed = parseReply(session.persona, raw);
