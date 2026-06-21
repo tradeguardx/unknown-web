@@ -113,15 +113,22 @@ export function ConnectionsSidebar() {
                   >
                     <Avatar />
                     <div className="min-w-0 flex-1">
-                      <div className="font-sans text-[14px] font-bold tracking-tight text-ink truncate">
-                        {m.displayName}
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-sans text-[14px] font-bold tracking-tight text-ink truncate">
+                          {m.displayName}
+                        </span>
+                        {!!m.unreadCount && m.unreadCount > 0 && (
+                          <span className="flex-shrink-0 rounded-full bg-red px-1.5 py-0.5 font-sans text-[10px] font-bold leading-none text-paper-cool">
+                            {m.unreadCount > 9 ? "9+" : m.unreadCount}
+                          </span>
+                        )}
                       </div>
                       {m.vibe && (
                         <div className="font-serif italic text-[12px] text-[#8b6fb8] truncate">{m.vibe}</div>
                       )}
                     </div>
-                    <span className="flex-shrink-0 font-display text-[10px] text-ink-mute">
-                      {lastActive(m.lastChatAt)}
+                    <span className={`flex-shrink-0 font-display text-[10px] ${m.unreadCount ? "font-bold text-red" : "text-ink-mute"}`}>
+                      {m.unreadCount ? "new 💬" : lastActive(m.lastChatAt)}
                     </span>
                   </Link>
                 </li>

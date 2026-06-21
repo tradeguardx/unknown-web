@@ -36,16 +36,6 @@ import { FollowPrompt } from "./FollowPrompt";
 //   <10min → SOFT follow nudge (optional — NEVER blocks the next chat)
 //   ≥10min → REVIEW gated (must rate to continue); once rated → soft follow
 // Follow is always soft; only the review is gated.
-// Warm, in-character "don't want to lose this" lines the persona drops once near
-// the cap (unpaid, unmatched) to nudge a match. NO product awareness — it's just a
-// real person not wanting a good chat to end. Picked at random for variety.
-const PERSONA_PULL_LINES = [
-  "ngl this has been one of the best convos i've had in a while… i kinda don't wanna lose this 🥺",
-  "ok random but — i really don't want this chat to just end. it's been so nice talking to you",
-  "i feel like we're properly vibing… don't really want this to be it 💛",
-  "honestly don't wanna lose this. been such a good chat",
-  "wait this has been lovely… i don't want it to just disappear ngl",
-];
 
 const LONG_MIN_MS = 10 * 60_000;   // >= this → long chat → review gate
 const REVIEW_GIVEN_KEY = "unknownchat:review:given:v1";
@@ -158,8 +148,6 @@ export function ChatWindow() {
   const [matchNudge, setMatchNudge] = useState<number | null>(null); // the minute mark
   const [skipNudge, setSkipNudge] = useState(false);
   const nudgedMarkRef = useRef(0);
-  // Fire the persona's one-time "don't want to lose this" pull once, near the cap.
-  const personaPullRef = useRef(false);
   // Paying users (active subscription OR day pass) have NO limits — unlimited
   // chat, no 20-min cap, unlimited matches, no nudges.
   const [paid, setPaid] = useState(false);
@@ -316,17 +304,9 @@ export function ChatWindow() {
     if (mark > nudgedMarkRef.current) {
       nudgedMarkRef.current = mark;
       setMatchNudge(mark);
-      // At the 8-min mark, the persona also drops a warm "don't want to lose this"
-      // line (once) — an emotional pull toward matching. Brief typing for realism.
-      if (mark >= 8 && !personaPullRef.current && !replyInFlightRef.current) {
-        personaPullRef.current = true;
-        const line = PERSONA_PULL_LINES[Math.floor(Math.random() * PERSONA_PULL_LINES.length)];
-        setTyping(true);
-        schedule(() => {
-          setTyping(false);
-          pushMsg({ role: "assistant", text: line });
-        }, 2200);
-      }
+      // NOTE: the persona no longer drops "i don't want this chat to end" pull
+      // lines — that's neediness/urgency the Patience & Confidence Engine forbids.
+      // The match nudge (a UI affordance, not the persona begging) stays.
     }
   }, [nowTick, matched, ended, paid]);
 
@@ -681,7 +661,6 @@ export function ChatWindow() {
       setMatchNudge(null); // reset the long-chat match nudge for the new stranger
       setSkipNudge(false); // clear any day-pass promo from the previous skip
       nudgedMarkRef.current = 0;
-      personaPullRef.current = false;
       pushMsg({ role: "system", text: "you're now chatting with a random stranger." });
 
       let openerEnd = 0;

@@ -104,6 +104,8 @@ export interface MatchedPersona {
   vibe?: string | null;
   lastChatAt?: string | null;
   createdAt: string;
+  // Proactive (persona-initiated) messages waiting — drives the unread badge.
+  unreadCount?: number;
 }
 export interface MatchMessage {
   id: string;

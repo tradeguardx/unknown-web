@@ -164,6 +164,10 @@ export interface Persona {
   // Probability the persona sends the first message. Stored on persona because
   // mood/intent influence it (chatty/flirty open more, shy/bored open less).
   startsConversationProbability: number;
+  // 0–1 — how often, once SAVED as a connection, this persona reaches out first
+  // (the Relationship Life Engine scales proactive frequency by this). Frozen into
+  // the snapshot so each saved person has a stable initiative personality.
+  initiativeLevel: number;
 }
 
 // Per-country name pools for personas. Sharing a first name when asked is
@@ -754,6 +758,18 @@ function pickStories(): string[] {
 // A big dream / something the persona quietly wants someday. Gives them an inner
 // life and direction — surfaces in deeper conversation, never dumped early. One
 // per persona.
+// How likely each archetype is to reach out FIRST once saved as a connection.
+// Outgoing/affectionate types message first often; reserved/aloof ones rarely.
+const INITIATIVE_BY_ARCHETYPE: Partial<Record<Archetype, number>> = {
+  extrovert: 0.75, outgoing: 0.75, golden_retriever: 0.8, attention_seeker: 0.8,
+  hopeless_romantic: 0.7, caring: 0.65, soft_hearted: 0.6, possessive: 0.7,
+  protective: 0.6, dreamer: 0.55, creative: 0.55, adventurous: 0.6, ambivert: 0.45,
+  sensitive: 0.45, overthinker: 0.4, people_pleaser: 0.55, loyal: 0.5,
+  introvert: 0.2, shy: 0.2, reserved: 0.2, black_cat: 0.18, sigma: 0.15,
+  independent: 0.25, calm: 0.35, chill: 0.35, logical: 0.3, disciplined: 0.35,
+  moody: 0.35, aggressive: 0.3,
+};
+
 const BIG_DREAMS = [
   "to travel through Japan someday — it's been the dream for years",
   "to one day open a tiny cafe or bookshop of your own",
@@ -1362,6 +1378,11 @@ export function generatePersona(prefs?: UserPrefs): Persona {
   const startsBase = startsProbForMoodAndPersonality(mood, personality.extraversion);
   const startsConversationProbability = isNonEnglish ? Math.min(startsBase, 0.1) : startsBase;
 
+  // Initiative once saved as a connection — varies by archetype so saved people
+  // feel distinct (some text first often, some rarely), with a little jitter.
+  const initiativeBase = INITIATIVE_BY_ARCHETYPE[archetype] ?? 0.4;
+  const initiativeLevel = Math.min(0.95, Math.max(0.05, initiativeBase + (Math.random() - 0.5) * 0.2));
+
   return {
     id: makeId(),
     name: pickName(country.code, gender),
@@ -1389,6 +1410,7 @@ export function generatePersona(prefs?: UserPrefs): Persona {
     situation,
     wpm,
     dislikes,
+    initiativeLevel,
     randomLeaveProbability: (0.025 + Math.random() * 0.04) * intentLeaveScale,
     ghostPauseProbability: 0.05 + Math.random() * 0.08,
     startsConversationProbability,
