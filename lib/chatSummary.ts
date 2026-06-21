@@ -9,18 +9,17 @@
 // Privacy: we summarize, we do NOT store the raw transcript. All inferred user
 // attributes are BUCKETED/BOOLEAN — no names, no exact ages, no quotes.
 //
-// Summary model is the OPPOSITE of the chat model: Indic chats run on Sarvam,
-// so we summarize them on Claude; English/other chats run on Claude, so we
-// summarize them on Sarvam. DeepSeek is the last-resort fallback if neither of
-// the preferred two has a key. Silently skipped if nothing is available.
+// Summary model is the OPPOSITE of the chat model (no DeepSeek): Indic chats run
+// on Sarvam, so we summarize them on Claude; English/other chats run on Claude,
+// so we summarize them on Sarvam. Falls back to the other if a key is missing;
+// silently skipped if neither is available.
 
 import { anthropicChat, isAnthropicAvailable } from "./anthropic";
 import { sarvamChat, isSarvamAvailable } from "./sarvam";
-import { deepseekChat, isDeepSeekAvailable } from "./deepseek";
 import type { Session } from "./sessions";
 import { addUsage, normalizeUsage } from "./usage";
 
-type SummaryProvider = "anthropic" | "sarvam" | "deepseek";
+type SummaryProvider = "anthropic" | "sarvam";
 
 // Choose the summary model as the inverse of the chat provider, with graceful
 // fallback when a key is missing. Returns null if no provider is usable.
@@ -30,20 +29,15 @@ function pickSummaryProvider(chatProvider: Session["provider"]): SummaryProvider
   const available: Record<SummaryProvider, boolean> = {
     anthropic: isAnthropicAvailable(),
     sarvam: isSarvamAvailable(),
-    deepseek: isDeepSeekAvailable(),
   };
-  // preferred → the other of the two chat models → deepseek.
-  const order: SummaryProvider[] =
-    preferred === "anthropic"
-      ? ["anthropic", "sarvam", "deepseek"]
-      : ["sarvam", "anthropic", "deepseek"];
-  return order.find((p) => available[p]) ?? null;
+  if (available[preferred]) return preferred;
+  const other: SummaryProvider = preferred === "anthropic" ? "sarvam" : "anthropic";
+  return available[other] ? other : null;
 }
 
 const SUMMARY_CHAT = {
   anthropic: anthropicChat,
   sarvam: sarvamChat,
-  deepseek: deepseekChat,
 } as const;
 
 export type ArcMood =

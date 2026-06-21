@@ -11,16 +11,35 @@
 //                 ("gets flirty late at night", "sarcastic", "stressed",
 //                  "likes being teased", "misses ex sometimes")
 //
-// Runs on DeepSeek (cheap, reliable structured output) regardless of which model
-// serves the actual chat — it's a background, fire-and-forget structured-extraction
-// task the user never sees, so it doesn't need the pricier chat model. (Cost.)
+// Runs on the OPPOSITE model from the chat (no DeepSeek): Claude chats extract
+// memory on Sarvam; Sarvam (Indic) chats extract on Claude. It's a background,
+// fire-and-forget structured-extraction task the user never sees, and routing it
+// to the other provider balances load/cost off the model already serving chat.
 //
-// If DEEPSEEK_API_KEY isn't set, memory updates are silently skipped — chat keeps
-// working, just with no rolling memory beyond the recent window.
+// If neither provider key is set, memory updates are silently skipped — chat
+// keeps working, just with no rolling memory beyond the recent window.
 
-import { deepseekChat, isDeepSeekAvailable } from "./deepseek";
-import { EMPTY_USER_MEMORY, getSession, saveSession, type UserMemory } from "./sessions";
+import { anthropicChat, isAnthropicAvailable } from "./anthropic";
+import { sarvamChat, isSarvamAvailable } from "./sarvam";
+import { EMPTY_USER_MEMORY, getSession, saveSession, type Session, type UserMemory } from "./sessions";
 import { addUsage, normalizeUsage } from "./usage";
+
+type MemoryProvider = "anthropic" | "sarvam";
+
+// Pick the extraction model as the inverse of the chat provider, with fallback to
+// the other if a key is missing. Returns null if neither is usable.
+function pickMemoryProvider(chatProvider: Session["provider"]): MemoryProvider | null {
+  const preferred: MemoryProvider = chatProvider === "sarvam" ? "anthropic" : "sarvam";
+  const available: Record<MemoryProvider, boolean> = {
+    anthropic: isAnthropicAvailable(),
+    sarvam: isSarvamAvailable(),
+  };
+  if (available[preferred]) return preferred;
+  const other: MemoryProvider = preferred === "anthropic" ? "sarvam" : "anthropic";
+  return available[other] ? other : null;
+}
+
+const MEMORY_CHAT = { anthropic: anthropicChat, sarvam: sarvamChat } as const;
 
 // How often to refresh memory (in total message count). Default: every 10.
 const REFRESH_EVERY_N_MESSAGES = Math.max(
@@ -33,7 +52,7 @@ const CAP_INTERESTS = 5;
 const CAP_EMOTIONAL = 6;
 
 export function shouldRefreshMemory(messageCount: number): boolean {
-  if (!isDeepSeekAvailable()) return false;
+  if (!isAnthropicAvailable() && !isSarvamAvailable()) return false;
   if (messageCount < 4) return false; // not enough material yet
   return messageCount % REFRESH_EVERY_N_MESSAGES === 0;
 }
@@ -106,11 +125,12 @@ interface RefreshArgs {
 }
 
 export async function refreshUserMemory({ sessionId }: RefreshArgs): Promise<void> {
-  if (!isDeepSeekAvailable()) return;
-
   const session = await getSession(sessionId);
   if (!session) return;
   if (session.messages.length < 4) return;
+
+  const provider = pickMemoryProvider(session.provider);
+  if (!provider) return;
 
   const recent = session.messages.slice(-15);
   const recentText = recent
@@ -129,11 +149,11 @@ Update the notes. Output the FULL labeled bullet list (existing + any new facts/
 
   let raw: string;
   try {
-    raw = await deepseekChat({
+    raw = await MEMORY_CHAT[provider]({
       system: EXTRACTION_SYSTEM_PROMPT,
       messages: [{ role: "user", content: userPrompt }],
       maxTokens: 350,
-      onUsage: (u) => addUsage(session.usage, "deepseek", normalizeUsage(u, "deepseek")),
+      onUsage: (u) => addUsage(session.usage, provider, normalizeUsage(u, provider)),
     });
   } catch (err) {
     console.warn(
