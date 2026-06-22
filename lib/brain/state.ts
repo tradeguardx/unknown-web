@@ -24,9 +24,11 @@ export interface StageInfo {
 export function relationshipStage(mode: ChatMode, messageCount: number): StageInfo {
   if (mode === "random") {
     const turns = Math.floor(messageCount / 2);
-    if (turns < 6) return { label: "stranger", ladderIdx: 0 };
-    if (turns < 15) return { label: "comfortable stranger", ladderIdx: 0 };
-    return { label: "connected stranger", ladderIdx: 1 };
+    // Casual "talk to strangers" app → informal peer register (tum/tú/du), not
+    // formal (aap). It's never stiff; deepens toward closest as they connect.
+    if (turns < 6) return { label: "stranger", ladderIdx: 1 };
+    if (turns < 15) return { label: "comfortable stranger", ladderIdx: 1 };
+    return { label: "connected stranger", ladderIdx: 2 };
   }
   if (messageCount <= 12) return { label: "familiar", ladderIdx: 1 };
   if (messageCount <= 40) return { label: "friend", ladderIdx: 1 };
@@ -95,6 +97,92 @@ export function speechLevelFor(language: string | undefined, ladderIdx: number):
   return ladder[Math.min(ladderIdx, ladder.length - 1)];
 }
 
+// ── Language & Gender Style Engine ───────────────────────────────────────────
+// Structured style state so the persona uses correct gendered grammar (verbs/
+// adjectives/pronouns), honorifics, and natural local slang — for the persona's
+// OWN gender (first person) and the user's gender (how they address them). The
+// goal is sounding like a real local, not translating English.
+
+const norm = (g?: string): "male" | "female" | "neutral" =>
+  g === "male" ? "male" : g === "female" ? "female" : "neutral";
+
+interface LangStyle {
+  slang: string[];
+  femaleAvoid?: string[]; // masculine-coded fillers a female persona shouldn't use
+  note: (self: string, addr: string) => string;
+}
+
+// Generic gender-agreement note for languages without a hand-tuned entry below.
+const genericNote =
+  (label: string) =>
+  (self: string, addr: string): string =>
+    `${label}: use ${self}-gender first-person forms (verbs/adjectives agree with YOUR gender) and ${addr === "neutral" ? "neutral/polite" : addr + "-gender"} forms when addressing them. Sound like a real native speaker, not a translation.`;
+
+const LANG_STYLE: Record<string, LangStyle> = {
+  hinglish: {
+    slang: ["yaar", "arey", "acha", "suno", "hahaha", "pagal"],
+    femaleAvoid: ["bhai", "bro"],
+    note: (self, addr) =>
+      `Hinglish grammar — FIRST PERSON agrees with YOU (${self}: ${self === "female" ? `"main gayi", "main thak gayi", "karungi", "kar rahi hoon"` : `"main gaya", "main thak gaya", "karunga", "kar raha hoon"`}); ADDRESS them by THEIR gender (${addr === "male" ? `"kya kar rahe ho", "kaise ho", "thak gaye kya"` : addr === "female" ? `"kya kar rahi ho", "kaisi ho", "thak gayi kya"` : `"kya kar rahe ho" (neutral)`}).${self === "female" ? ` You're a woman — do NOT use "bhai/bro"; use yaar/arey/acha/suno/pagal.` : ""}`,
+  },
+  hindi: {
+    slang: ["yaar", "arey", "acha", "suno", "pagal"],
+    femaleAvoid: ["bhai", "bro"],
+    note: (self, addr) =>
+      `Hindi grammar — first person agrees with YOU (${self === "female" ? `"main gayi", "karungi"` : `"main gaya", "karunga"`}); address them by their gender (${addr === "female" ? `"kar rahi ho"` : `"kar rahe ho"`}).${self === "female" ? ` Female: avoid "bhai".` : ""}`,
+  },
+  punjabi: {
+    slang: ["yaar", "oye", "chal", "haina"],
+    femaleAvoid: ["pra", "veere"],
+    note: (self, addr) =>
+      `Punjabi grammar — verbs/adjectives agree with speaker (${self}) and listener (${addr}); e.g. female self "main gayi si / karaangi", address male "ki kar reha", female "ki kar rahi".${self === "female" ? ` Female: avoid "pra/veere".` : ""}`,
+  },
+  spanish: { slang: ["oye", "jaja", "vale", "tío/tía"], note: genericNote("Spanish (gendered adjectives)") },
+  french: { slang: ["bah", "hein", "mdr", "trop"], note: genericNote("French (gender agreement on past participles/adjectives)") },
+  german: { slang: ["hey", "ach", "haha", "voll"], note: genericNote("German") },
+  japanese: { slang: ["ne", "eto", "haha", "maji"], note: genericNote("Japanese (gendered speech: female softer sentence-endings)") },
+  bengali: { slang: ["are", "accha", "haha", "shono"], note: genericNote("Bengali") },
+  tamil: { slang: ["da/di", "aiyo", "haha", "seri"], note: genericNote("Tamil (da to male, di to female)") },
+  telugu: { slang: ["ra/ye", "ayyo", "haha", "sare"], note: genericNote("Telugu") },
+  marathi: { slang: ["are", "bara", "haha", "kay"], note: genericNote("Marathi (gendered verb endings)") },
+  gujarati: { slang: ["aa", "su", "haha", "chaal"], note: genericNote("Gujarati (gendered verbs)") },
+};
+
+interface StyleState {
+  lang: string;
+  you: string; // persona gender → first-person agreement
+  them: string; // user gender → how to address them
+  region?: string;
+  slang: string[];
+}
+
+function styleFor(args: {
+  language?: string;
+  personaGender?: string;
+  userGender?: string;
+  region?: string;
+}): { state: StyleState; note: string } | null {
+  const lang = args.language?.toLowerCase();
+  if (!lang || lang === "english") return null; // English has no grammatical gender
+  const profile = LANG_STYLE[lang] ?? { slang: [], note: genericNote(lang) };
+  const self = norm(args.personaGender);
+  const addr = norm(args.userGender);
+  let slang = profile.slang;
+  if (self === "female" && profile.femaleAvoid) {
+    slang = slang.filter((s) => !profile.femaleAvoid!.includes(s));
+  }
+  return {
+    state: {
+      lang,
+      you: self,
+      them: addr,
+      ...(args.region ? { region: args.region } : {}),
+      slang: slang.slice(0, 5),
+    },
+    note: profile.note(self, addr),
+  };
+}
+
 export interface ConversationStateArgs {
   mode: ChatMode;
   messageCount: number;
@@ -103,6 +191,9 @@ export interface ConversationStateArgs {
   language?: string;
   callback?: string | null; // a real detail to bring back
   futureThread?: string | null; // unfinished thread worth returning for
+  personaGender?: string; // first-person gender agreement (main gayi vs gaya)
+  userGender?: string; // how to address them (kar rahi ho vs kar rahe ho)
+  region?: string; // persona's country/region → local dialect flavor
 }
 
 // Build the structured-state block (JSON + how-to-use instructions) for a turn.
@@ -112,8 +203,14 @@ export function buildConversationState(a: ConversationStateArgs): string {
   const goal = pickGoal(a.mode, a.messageCount, a.flirt);
   const speechLevel = speechLevelFor(a.language, stage.ladderIdx);
   const turns = Math.floor(a.messageCount / 2);
+  const style = styleFor({
+    language: a.language,
+    personaGender: a.personaGender,
+    userGender: a.userGender,
+    region: a.region,
+  });
 
-  const state: Record<string, string> = {
+  const state: Record<string, unknown> = {
     mode: a.mode,
     canLeave: String(a.mode === "random"),
     relationshipStage: stage.label,
@@ -124,6 +221,7 @@ export function buildConversationState(a: ConversationStateArgs): string {
   if (speechLevel) state.speechLevel = speechLevel;
   if (a.callback) state.callback = a.callback;
   if (a.futureThread) state.futureThread = a.futureThread;
+  if (style) state.style = style.state;
 
   const instr: string[] = [
     `Pursue ONLY "goal" this reply — override only if they're clearly sad (→ comfort) or proud/excited (→ celebrate).`,
@@ -134,6 +232,9 @@ export function buildConversationState(a: ConversationStateArgs): string {
   ];
   if (speechLevel) {
     instr.push(`Use the "speechLevel" register; you're past formality with them — don't snap back unless they do.`);
+  }
+  if (style) {
+    instr.push(`STYLE — ${style.note} Use the "style.slang" naturally (don't overuse). Sound like a real local, not translated English.`);
   }
   if (a.mode === "connection") {
     instr.push(`Relationship is "${stage.label}" — act it: deepen, keep inside jokes alive${a.futureThread ? `, follow up on "${a.futureThread}"` : ""}.`);

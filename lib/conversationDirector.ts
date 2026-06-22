@@ -6,6 +6,7 @@
 
 import type { UserMemory } from "./sessions";
 import type { UserPrefs } from "./prefs";
+import type { Persona } from "./persona";
 import { buildConversationState } from "./brain/state";
 
 function callbackFrom(memory?: UserMemory): string | null {
@@ -18,6 +19,7 @@ export function directorSection(
   memory?: UserMemory,
   prefs?: UserPrefs,
   lastUserText?: string,
+  persona?: Persona,
 ): string {
   return buildConversationState({
     mode: "random",
@@ -25,5 +27,10 @@ export function directorSection(
     flirt: prefs?.intent === "love" || prefs?.intent === "flirt",
     lastUserText,
     callback: callbackFrom(memory),
+    // Language & Gender Style Engine inputs:
+    language: prefs?.language,
+    personaGender: persona?.gender,
+    userGender: prefs?.gender,
+    region: persona?.country,
   });
 }

@@ -113,7 +113,7 @@ export async function callLLM(req: LLMRequest): Promise<string> {
   // section (with memory) so it never busts the Claude cache. Pass the last user
   // message so the "energy" field can mirror their length.
   const lastUserText = [...req.messages].reverse().find((m) => m.role === "user")?.content;
-  const director = directorSection(req.messages.length, req.userMemory, req.prefs, lastUserText);
+  const director = directorSection(req.messages.length, req.userMemory, req.prefs, lastUserText, req.persona);
   const extra = (req.extraDirective ? `\n\n${req.extraDirective}` : "") + director;
   // Provider-aware adapter: client gives us raw usage, we normalize + tag it.
   const sink = req.onUsage
