@@ -109,6 +109,13 @@ export interface Persona {
   city?: string;
   age: number;
   gender: Gender;
+  // Fixed life facts — make the persona feel like a specific real person and keep
+  // them consistent (immutable in the prompt). bornCity may differ from the
+  // current city (city); profession/education/relationshipStatus ground them.
+  bornCity?: string;
+  profession?: string;
+  education?: string;
+  relationshipStatus?: string;
   // Persona's local hour at session start (0-23). Lets the prompt nudge mood:
   // late-night personas are sleepier / more raw; early-morning are groggy.
   localHour: number;
@@ -758,6 +765,33 @@ function pickStories(): string[] {
 // A big dream / something the persona quietly wants someday. Gives them an inner
 // life and direction — surfaces in deeper conversation, never dumped early. One
 // per persona.
+// Fixed life facts: profession + education, roughly age-appropriate (students when
+// young, working professionals otherwise). Kept light + believable.
+const STUDENT_FIELDS = [
+  "architecture", "psychology", "computer science", "graphic design", "medicine",
+  "law", "literature", "economics", "fine arts", "civil engineering", "marketing",
+  "film", "biology", "journalism", "nursing", "business",
+];
+const PROFESSIONS = [
+  "architect", "graphic designer", "nurse", "school teacher", "software developer",
+  "photographer", "marketing exec", "barista", "writer", "physiotherapist",
+  "accountant", "UX designer", "chef", "civil engineer", "content creator",
+  "dental assistant", "musician", "lab technician", "flight attendant", "social worker",
+];
+const RELATIONSHIP_STATUSES = [
+  "single", "single", "single", "recently single", "not looking for anything serious",
+  "it's complicated", "single and picky", "talking to someone, nothing official",
+];
+
+function pickProfessionEducation(age: number): { profession: string; education?: string } {
+  if (age <= 23 && Math.random() < 0.7) {
+    const field = pick(STUDENT_FIELDS);
+    return { profession: `${field} student`, education: `studying ${field} at uni` };
+  }
+  const field = pick(STUDENT_FIELDS);
+  return { profession: pick(PROFESSIONS), education: pick([`${field} degree`, "uni grad", "self-taught", "postgrad", ""]) || undefined };
+}
+
 // How likely each archetype is to reach out FIRST once saved as a connection.
 // Outgoing/affectionate types message first often; reserved/aloof ones rarely.
 const INITIATIVE_BY_ARCHETYPE: Partial<Record<Archetype, number>> = {
@@ -1302,6 +1336,11 @@ export function generatePersona(prefs?: UserPrefs): Persona {
 
   const gender = pickGenderForPrefs(prefs);
 
+  // Fixed life facts. bornCity differs from current ~45% of the time (people move).
+  const bornCity = Math.random() < 0.45 ? pick(country.cities) : city;
+  const { profession, education } = pickProfessionEducation(age);
+  const relationshipStatus = pick(RELATIONSHIP_STATUSES);
+
   let typingStyle: TypingStyle;
   if (age >= 35) {
     typingStyle = pick<TypingStyle>(["formal", "casual", "casual", "terse"]);
@@ -1410,6 +1449,10 @@ export function generatePersona(prefs?: UserPrefs): Persona {
     situation,
     wpm,
     dislikes,
+    bornCity,
+    profession,
+    education,
+    relationshipStatus,
     initiativeLevel,
     randomLeaveProbability: (0.025 + Math.random() * 0.04) * intentLeaveScale,
     ghostPauseProbability: 0.05 + Math.random() * 0.08,

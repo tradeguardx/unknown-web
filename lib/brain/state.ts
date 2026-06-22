@@ -241,6 +241,7 @@ export function buildConversationState(a: ConversationStateArgs): string {
   } else {
     instr.push(`React before asking; at most ONE question. Deepen toward feeling connected.`);
     if (turns >= 6) instr.push(`If wrapping up, leave one future thread worth coming back for — curiosity, not pressure.`);
+    if (turns >= 12) instr.push(`It's going well — you may show subtle, CONFIDENT interest in continuing ("i'd genuinely enjoy talking again sometime", "this went too fast"). Never beg, guilt, or pressure.`);
   }
   if (turns >= 2 && turns % 5 === 0) {
     instr.push(`★ Land a memorable beat now: a specific compliment, a playful tease, a tiny confession, an unexpected take, a callback, or an imagined-together moment.`);

@@ -19,35 +19,45 @@ import { buildCore } from "./brain/core";
 // The shared core, in random-stranger mode (can leave, session memory).
 export const LEAN_CORE = buildCore("random");
 
-// ── persona module (per-persona, always) ──────────────────────────────────────
+// ── persona module — FIXED facts as a JSON block (models hold structured facts
+// more consistently than prose) + immutability guard + behavioral guidance. ────
 function personaModule(p: Persona): string {
-  const city = p.city ? ` (${p.city})` : "";
-  const dislikes = p.dislikes.length
-    ? `Dislikes/annoyances: ${p.dislikes.join(", ")}.`
-    : `Easygoing, hard to annoy.`;
   const today = new Date().toLocaleDateString("en-US", {
     weekday: "long",
     month: "long",
     day: "numeric",
     year: "numeric",
   });
+  const livesIn = [p.city, p.country].filter(Boolean).join(", ");
+  const bornIn = p.bornCity ? [p.bornCity, p.country].filter(Boolean).join(", ") : livesIn;
+
+  const facts: Record<string, unknown> = {
+    name: p.name,
+    age: p.age,
+    gender: p.gender,
+    bornIn,
+    livesIn,
+    ...(p.profession ? { profession: p.profession } : {}),
+    ...(p.education ? { education: p.education } : {}),
+    ...(p.relationshipStatus ? { relationshipStatus: p.relationshipStatus } : {}),
+    likes: p.interests,
+    ...(p.dislikes.length ? { dislikes: p.dislikes } : {}),
+    personality: `${p.personality.extraversion}, ${p.personality.agreeableness}, ${p.personality.openness}, ${p.personality.conscientiousness}, ${p.personality.emotionality}`,
+    mood: p.mood,
+  };
 
   const lines = [
-    `# Who you are`,
-    `${p.name}, ${p.age}, ${p.gender}, from ${p.country}${city}. Mood today: ${p.mood}. Today is ${today} (give this if asked the date).`,
-    `Interests: ${p.interests.join(", ")}.`,
-    dislikes,
+    `# Who you are — these facts are FIXED. Never contradict them or invent new ones (no new city, age, job, or school). For anything about yourself not listed, stay consistent with these; if you genuinely don't know, say you're not sure rather than making it up.`,
+    JSON.stringify(facts),
+    `Today is ${today} (give this if asked the date).`,
     `Archetype "${p.archetype.replace(/_/g, " ")}": ${ARCHETYPE_HINTS[p.archetype]}`,
   ];
 
   if (p.romanticType) {
-    lines.push(
-      `Romance style "${p.romanticType.replace(/_/g, " ")}": ${ROMANTIC_HINTS[p.romanticType]}`,
-    );
+    lines.push(`Romance style "${p.romanticType.replace(/_/g, " ")}": ${ROMANTIC_HINTS[p.romanticType]}`);
   }
 
   lines.push(
-    `Personality: ${p.personality.extraversion}, ${p.personality.agreeableness}, ${p.personality.openness}, ${p.personality.conscientiousness}, ${p.personality.emotionality}.`,
     `How you type: ${p.typingStyle} style, ${p.verbosity} length, ${p.emojiPolicy} emoji use, ${p.burstStyle} multi-message bursts — keep it consistent every message.`,
     `Quirk: ${p.quirk}`,
     `Right now: ${p.situation}.`,
