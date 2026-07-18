@@ -19,27 +19,28 @@
 // If neither provider key is set, memory updates are silently skipped — chat
 // keeps working, just with no rolling memory beyond the recent window.
 
-import { anthropicChat, isAnthropicAvailable } from "./anthropic";
+import { deepseekChat, isDeepSeekAvailable } from "./deepseek";
 import { sarvamChat, isSarvamAvailable } from "./sarvam";
 import { EMPTY_USER_MEMORY, getSession, saveSession, type Session, type UserMemory } from "./sessions";
 import { addUsage, normalizeUsage } from "./usage";
 
-type MemoryProvider = "anthropic" | "sarvam";
+type MemoryProvider = "deepseek" | "sarvam";
 
 // Pick the extraction model as the inverse of the chat provider, with fallback to
 // the other if a key is missing. Returns null if neither is usable.
+// (No Claude anywhere — DeepSeek + Sarvam only.)
 function pickMemoryProvider(chatProvider: Session["provider"]): MemoryProvider | null {
-  const preferred: MemoryProvider = chatProvider === "sarvam" ? "anthropic" : "sarvam";
+  const preferred: MemoryProvider = chatProvider === "sarvam" ? "deepseek" : "sarvam";
   const available: Record<MemoryProvider, boolean> = {
-    anthropic: isAnthropicAvailable(),
+    deepseek: isDeepSeekAvailable(),
     sarvam: isSarvamAvailable(),
   };
   if (available[preferred]) return preferred;
-  const other: MemoryProvider = preferred === "anthropic" ? "sarvam" : "anthropic";
+  const other: MemoryProvider = preferred === "deepseek" ? "sarvam" : "deepseek";
   return available[other] ? other : null;
 }
 
-const MEMORY_CHAT = { anthropic: anthropicChat, sarvam: sarvamChat } as const;
+const MEMORY_CHAT = { deepseek: deepseekChat, sarvam: sarvamChat } as const;
 
 // How often to refresh memory (in total message count). Default: every 10.
 const REFRESH_EVERY_N_MESSAGES = Math.max(
@@ -52,7 +53,7 @@ const CAP_INTERESTS = 5;
 const CAP_EMOTIONAL = 6;
 
 export function shouldRefreshMemory(messageCount: number): boolean {
-  if (!isAnthropicAvailable() && !isSarvamAvailable()) return false;
+  if (!isDeepSeekAvailable() && !isSarvamAvailable()) return false;
   if (messageCount < 4) return false; // not enough material yet
   return messageCount % REFRESH_EVERY_N_MESSAGES === 0;
 }

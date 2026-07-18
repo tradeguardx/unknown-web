@@ -14,29 +14,30 @@
 // so we summarize them on Sarvam. Falls back to the other if a key is missing;
 // silently skipped if neither is available.
 
-import { anthropicChat, isAnthropicAvailable } from "./anthropic";
+import { deepseekChat, isDeepSeekAvailable } from "./deepseek";
 import { sarvamChat, isSarvamAvailable } from "./sarvam";
 import type { Session } from "./sessions";
 import { addUsage, normalizeUsage } from "./usage";
 
-type SummaryProvider = "anthropic" | "sarvam";
+type SummaryProvider = "deepseek" | "sarvam";
 
 // Choose the summary model as the inverse of the chat provider, with graceful
 // fallback when a key is missing. Returns null if no provider is usable.
+// (No Claude anywhere — chats run on DeepSeek + Sarvam only.)
 function pickSummaryProvider(chatProvider: Session["provider"]): SummaryProvider | null {
-  // Indic chats were served by Sarvam → summarize on Claude (and vice-versa).
-  const preferred: SummaryProvider = chatProvider === "sarvam" ? "anthropic" : "sarvam";
+  // Indic chats were served by Sarvam → summarize on DeepSeek (and vice-versa).
+  const preferred: SummaryProvider = chatProvider === "sarvam" ? "deepseek" : "sarvam";
   const available: Record<SummaryProvider, boolean> = {
-    anthropic: isAnthropicAvailable(),
+    deepseek: isDeepSeekAvailable(),
     sarvam: isSarvamAvailable(),
   };
   if (available[preferred]) return preferred;
-  const other: SummaryProvider = preferred === "anthropic" ? "sarvam" : "anthropic";
+  const other: SummaryProvider = preferred === "deepseek" ? "sarvam" : "deepseek";
   return available[other] ? other : null;
 }
 
 const SUMMARY_CHAT = {
-  anthropic: anthropicChat,
+  deepseek: deepseekChat,
   sarvam: sarvamChat,
 } as const;
 

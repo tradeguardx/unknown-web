@@ -1,18 +1,18 @@
 // Thin abstraction that routes to a chat LLM based on the LLM_PROVIDER env var.
 //
-//   - "anthropic"  → Claude Haiku 4.5 + lib/prompts.ts (with prompt caching)
-//   - "sarvam"     → Sarvam (Indic-tuned) + lib/prompts.ts (same prompt as Claude)
-//   - "deepseek"   → deepseek-chat + lib/promptsDeepSeek.ts (no longer in default routing)
-//   - "mixed"      → PRODUCTION mode. Route per SESSION by language: English +
-//                    Indic → Sarvam, everything else → Claude. The provider is
+//   - "sarvam"     → Sarvam (Indic-tuned)
+//   - "deepseek"   → deepseek-chat (cheap, automatic context caching)
+//   - "anthropic"  → Claude (explicit opt-in ONLY — not used in production)
+//   - "mixed"      → PRODUCTION default. Route per SESSION by language:
+//                    Indic → Sarvam, everything else → DeepSeek. The provider is
 //                    fixed for the chat's lifetime (no mid-chat voice switch).
 //
-// Anthropic and Sarvam share lib/prompts.ts; DeepSeek has its own (promptsDeepSeek.ts).
-// All use the same conventions ([LEAVE], [STAY], \n bursts) so the downstream
-// parser works for any of them.
+// CLAUDE IS OUT of all chat routing (cost). Every provider runs the SAME shared
+// brain (lean core + persona + memory + director), so behavior is identical and
+// the downstream parser conventions ([LEAVE], [STAY], \n bursts) always hold.
 //
-// NOTE: rolling memory extraction + chat summary run on Claude (see lib/anthropic.ts
-// anthropicChat), independent of which provider serves the chat.
+// NOTE: rolling memory extraction + chat summary run on the OPPOSITE of the chat
+// provider (DeepSeek ↔ Sarvam) — see lib/userMemory.ts and lib/chatSummary.ts.
 
 import type { Persona } from "./persona";
 import { isIndicLanguage, type UserPrefs } from "./prefs";
@@ -26,10 +26,9 @@ import { directorSection } from "./conversationDirector";
 // to force the legacy monolith. Same signature → drop-in.
 const buildStaticPrompt =
   process.env.PROMPT_MODE === "full" ? buildSystemPrompt : buildSystemPromptLean;
-import { buildSystemPromptDeepSeek } from "./promptsDeepSeek";
 import { cachedSystem, anthropicFetch } from "./anthropic";
-import { deepseekChat } from "./deepseek";
-import { sarvamChat } from "./sarvam";
+import { deepseekChat, isDeepSeekAvailable } from "./deepseek";
+import { sarvamChat, isSarvamAvailable } from "./sarvam";
 import { normalizeUsage, type TokenUsage } from "./usage";
 
 export type LLMProvider = "anthropic" | "deepseek" | "sarvam";
@@ -39,23 +38,28 @@ function getEnvConfig(): LLMProviderConfig {
   const env = process.env.LLM_PROVIDER;
   if (env === "deepseek") return "deepseek"; // force all chats to DeepSeek
   if (env === "sarvam") return "sarvam";     // force ALL chats to Sarvam (single-provider)
-  if (env === "mixed") return "mixed";       // PROD: language-routed Sarvam/Claude
-  return "anthropic";
+  if (env === "mixed") return "mixed";       // PROD: language-routed Sarvam/DeepSeek
+  if (env === "anthropic") return "anthropic"; // explicit opt-in only (not used)
+  return "mixed";                            // default: language-routed, no Claude
 }
 
 // Called at session creation. The provider is fixed for the chat's lifetime
 // (no mid-conversation voice switch).
 //
-// In "mixed" mode we route by LANGUAGE (DeepSeek is OUT of auto-routing):
+// In "mixed" mode we route by LANGUAGE (Claude is OUT — cost):
 //   - Indic languages (hinglish, punjabi, tamil, …) → Sarvam. India-built, tuned
-//     for Indian languages + code-mixing, and now brevity-disciplined (prompts.ts).
-//   - Everything else (English, unset/stale, every other language) → Claude. Best
-//     general quality + naturally short, human-paced replies.
+//     for Indian languages + code-mixing, and brevity-disciplined.
+//   - Everything else (English, unset/stale, every other language) → DeepSeek.
+//     Cheap, has automatic context caching, and runs the SAME shared brain.
 export function pickProviderForSession(prefs?: UserPrefs): LLMProvider {
   const cfg = getEnvConfig();
   if (cfg !== "mixed") return cfg; // forced single-provider mode
-  // Indic → Sarvam; everything else → Claude.
-  return isIndicLanguage(prefs?.language) ? "sarvam" : "anthropic";
+  // Indic → Sarvam; everything else → DeepSeek. (No Claude.) Each falls back to
+  // the other if its key is missing, so chat can never hard-fail on a config gap.
+  if (isIndicLanguage(prefs?.language)) {
+    return isSarvamAvailable() ? "sarvam" : "deepseek";
+  }
+  return isDeepSeekAvailable() ? "deepseek" : "sarvam";
 }
 
 // Back-compat default picker. If "mixed" mode is on and this is called outside
@@ -63,7 +67,7 @@ export function pickProviderForSession(prefs?: UserPrefs): LLMProvider {
 // receives an explicit per-session provider, so this default rarely fires.
 export function getActiveProvider(): LLMProvider {
   const cfg = getEnvConfig();
-  if (cfg === "mixed") return "anthropic";
+  if (cfg === "mixed") return isDeepSeekAvailable() ? "deepseek" : "sarvam";
   return cfg;
 }
 
@@ -120,8 +124,11 @@ export async function callLLM(req: LLMRequest): Promise<string> {
     ? (raw: unknown) => req.onUsage!(normalizeUsage(raw, provider), provider)
     : undefined;
 
+  // deepseek — PRIMARY for non-Indic chats. Uses the SAME shared brain as Sarvam
+  // (lean core + persona + memory + director) so every provider behaves identically.
+  // DeepSeek does automatic context caching, so the stable static prefix is cheap.
   if (provider === "deepseek") {
-    const system = buildSystemPromptDeepSeek(req.persona, req.prefs, req.userMemory) + extra;
+    const system = buildStaticPrompt(req.persona, req.prefs) + memorySection(req.userMemory) + extra;
     return deepseekChat({
       system,
       messages: req.messages,
