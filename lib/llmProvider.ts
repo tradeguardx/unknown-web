@@ -129,12 +129,25 @@ export async function callLLM(req: LLMRequest): Promise<string> {
   // DeepSeek does automatic context caching, so the stable static prefix is cheap.
   if (provider === "deepseek") {
     const system = buildStaticPrompt(req.persona, req.prefs) + memorySection(req.userMemory) + extra;
-    return deepseekChat({
-      system,
-      messages: req.messages,
-      maxTokens: req.maxTokens,
-      onUsage: sink,
-    });
+    try {
+      return await deepseekChat({
+        system,
+        messages: req.messages,
+        maxTokens: req.maxTokens,
+        onUsage: sink,
+      });
+    } catch (err) {
+      // Runtime safety net: bad key / no credit / outage must not kill the chat.
+      // Fall back to Sarvam for this turn (same prompt, same conventions).
+      if (!isSarvamAvailable()) throw err;
+      console.warn("[llmProvider] deepseek failed → sarvam:", err instanceof Error ? err.message : String(err));
+      return sarvamChat({
+        system,
+        messages: req.messages,
+        maxTokens: req.maxTokens,
+        onUsage: req.onUsage ? (raw: unknown) => req.onUsage!(normalizeUsage(raw, "sarvam"), "sarvam") : undefined,
+      });
+    }
   }
 
   // sarvam (TEST/EVAL only) — Indic-tuned. Uses the SAME prompt as Claude
