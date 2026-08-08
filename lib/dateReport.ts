@@ -10,7 +10,6 @@
 import { deepseekChat, isDeepSeekAvailable } from "./deepseek";
 import { sarvamChat, isSarvamAvailable } from "./sarvam";
 import { isIndicLanguage } from "./prefs";
-import type { Persona } from "./persona";
 
 export interface DateStat {
   key: string; // charm | humor | confidence | empathy | flow | curiosity | flirtiness
@@ -70,7 +69,7 @@ function clampInt(v: unknown, lo: number, hi: number, dflt: number): number {
  */
 export async function generateDateReport(
   messages: Array<{ role: "user" | "assistant"; content: string }>,
-  persona: Persona,
+  persona: { name: string; age: number; gender: string },
   language?: string,
   onUsage?: (raw: unknown, provider: string) => void,
 ): Promise<DateReport | null> {

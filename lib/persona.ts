@@ -116,6 +116,9 @@ export interface Persona {
   profession?: string;
   education?: string;
   relationshipStatus?: string;
+  // User-designed / curated: freeform backstory + trait chips, injected verbatim.
+  backstory?: string;
+  traits?: string[];
   // Persona's local hour at session start (0-23). Lets the prompt nudge mood:
   // late-night personas are sleepier / more raw; early-morning are groggy.
   localHour: number;
@@ -1458,4 +1461,90 @@ export function generatePersona(prefs?: UserPrefs): Persona {
     ghostPauseProbability: 0.05 + Math.random() * 0.08,
     startsConversationProbability,
   };
+}
+
+// ── Designed persona (AI partner / curated experience characters) ─────────────
+// Rich design input → a real Persona. Reuses generatePersona for randomized
+// texture, then overrides exactly what's designed. Sliders (0-100) map onto the
+// persona's existing behavioral fields so the shared brain renders them.
+export type Relationship = "girlfriend" | "boyfriend" | "friend";
+export type TextingStyle = "short-casual" | "expressive" | "detailed";
+export type EmojiLevel = "none" | "light" | "heavy";
+
+export interface PartnerSliders {
+  warmth: number;
+  playfulness: number;
+  confidence: number;
+  humor: number;
+  clinginess: number;
+  intelligence: number;
+}
+
+export interface PartnerDesign {
+  relationship: Relationship;
+  gender: Gender;
+  name?: string;
+  age?: number;
+  ageBand?: AgeBand;
+  sliders: PartnerSliders;
+  traits?: string[];
+  backstory?: string;
+  interests?: string[];
+  language?: Language;
+  textingStyle?: TextingStyle;
+  emojiLevel?: EmojiLevel;
+}
+
+export function designPersona(d: PartnerDesign): Persona {
+  const base = generatePersona({
+    language: d.language,
+    ageBand: d.ageBand,
+    intent: d.relationship === "friend" ? "friends" : "love",
+  } as UserPrefs);
+
+  base.gender = d.gender;
+  if (typeof d.age === "number" && d.age >= 18) base.age = d.age;
+  base.name = d.name?.trim() || pickName(base.countryCode, d.gender);
+
+  const s = d.sliders;
+  base.personality = {
+    extraversion: s.confidence >= 67 ? "extroverted" : s.confidence < 34 ? "introverted" : "ambivert",
+    agreeableness: s.warmth >= 67 ? "warm" : s.warmth < 34 ? "blunt" : "neutral",
+    openness: s.intelligence >= 50 || s.humor >= 60 ? "curious" : "conventional",
+    conscientiousness: s.intelligence >= 50 ? "careful" : "chaotic",
+    emotionality: s.clinginess >= 67 ? "dramatic" : s.confidence < 34 ? "anxious" : "chill",
+  };
+
+  base.archetype =
+    s.clinginess >= 67 ? "attention_seeker"
+    : s.playfulness >= 67 && s.warmth >= 50 ? "golden_retriever"
+    : s.playfulness >= 67 ? "black_cat"
+    : s.confidence < 34 ? "shy"
+    : s.confidence >= 67 ? "outgoing"
+    : s.warmth >= 67 ? "caring"
+    : "ambivert";
+
+  base.romanticType =
+    d.relationship === "friend"
+      ? undefined
+      : s.clinginess >= 67 ? "clingy_romantic"
+        : s.confidence < 34 ? "shy_flirt"
+        : s.confidence >= 67 && s.playfulness >= 50 ? "bold_flirt"
+        : s.playfulness >= 67 ? "playful_romantic"
+        : s.warmth >= 67 ? "loyal_romantic"
+        : "natural_flirt";
+
+  base.verbosity =
+    d.textingStyle === "short-casual" ? "minimalist" : d.textingStyle === "detailed" ? "expressive" : "balanced";
+  base.typingStyle = d.textingStyle === "detailed" ? "formal" : "casual";
+  base.emojiPolicy = d.emojiLevel === "none" ? "none" : d.emojiLevel === "heavy" ? "heavy" : "rare";
+
+  if (d.interests?.length) {
+    base.interests = Array.from(new Set([...d.interests.map((x) => x.trim()).filter(Boolean), ...base.interests])).slice(0, 6);
+  }
+  base.traits = d.traits?.map((t) => t.trim()).filter(Boolean).slice(0, 8);
+  base.backstory = d.backstory?.trim() || undefined;
+  base.relationshipStatus = "single";
+
+  return base;
 }
