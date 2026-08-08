@@ -114,6 +114,73 @@ export interface MatchMessage {
   ts: string;
 }
 
+// ── AI Date experience types ──
+export interface DatePersonaCard {
+  id: string;
+  name: string;
+  age: number;
+  gender: string;
+  occupation: string;
+  avatarId: string;
+  defaultSceneId: string;
+  tags: string[];
+  blurb: string;
+}
+export interface DateSceneCard {
+  id: string;
+  location: string;
+  time: string;
+  weather: string;
+  ambience: string;
+  visualTheme: string;
+  backgroundSounds: string[];
+  emoji: string;
+}
+export interface DateConfig {
+  experiences: { id: string; name: string; description: string; objective: string; durationSec: number; modalities: string[]; entitlement: string; minAge: number | null }[];
+  scenes: DateSceneCard[];
+  personas: DatePersonaCard[];
+}
+export interface DateStart {
+  matchId: string;
+  conversationId: string;
+  endsAt: string | null;
+  durationSec: number;
+  opener: string;
+  persona: { id: string; name: string; age: number; gender: string; occupation: string; avatarId: string };
+  scene: DateSceneCard;
+  language: string;
+}
+export interface DateStat {
+  key: string;
+  score: number;
+}
+export interface DateReportShape {
+  overallScore?: number;
+  archetype?: string;
+  archetypeEmoji?: string;
+  tagline?: string;
+  stats?: DateStat[];
+  greenFlags?: string[];
+  redFlags?: string[];
+  verdict?: { secondDatePct: number; line: string };
+  bestMoment?: { quote: string; why: string } | null;
+  cringeMoment?: { quote: string; why: string } | null;
+  tips?: string[];
+  // teaser-only: counts of what's behind the paywall
+  locked?: { stats: number; greenFlags: number; redFlags: number; tips: number; bestMoment: boolean; cringeMoment: boolean };
+}
+export interface DateResultResponse {
+  id: string;
+  experienceType: string;
+  resultType: string;
+  meta: { personaName?: string; personaOccupation?: string; avatarId?: string; sceneId?: string | null; sceneEmoji?: string } | null;
+  isOwner: boolean;
+  unlocked: boolean;
+  createdAt: string;
+  result: DateReportShape;
+}
+
 export const matchApi = {
   // Auth helpers
   async currentUser() {
@@ -219,6 +286,48 @@ export const matchApi = {
   unmatch: (id: string) => call<{ deleted: boolean }>(`/matches/${id}`, { method: "DELETE" }),
   createMatch: (m: { persona: unknown; displayName: string; avatar?: string; vibe?: string }) =>
     call<{ match: MatchedPersona }>("/matches", { method: "POST", body: JSON.stringify(m) }),
+
+  // ── AI Date experience ──
+  // Picker config (experiences + scenes + persona cards). Public, no auth needed.
+  async dateConfig(): Promise<DateConfig> {
+    const res = await fetch("/api/date/config");
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) throw new MatchApiError(res.status, json?.error || res.statusText);
+    return json as DateConfig;
+  },
+  // Start a date → creates the framed conversation server-side, returns ids +
+  // public persona/scene + the opener. Needs a (logged-in) Bearer token.
+  async startDate(input: { personaId: string; sceneId?: string; language?: string }): Promise<DateStart> {
+    const token = await getToken();
+    const res = await fetch("/api/date/start", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify(input),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) throw new MatchApiError(res.status, json?.error || res.statusText, json?.error);
+    return json as DateStart;
+  },
+  // End a date → generates + stores the report, returns its shareable id.
+  async finishDate(input: {
+    conversationId: string;
+    personaId: string;
+    sceneId?: string;
+    language?: string;
+    messages: { role: "user" | "assistant"; content: string }[];
+  }): Promise<{ resultId: string }> {
+    const token = await getToken();
+    const res = await fetch("/api/date/finish", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify(input),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) throw new MatchApiError(res.status, json?.message || json?.error || res.statusText, json?.error);
+    return json as { resultId: string };
+  },
+  // Fetch a report (teaser for non-owners / locked; full for the unlocked owner).
+  dateResult: (id: string) => call<DateResultResponse>(`/results/${id}`),
 
   // "Keep this one" — freeze the CURRENT chat's persona. Goes through the
   // chatApp route (which holds the persona server-side) with our Bearer token.
