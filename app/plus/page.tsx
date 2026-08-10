@@ -52,8 +52,8 @@ export default function PlusPage() {
             </p>
           </div>
 
-          {/* Live subscribe card — geo-priced, account-aware */}
-          <div className="mt-7 max-w-sm mx-auto">
+          {/* Live subscribe cards — geo-priced, account-aware (side by side on desktop) */}
+          <div className="mt-7 max-w-sm lg:max-w-3xl mx-auto">
             <PlusSubscribe />
           </div>
 

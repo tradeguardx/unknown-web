@@ -180,7 +180,8 @@ export function PlusSubscribe() {
 
   return (
     <>
-      {/* Day pass card — shown first (lowest-friction entry, $1) */}
+    <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
+      {/* 2-day pass card — lowest-friction entry */}
       <Card>
         <div className="font-sans text-[11px] font-bold uppercase tracking-[0.18em] text-ink-mute">2-day pass</div>
         <div className="mt-1.5 inline-flex items-baseline gap-1.5">
@@ -215,13 +216,6 @@ export function PlusSubscribe() {
         </button>
       </Card>
 
-      {/* Divider */}
-      <div className="my-4 flex items-center gap-3 text-ink-mute">
-        <span className="h-px flex-1 bg-ink/15" />
-        <span className="font-display text-[12px] italic">or go all-in</span>
-        <span className="h-px flex-1 bg-ink/15" />
-      </div>
-
       {/* Subscription card */}
       <Card>
         <div className="inline-flex items-baseline gap-1.5">
@@ -247,6 +241,7 @@ export function PlusSubscribe() {
           {busy ? "opening checkout…" : acct === null ? "…" : acct.loggedIn ? cta : "log in to subscribe →"}
         </button>
       </Card>
+    </div>
 
       {error && (
         <p className="mt-3 text-center font-display text-[13px] text-red">couldn&apos;t start checkout — try again?</p>
