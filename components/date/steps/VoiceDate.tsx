@@ -28,6 +28,9 @@ interface Props {
   onBackToText: () => void;
   onEnd: () => void;
   onLeave: () => void;
+  capped?: boolean; // 7 free voice minutes used → paywall
+  onGetPass?: (kind: "daypass" | "subscription") => void;
+  prices?: { pass: string; monthly: string };
   ending?: boolean;
 }
 
@@ -71,7 +74,7 @@ function MicPulse() {
 }
 const BAR_COLORS = ["#e64a3a", "#f5d967", "#b89dd4", "#5fa39a", "#e64a3a", "#f5d967", "#b89dd4", "#5fa39a", "#e64a3a", "#f5d967", "#b89dd4"];
 
-export function VoiceDate({ card, date, controls, remaining, timeUp, lastLine, thinking, onUserSpeech, onBackToText, onEnd, onLeave, ending }: Props) {
+export function VoiceDate({ card, date, controls, remaining, timeUp, lastLine, thinking, onUserSpeech, onBackToText, onEnd, onLeave, capped, onGetPass, prices, ending }: Props) {
   const scene = date.scene;
   const [muted, setMuted] = useState(false);
   const [captions, setCaptions] = useState(true);
@@ -239,12 +242,46 @@ export function VoiceDate({ card, date, controls, remaining, timeUp, lastLine, t
   // Muting stops her mid-sentence.
   useEffect(() => { if (muted) stopSpeaking(); }, [muted]);
 
+  // Out of free voice minutes → stop the call audio + mic behind the paywall.
+  useEffect(() => {
+    if (capped) { stopSpeaking(); pauseMic(); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [capped]);
+
   const status = speaking ? "speaking" : thinking ? "thinking" : listening ? "listening" : "idle";
 
   return (
     <DarkStage theme={scene.darkTheme} ambience={{ sceneId: scene.id, weather: controls.weather }}>
       {/* scene ambience, ducked while she speaks */}
-      <AmbientAudio src={scene.ambientAudio} enabled={controls.sound && !muted} volume={speaking ? 0.16 : 0.5} />
+      <AmbientAudio src={scene.ambientAudio} enabled={controls.sound && !muted && !capped} volume={speaking ? 0.16 : 0.5} />
+
+      {/* 7-minute voice paywall */}
+      {capped && (
+        <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/60 p-4">
+          <div className="w-full max-w-md rounded-2xl border-2 border-ink bg-paper-cool p-5 text-center shadow-hard-lg">
+            <div className="text-3xl mb-1">💛</div>
+            <h3 className="font-display text-2xl text-ink">7 free voice minutes, done</h3>
+            <p className="mt-1 mb-4 font-serif italic text-[14px] text-ink-mute">
+              keep talking to {card.name} by voice — or drop back to text, always free.
+            </p>
+            <div className="grid grid-cols-2 gap-2.5">
+              <button onClick={() => onGetPass?.("daypass")} className="om-cta flex flex-col items-center rounded-xl border-2 border-ink bg-red px-3 py-3 text-paper-cool shadow-hard-xs">
+                <span className="font-sans text-sm font-bold">2-day pass</span>
+                <span className="font-sans text-lg font-bold">{prices?.pass ?? "$2"}</span>
+                <span className="font-display text-[12px] opacity-90">unlimited voice · 2 days</span>
+              </button>
+              <button onClick={() => onGetPass?.("subscription")} className="om-cta flex flex-col items-center rounded-xl border-2 border-ink bg-ink px-3 py-3 text-paper-cool">
+                <span className="font-sans text-sm font-bold">monthly</span>
+                <span className="font-sans text-lg font-bold">{prices?.monthly ?? "$4.99"}</span>
+                <span className="font-display text-[12px] opacity-90">unlimited · full reports</span>
+              </button>
+            </div>
+            <button onClick={onBackToText} className="mt-3 font-sans text-[13px] font-bold text-ink-mute underline">
+              keep it in text (free) →
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* header */}
       <div className="flex items-center justify-between gap-2 px-3 py-2.5 sm:px-5">

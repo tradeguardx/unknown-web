@@ -110,9 +110,12 @@ export default function ReportPage() {
           )}
 
           <div className="mt-5 flex gap-2 justify-center">
-            <button onClick={share} className="rounded-full border-2 border-ink bg-red px-5 py-2 font-sans text-[13px] font-bold text-paper-cool shadow-hard-xs hover:shadow-hard">
+            <button onClick={share} className="om-cta rounded-full border-2 border-ink bg-red px-5 py-2 font-sans text-[13px] font-bold text-paper-cool shadow-hard-xs">
               {copied ? "link copied ✓" : "share my report ↗"}
             </button>
+            <a href={`/date/report/${id}/opengraph-image`} target="_blank" rel="noopener noreferrer" className="om-cta rounded-full border-2 border-ink bg-yellow px-5 py-2 font-sans text-[13px] font-bold text-ink shadow-hard-xs">
+              📸 save card for insta
+            </a>
             <Link href="/date" className="rounded-full border-2 border-ink bg-paper-warm px-5 py-2 font-sans text-[13px] font-bold text-ink shadow-hard-xs hover:bg-paper-deep">
               new date
             </Link>

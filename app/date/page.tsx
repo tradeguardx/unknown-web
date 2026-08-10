@@ -19,6 +19,14 @@ import { VoiceDate } from "@/components/date/steps/VoiceDate";
 import { Ending } from "@/components/date/steps/Ending";
 import { UpgradeAccount } from "@/components/match/UpgradeAccount";
 import { ageForBand } from "@/lib/experiences/personas";
+import { detectCountry } from "@/lib/geo";
+
+// US / Canada / Europe (+ UK, AU, NZ) pay the higher tier; everyone else lower.
+const WEST = new Set([
+  "US", "CA", "GB", "IE", "AU", "NZ",
+  "DE", "FR", "IT", "ES", "NL", "SE", "NO", "DK", "FI", "BE", "AT", "CH", "PT",
+  "PL", "CZ", "GR", "HU", "RO", "SK", "BG", "HR", "SI", "LT", "LV", "EE", "LU",
+]);
 
 type Phase =
   | "loading" | "prefs" | "characters" | "scene" | "anticipation" | "authgate"
@@ -53,6 +61,20 @@ export default function DatePage() {
   const [resultId, setResultId] = useState<string | null>(null);
   const anonRef = useRef<boolean>(true);
 
+  // Voice is free for the first 7 minutes; then pay (2-day pass / monthly) or drop
+  // to text. Paid users (active pass or subscription) are never capped.
+  const [paid, setPaid] = useState(false);
+  const [voiceSec, setVoiceSec] = useState(0);
+  const [prices, setPrices] = useState({ pass: "$2", monthly: "$4.99" });
+  const VOICE_FREE_SEC = 7 * 60;
+  const voiceCapped = !paid && voiceSec >= VOICE_FREE_SEC;
+
+  useEffect(() => {
+    detectCountry()
+      .then((cc) => setPrices(WEST.has((cc || "").toUpperCase()) ? { pass: "$3", monthly: "$8.99" } : { pass: "$2", monthly: "$4.99" }))
+      .catch(() => {});
+  }, []);
+
   // Load config + login state.
   useEffect(() => {
     let alive = true;
@@ -62,6 +84,7 @@ export default function DatePage() {
         if (!alive) return;
         setCfg(config);
         anonRef.current = me?.isAnonymous ?? true;
+        setPaid(!!(me?.subscription?.active || me?.pass?.active));
         // Step 0 (you / interested-in / age) ALWAYS comes first — we can't cast the
         // roster without it. We just PRE-FILL a returning user's last choices so
         // it's a single tap to continue, never a blank form.
@@ -117,6 +140,23 @@ export default function DatePage() {
     if (timeUp && (phase === "text" || phase === "voice")) endDate();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeUp]);
+
+  // Count voice minutes (free for the first 7) while on the call.
+  useEffect(() => {
+    if (phase !== "voice" || paid) return;
+    const iv = setInterval(() => setVoiceSec((s) => s + 1), 1000);
+    return () => clearInterval(iv);
+  }, [phase, paid]);
+
+  async function getPass(kind: "daypass" | "subscription") {
+    try {
+      const here = window.location.href;
+      const { checkoutUrl } = await matchApi.checkout(kind, { successUrl: here, cancelUrl: here });
+      window.location.href = checkoutUrl;
+    } catch {
+      window.location.href = "/plus";
+    }
+  }
 
   const card = cfg?.personas.find((p) => p.id === personaId) ?? null;
   const sceneCard = cfg?.scenes.find((s) => s.id === sceneId) ?? null;
@@ -318,6 +358,7 @@ export default function DatePage() {
         card={card} date={date} controls={controls} remaining={remaining} timeUp={timeUp}
         lastLine={lastAssistant} thinking={typing} onUserSpeech={sendText}
         onBackToText={() => setPhase("text")} onEnd={endDate} onLeave={leave}
+        capped={voiceCapped} onGetPass={getPass} prices={prices}
       />
     );
   }
