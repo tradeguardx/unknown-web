@@ -127,3 +127,60 @@ body {
 /* iOS focus-zoom is now prevented at the viewport level (maximumScale=1 in
    app/layout.tsx), so inputs can use their natural compact font size — no 16px
    override needed. */
+
+/* ── AI Date scene ambience animations ──────────────────────────────────────
+   Used by components/date/SceneAmbience (scene cards + the live date screens).
+   Transform/opacity only, so they stay cheap. */
+@keyframes uc-fall {
+  0%   { transform: translateY(-15%) translateX(0); }
+  100% { transform: translateY(115%) translateX(6px); }
+}
+@keyframes uc-fall-fast {
+  0%   { transform: translateY(-20%) translateX(0) rotate(14deg); }
+  100% { transform: translateY(120%) translateX(10px) rotate(14deg); }
+}
+@keyframes uc-twinkle {
+  0%, 100% { opacity: 0.25; }
+  50%      { opacity: 1; }
+}
+@keyframes uc-flicker {
+  0%, 100% { opacity: 0.5; transform: translateX(-50%) scale(1); }
+  50%      { opacity: 0.9; transform: translateX(-50%) scale(1.12); }
+}
+@keyframes uc-drift {
+  0%   { transform: translateX(-6px); }
+  100% { transform: translateX(10px); }
+}
+@keyframes uc-sway {
+  0%, 100% { transform: translateX(0); }
+  50%      { transform: translateX(8px); }
+}
+@keyframes uc-pulse-soft {
+  0%, 100% { opacity: 0.5; transform: scale(1); }
+  50%      { opacity: 0.85; transform: scale(1.08); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .uc-anim { animation: none !important; }
+}
+
+/* slow cinematic drift on scene photos (Ken Burns) — anchored bottom via
+   transform-origin so the baked-in scene label is never zoomed off-frame. */
+@keyframes uc-kenburns {
+  0%   { transform: scale(1.02) translateX(0); }
+  100% { transform: scale(1.08) translateX(-2%); }
+}
+/* irregular firelight / lamp glow */
+@keyframes uc-glow {
+  0%, 100% { opacity: 0.30; transform: scale(1); }
+  40%      { opacity: 0.60; transform: scale(1.07); }
+  62%      { opacity: 0.42; transform: scale(1.02); }
+  80%      { opacity: 0.55; transform: scale(1.05); }
+}
+
+/* CTA presses into its hard shadow (the shadow stays put). */
+.om-cta { transition: transform .13s ease; }
+.om-cta:hover { transform: translate(-2px, -2px); }
+.om-cta:active { transform: translate(2px, 2px); }
+@media (prefers-reduced-motion: reduce) {
+  .om-cta:hover, .om-cta:active { transform: none; }
+}

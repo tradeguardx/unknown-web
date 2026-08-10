@@ -21,6 +21,8 @@ export function SiteFooter() {
         <span aria-hidden className="text-ink-faint">·</span>
         <Link href="/faq" className="text-ink-mute hover:text-ink">faq</Link>
         <span aria-hidden className="text-ink-faint">·</span>
+        <Link href="/date" className="text-ink-mute hover:text-ink">the AI date</Link>
+        <span aria-hidden className="text-ink-faint">·</span>
         <Link href="/plus" className="text-ink-mute hover:text-ink">unknown plus</Link>
         <span aria-hidden className="text-ink-faint">·</span>
         <Link href="/terms" className="text-ink-mute hover:text-ink">terms</Link>
@@ -32,7 +34,7 @@ export function SiteFooter() {
         <Link href="/support" className="text-ink-mute hover:text-ink">support</Link>
       </div>
       <div className="font-display text-[15px] text-ink-soft leading-relaxed mb-2">
-        The strangers on unknown.chat are AI personas, not real people. By using this site
+        The strangers and dates on unknown.chat are AI personas, not real people. 18+. By using this site
         you agree to the{" "}
         <Link href="/terms" className="underline text-red font-semibold">terms</Link>{" "}
         and{" "}

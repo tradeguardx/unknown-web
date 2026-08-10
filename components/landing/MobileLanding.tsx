@@ -16,7 +16,9 @@ import { MenuDrawer } from "./MenuDrawer";
 import { Testimonials } from "./Testimonials";
 import { HomeFAQ } from "./HomeFAQ";
 import { MiniChat } from "./MiniChat";
-import { LastNight } from "./LastNight";
+import { DateBanner } from "./DateBanner";
+import { TwoDoors } from "./TwoDoors";
+import { ReviewsSection } from "./ReviewsSection";
 import { SiteFooter } from "@/components/SiteFooter";
 import type { TestimonialsData } from "@/lib/testimonials";
 
@@ -40,10 +42,22 @@ export function MobileLanding({ testimonials }: { testimonials?: TestimonialsDat
           <MiniChat onTap={() => setSheetOpen(true)} />
         </section>
 
+        <DateBanner />
+
+        {/* social proof (one section) */}
+        <OverheardSection />
+        <Testimonials data={testimonials ?? null} />
+
+        {/* two doors — separates the gradient banners + pitches stranger chat */}
+        <TwoDoors onStranger={() => setSheetOpen(true)} />
+
+        {/* reviews — before the price */}
+        <ReviewsSection />
+
         <Link
           href="/plus"
           aria-label="unknown plus"
-          className="group mt-9 lg:mt-14 block overflow-hidden rounded-2xl border-[2.5px] border-ink bg-gradient-to-br from-lilac/60 via-paper-cool to-yellow/45 shadow-hard -rotate-[0.4deg] transition-transform hover:-translate-y-0.5"
+          className="group mt-10 lg:mt-16 block overflow-hidden rounded-2xl border-[2.5px] border-ink bg-gradient-to-br from-lilac/60 via-paper-cool to-yellow/45 shadow-hard -rotate-[0.4deg] transition-transform hover:-translate-y-0.5"
         >
           <div className="flex items-center justify-between gap-4 p-4 lg:p-5">
             <div className="min-w-0">
@@ -83,11 +97,24 @@ export function MobileLanding({ testimonials }: { testimonials?: TestimonialsDat
           </div>
         </Link>
 
-        <OverheardSection />
-        <LastNight />
-        <Testimonials data={testimonials ?? null} />
         <WhyPostits />
         <HomeFAQ />
+
+        {/* closing — both doors */}
+        <section className="mt-12 lg:mt-20 text-center">
+          <p className="mx-auto max-w-2xl font-serif italic text-[26px] sm:text-[34px] leading-snug text-ink">
+            it&apos;s like talking to a stranger at 3am, except they&apos;re actually available.
+          </p>
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+            <button onClick={() => setSheetOpen(true)} className="om-cta rounded-xl border-2 border-ink bg-red px-6 py-3 font-sans text-sm font-bold text-paper-cool shadow-hard">
+              find someone awake →
+            </button>
+            <Link href="/date" className="om-cta rounded-xl border-2 border-ink bg-paper-cool px-6 py-3 font-sans text-sm font-bold text-ink shadow-hard">
+              💘 or test your dating →
+            </Link>
+          </div>
+        </section>
+
         <SiteFooter />
       </main>
 
@@ -104,6 +131,13 @@ function Header({ onMenu }: { onMenu: () => void }) {
     <header className="flex items-center justify-between px-5 lg:px-10 pt-4 lg:pt-6 pb-2 max-w-md lg:max-w-5xl mx-auto w-full">
       <Wordmark size="sm" />
       <div className="flex items-center gap-2.5 lg:gap-4">
+        <Link
+          href="/date"
+          className="relative hidden sm:inline-flex items-center gap-1 rounded-full border-[1.5px] border-ink bg-lilac/60 px-2.5 py-1 font-sans text-[12px] font-bold text-ink hover:bg-lilac"
+        >
+          💘 the AI date
+          <span className="rounded-full bg-red px-1.5 py-0.5 font-sans text-[9px] font-bold text-paper-cool">new</span>
+        </Link>
         <LiveCounter />
         <button onClick={onMenu} className="p-1 text-ink-soft hover:text-ink" aria-label="menu">
           <svg className="w-5 h-5 lg:w-6 lg:h-6" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">

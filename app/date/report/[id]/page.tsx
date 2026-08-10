@@ -10,7 +10,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { DateAvatar } from "@/components/date/DateAvatar";
+import { StripePhoto } from "@/components/date/StripePhoto";
 import { matchApi, type DateResultResponse } from "@/lib/matchApi";
 
 const STAT_LABEL: Record<string, string> = {
@@ -79,6 +79,16 @@ export default function ReportPage() {
       <div className="mx-auto w-full max-w-lg py-8 px-4">
         {/* Hero */}
         <div className="relative rounded-3xl border-2 border-ink bg-paper-cool shadow-hard-lg p-6 text-center overflow-hidden">
+          {(meta.photoUrl || meta.stripeColor) && (
+            <StripePhoto
+              color={meta.stripeColor ?? "#b89dd4"}
+              photoUrl={meta.photoUrl ?? undefined}
+              alt={meta.personaName ?? ""}
+              variant="circle"
+              showPhotoTag={false}
+              className="mx-auto mb-3 h-16 w-16"
+            />
+          )}
           <div className="text-[11px] font-sans font-bold uppercase tracking-widest text-ink-mute mb-3">
             {meta.sceneEmoji ?? "💘"} a date with {meta.personaName ?? "someone"}
           </div>
@@ -281,5 +291,5 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 function Wrap({ children }: { children: React.ReactNode }) {
-  return <div className="min-h-full w-full overflow-y-auto">{children}</div>;
+  return <div className="min-h-[100dvh] w-full">{children}</div>;
 }

@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 // On-page FAQ for the landing — the highest-ROI SEO block. Puts the target
 // phrases ("AI stranger", "anonymous AI chat no signup", "vent to a stranger",
 // "3am", "Omegle alternative") into real crawlable on-page text and matches
@@ -26,8 +28,8 @@ const FAQS: { q: string; a: string }[] = [
     a: "Yes. A lot of people use unknown.chat to vent or get something off their chest with zero record — no account, no memory, nothing saved.",
   },
   {
-    q: "Is there an AI girlfriend / boyfriend / flirty mode?",
-    a: "There's a flirty mode behind an 18+ gate. The persona texts like a real person, so it feels closer to talking to someone than to a bot.",
+    q: "What is the AI date, exactly?",
+    a: "A 15–20 minute date with an AI persona you pick, in a scene you pick — voice or text. They flirt, push back, and get bored if you're boring, then score you out of 100 and hand you a shareable report. Same personas as the strangers, just on a date.",
   },
   {
     q: "Is it an Omegle alternative?",
@@ -70,17 +72,24 @@ export function HomeFAQ() {
         {FAQS.map((f, i) => (
           <details
             key={i}
+            open={i === 0}
             className="group rounded-2xl border-2 border-ink bg-paper-cool p-4 shadow-hard-sm"
           >
             <summary className="flex cursor-pointer list-none items-center justify-between gap-3 font-sans text-[15px] font-bold text-ink [&::-webkit-details-marker]:hidden">
               {f.q}
-              <span className="shrink-0 text-xl leading-none text-red transition-transform duration-200 group-open:rotate-45">
-                +
+              <span className="shrink-0 text-2xl leading-none text-red">
+                <span className="group-open:hidden">+</span>
+                <span className="hidden group-open:inline">−</span>
               </span>
             </summary>
             <p className="mt-2.5 font-display text-[14px] leading-relaxed text-ink-soft">
               {f.a}
             </p>
+            {f.q.includes("AI date") && (
+              <Link href="/date" className="mt-2 inline-block font-sans text-[13px] font-bold text-red underline">
+                go on one →
+              </Link>
+            )}
           </details>
         ))}
       </div>

@@ -1,7 +1,7 @@
-// Full-height shell for the AI Date experience so the immersive chat (and the
-// report) fill the viewport like the connections chat does. Kept minimal — each
-// page owns its own scene/scroll behavior.
+// Wrapper for the AI Date experience. Intentionally NOT height-constrained — the
+// picker steps grow with their content and use the normal page (main) scroller;
+// the immersive date/voice screens set their own 100dvh height internally.
 
 export default function DateLayout({ children }: { children: React.ReactNode }) {
-  return <div className="h-[100dvh] w-full flex flex-col overflow-hidden">{children}</div>;
+  return <div className="w-full">{children}</div>;
 }

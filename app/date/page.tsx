@@ -1,53 +1,59 @@
 "use client";
 
-// The AI Date experience. You walk INTO a situation: pick someone, pick a place,
-// and you're on a first date — a real 15-minute conversation in a scene. When it
-// ends, we score how the date went and hand you a shareable Dating Report.
+// The AI Date experience — a multi-step situation, not a chatbot:
+//   prefs → pick your date → pick the place → anticipation → the date (text/voice)
+//   → the ending (she decides) → sign up → your Dating Report.
 //
-// The date itself is FREE (no message meter); the full report is the paid unlock.
-// Login is required before the date (decision: "login before the date").
+// No signup to start dating; signup happens at the ending, to read the report.
+// The date is free — the full report is the paid unlock.
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { TypingIndicator } from "@/components/TypingIndicator";
-import { DateAvatar } from "@/components/date/DateAvatar";
-import { SceneBackdrop } from "@/components/date/SceneBackdrop";
+import { matchApi, type DateConfig, type DateStart } from "@/lib/matchApi";
+import { Preferences, type YouAre, type MeetPref, type AgeBand } from "@/components/date/steps/Preferences";
+import { CharacterPicker } from "@/components/date/steps/CharacterPicker";
+import { ScenePicker, type SceneControls } from "@/components/date/steps/ScenePicker";
+import { Anticipation } from "@/components/date/steps/Anticipation";
+import { TextDate, type DateMsg } from "@/components/date/steps/TextDate";
+import { VoiceDate } from "@/components/date/steps/VoiceDate";
+import { Ending } from "@/components/date/steps/Ending";
 import { UpgradeAccount } from "@/components/match/UpgradeAccount";
-import {
-  matchApi,
-  type DateConfig,
-  type DatePersonaCard,
-  type DateSceneCard,
-  type DateStart,
-} from "@/lib/matchApi";
+import { ageForBand } from "@/lib/experiences/personas";
 
-type Phase = "loading" | "gate" | "pick" | "starting" | "dating" | "finishing";
-type Msg = { role: "user" | "assistant"; content: string };
+type Phase =
+  | "loading" | "prefs" | "characters" | "scene" | "anticipation" | "authgate"
+  | "text" | "voice" | "ending" | "error";
 
 const tidy = (s: string) => s.replace(/\n{2,}/g, "\n").trim();
-const MIN_USER_TURNS = 3;
 
 export default function DatePage() {
   const router = useRouter();
   const [phase, setPhase] = useState<Phase>("loading");
   const [cfg, setCfg] = useState<DateConfig | null>(null);
-  const [anon, setAnon] = useState<boolean | null>(null);
-  const [ageOk, setAgeOk] = useState(false);
 
-  const [personaId, setPersonaId] = useState<string>("");
-  const [sceneId, setSceneId] = useState<string>("");
+  const [you, setYou] = useState<YouAre | null>(null);
+  const [meet, setMeet] = useState<MeetPref | null>(null);
+  const [ageBand, setAgeBand] = useState<AgeBand | null>(null);
+  const [personaId, setPersonaId] = useState<string | null>(null);
+  const [sceneId, setSceneId] = useState<string | null>(null);
+  const [controls, setControls] = useState<SceneControls>({ weather: "snow", time: "evening", sound: true });
 
   const [date, setDate] = useState<DateStart | null>(null);
-  const [msgs, setMsgs] = useState<Msg[]>([]);
+  const [messages, setMessages] = useState<DateMsg[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [typing, setTyping] = useState(false);
+  const [starting, setStarting] = useState(false);
   const [remaining, setRemaining] = useState<number | null>(null);
   const [timeUp, setTimeUp] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
-  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
-  // Load picker config + login state.
+  const [endPhase, setEndPhase] = useState<"deciding" | "gate" | "error">("deciding");
+  const [endErr, setEndErr] = useState<string | null>(null);
+  const [resultId, setResultId] = useState<string | null>(null);
+  const anonRef = useRef<boolean>(true);
+
+  // Load config + login state.
   useEffect(() => {
     let alive = true;
     (async () => {
@@ -55,21 +61,46 @@ export default function DatePage() {
         const [config, me] = await Promise.all([matchApi.dateConfig(), matchApi.me().catch(() => null)]);
         if (!alive) return;
         setCfg(config);
-        const isAnon = me?.isAnonymous ?? true;
-        setAnon(isAnon);
-        setPhase(isAnon ? "gate" : "pick");
+        anonRef.current = me?.isAnonymous ?? true;
+        // Step 0 (you / interested-in / age) ALWAYS comes first — we can't cast the
+        // roster without it. We just PRE-FILL a returning user's last choices so
+        // it's a single tap to continue, never a blank form.
+        try {
+          const saved = JSON.parse(localStorage.getItem("uc:datePrefs") || "null") as
+            | { you?: YouAre; meet?: MeetPref; ageBand?: AgeBand }
+            | null;
+          if (saved?.you) setYou(saved.you);
+          if (saved?.meet) setMeet(saved.meet);
+          if (saved?.ageBand) setAgeBand(saved.ageBand);
+        } catch { /* ignore */ }
+        // Returning from an auth redirect (e.g. Google) mid-flow? Restore the
+        // exact persona/scene they'd picked and drop them back on the ready screen.
+        if (!(me?.isAnonymous ?? true)) {
+          try {
+            const pend = JSON.parse(localStorage.getItem("uc:datePending") || "null") as
+              | { personaId?: string; sceneId?: string; controls?: SceneControls }
+              | null;
+            if (pend?.personaId) {
+              setPersonaId(pend.personaId);
+              if (pend.sceneId) setSceneId(pend.sceneId);
+              if (pend.controls) setControls(pend.controls);
+              localStorage.removeItem("uc:datePending");
+              setPhase("anticipation");
+              return;
+            }
+          } catch { /* ignore */ }
+        }
+        setPhase("prefs");
       } catch {
-        if (alive) setErr("couldn't load. refresh?");
+        if (alive) setPhase("error");
       }
     })();
-    return () => {
-      alive = false;
-    };
+    return () => { alive = false; };
   }, []);
 
-  // Countdown while dating.
+  // Countdown during the date.
   useEffect(() => {
-    if (phase !== "dating" || !date?.endsAt) return;
+    if ((phase !== "text" && phase !== "voice") || !date?.endsAt) return;
     const end = new Date(date.endsAt).getTime();
     const tick = () => {
       const left = Math.max(0, Math.round((end - Date.now()) / 1000));
@@ -81,262 +112,225 @@ export default function DatePage() {
     return () => clearInterval(iv);
   }, [phase, date?.endsAt]);
 
+  // The full date is up (20 min) → wrap it automatically into the report.
   useEffect(() => {
-    const el = scrollRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
-  }, [msgs, typing]);
+    if (timeUp && (phase === "text" || phase === "voice")) endDate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timeUp]);
 
-  const persona = cfg?.personas.find((p) => p.id === personaId) ?? null;
-  const scenesFor = (p: DatePersonaCard | null): DateSceneCard[] => cfg?.scenes ?? [];
-  const userTurns = msgs.filter((m) => m.role === "user").length;
+  const card = cfg?.personas.find((p) => p.id === personaId) ?? null;
+  const sceneCard = cfg?.scenes.find((s) => s.id === sceneId) ?? null;
+  const userTurns = messages.filter((m) => m.role === "user").length;
+  const lastAssistant = [...messages].reverse().find((m) => m.role === "assistant")?.content ?? "";
 
-  async function startDate() {
-    if (!personaId) return;
-    setPhase("starting");
-    setErr(null);
-    try {
-      const d = await matchApi.startDate({ personaId, sceneId: sceneId || undefined });
-      setDate(d);
-      setMsgs([{ role: "assistant", content: tidy(d.opener) }]);
-      setPhase("dating");
-    } catch (e) {
-      const m = (e as { code?: string; message?: string });
-      if (m.code === "LOGIN_REQUIRED") {
-        setAnon(true);
-        setPhase("gate");
-      } else {
-        setErr("couldn't start the date. try again?");
-        setPhase("pick");
-      }
+  function pickPersona(id: string) {
+    setPersonaId(id);
+    const p = cfg?.personas.find((x) => x.id === id);
+    const sc = cfg?.scenes.find((s) => s.id === p?.defaultSceneId) ?? cfg?.scenes[0];
+    if (sc) {
+      setSceneId(sc.id);
+      setControls({ weather: sc.weather, time: sc.time, sound: sc.sound });
     }
   }
 
-  async function send() {
-    const text = input.trim();
-    if (!text || sending || !date) return;
+  function pickScene(id: string) {
+    setSceneId(id);
+    const sc = cfg?.scenes.find((s) => s.id === id);
+    if (sc) setControls((c) => ({ ...c, weather: sc.weather, time: sc.time }));
+  }
+
+  // Tapped "start the date" — log in / sign up FIRST if needed, then begin. We
+  // stash the exact selection so an auth redirect (Google) lands them right back.
+  function beginDate() {
+    if (!personaId || !sceneId) return;
+    if (anonRef.current) {
+      try { localStorage.setItem("uc:datePending", JSON.stringify({ personaId, sceneId, controls })); } catch { /* ignore */ }
+      setPhase("authgate");
+    } else {
+      startDate();
+    }
+  }
+
+  async function onAuthed() {
+    try { const me = await matchApi.me(); anonRef.current = me.isAnonymous; } catch { /* ignore */ }
+    try { localStorage.removeItem("uc:datePending"); } catch { /* ignore */ }
+    if (!anonRef.current) startDate();
+    else setPhase("anticipation"); // still anon (shouldn't happen) — send them back
+  }
+
+  async function startDate() {
+    if (!personaId || !sceneId) return;
+    setStarting(true);
+    try {
+      const d = await matchApi.startDate({ personaId, sceneId, weather: controls.weather, time: controls.time, age: ageForBand(personaId, ageBand) });
+      setDate(d);
+      setMessages([{ role: "assistant", content: tidy(d.opener) }]);
+      setRemaining(d.durationSec); // initialise the clock before the first tick
+      setTimeUp(false);
+      setPhase("voice"); // the date opens as a call; user can drop to text anytime
+    } catch {
+      setNotice("couldn't start the date — try again");
+      setPhase("anticipation");
+    } finally {
+      setStarting(false);
+    }
+  }
+
+  async function sendText(text: string) {
+    const t = text.trim();
+    if (!t || sending || !date) return;
     setInput("");
-    setMsgs((m) => [...m, { role: "user", content: text }]);
+    setMessages((m) => [...m, { role: "user", content: t }]);
     setSending(true);
     setTyping(true);
     try {
-      const res = await matchApi.send(date.conversationId, text);
-      if (res.reply) setMsgs((m) => [...m, { role: "assistant", content: tidy(res.reply!) }]);
-      else if (res.warning?.text) setMsgs((m) => [...m, { role: "assistant", content: res.warning!.text }]);
+      const res = await matchApi.send(date.conversationId, t);
+      const reply = res.reply ? tidy(res.reply) : res.warning?.text ?? "";
+      if (reply) {
+        // Text: a human-like typing beat. Voice/call: reply the instant she's ready.
+        if (phase !== "voice") {
+          const delay = Math.min(2200, 500 + reply.length * 14);
+          await new Promise((r) => setTimeout(r, delay));
+        }
+        setMessages((m) => [...m, { role: "assistant", content: reply }]);
+      }
     } catch {
-      setErr("message didn't send — try again");
+      setMessages((m) => [...m, { role: "assistant", content: "…sorry, say that again?" }]);
     } finally {
       setTyping(false);
       setSending(false);
     }
   }
+  const send = () => sendText(input);
 
   async function endDate() {
-    if (!date || phase === "finishing") return;
-    if (userTurns < MIN_USER_TURNS) {
-      setErr(`talk a little more first — at least ${MIN_USER_TURNS} messages so we can score it 🙂`);
+    if (!date) return;
+    const elapsedSec = date.durationSec - (remaining ?? date.durationSec);
+    // A real read needs a real conversation: ~10 min of discussion (or a long
+    // text chat). Below that, keep them in the date rather than a thin report.
+    const enough = elapsedSec >= 10 * 60 || userTurns >= 12;
+    if (!enough && !timeUp) {
+      setNotice(`talk a bit longer — a real read needs ~10 minutes together 🙂`);
+      setTimeout(() => setNotice(null), 3500);
       return;
     }
-    setPhase("finishing");
-    setErr(null);
+    setPhase("ending");
+    setEndPhase("deciding");
     try {
-      const { resultId } = await matchApi.finishDate({
+      const { resultId: rid } = await matchApi.finishDate({
         conversationId: date.conversationId,
         personaId: date.persona.id,
         sceneId: date.scene.id,
         language: date.language,
-        messages: msgs,
+        age: date.persona.age,
+        elapsedSec,
+        messages,
       });
-      router.push(`/date/report/${resultId}`);
+      setResultId(rid);
+      // small beat so the "deciding" moment lands
+      await new Promise((r) => setTimeout(r, 1200));
+      if (anonRef.current) setEndPhase("gate");
+      else router.push(`/date/report/${rid}`);
     } catch (e) {
-      const m = e as { message?: string };
-      setErr(m.message || "couldn't build the report — try again");
-      setPhase("dating");
+      setEndErr((e as { message?: string })?.message ?? "something went wrong");
+      setEndPhase("error");
     }
   }
 
-  // ── Render ──
+  const leave = () => router.push("/");
+
+  // ── render ──
   if (phase === "loading") {
-    return <Centered><p className="font-serif italic text-ink-mute">setting the scene…</p></Centered>;
+    return <div className="flex min-h-[100dvh] items-center justify-center"><p className="font-display italic text-ink-mute">setting the scene…</p></div>;
+  }
+  if (phase === "error" || !cfg) {
+    return <div className="flex min-h-[100dvh] items-center justify-center"><p className="font-display italic text-red">couldn&apos;t load. refresh?</p></div>;
   }
 
-  if (phase === "gate") {
+  if (phase === "prefs") {
     return (
-      <Centered>
+      <Preferences
+        cfg={cfg} you={you} meet={meet} ageBand={ageBand}
+        onYou={setYou} onMeet={setMeet} onAge={setAgeBand}
+        onNext={() => {
+          try { localStorage.setItem("uc:datePrefs", JSON.stringify({ you, meet, ageBand })); } catch { /* ignore */ }
+          setPhase("characters");
+        }}
+        onLeave={leave}
+      />
+    );
+  }
+
+  if (phase === "characters") {
+    return (
+      <CharacterPicker
+        cfg={cfg} meet={meet} ageBand={ageBand} selectedId={personaId}
+        onSelect={pickPersona} onNext={() => personaId && setPhase("scene")} onLeave={leave}
+      />
+    );
+  }
+
+  if (phase === "scene" && card) {
+    return (
+      <ScenePicker
+        cfg={cfg} personaName={card.name} personaEmoji={sceneCard?.emoji ?? "💘"}
+        sceneId={sceneId} controls={controls} onScene={pickScene} onControls={setControls}
+        onNext={() => sceneId && setPhase("anticipation")}
+        onChangePersona={() => setPhase("characters")} onLeave={leave}
+      />
+    );
+  }
+
+  if (phase === "anticipation" && card && sceneCard) {
+    return <Anticipation card={card} scene={sceneCard} controls={controls} age={ageForBand(card.id, ageBand)} onStart={beginDate} starting={starting} />;
+  }
+
+  if (phase === "authgate" && card) {
+    return (
+      <div className="flex min-h-[100dvh] items-center justify-center px-4 py-10">
         <div className="w-full max-w-sm text-center">
           <div className="text-4xl mb-2">💘</div>
-          <h1 className="font-display text-2xl text-ink mb-1">before your date…</h1>
-          <p className="font-serif italic text-ink-mute mb-5">log in so we can save your date &amp; your report.</p>
-          <UpgradeAccount forceShow title="log in to start your date" subtitle="takes a sec — then you're in 💫" onDone={() => window.location.reload()} />
+          <h1 className="font-display text-2xl text-ink mb-1">before you meet {card.name}…</h1>
+          <p className="font-serif italic text-ink-mute mb-4">log in or sign up — you&apos;ll drop right back into the date, same spot.</p>
+          <div className="rounded-2xl border-2 border-ink bg-paper-cool p-4 shadow-hard">
+            <UpgradeAccount forceShow title={`meet ${card.name}`} subtitle="takes a few seconds · then you're in" onDone={onAuthed} />
+          </div>
+          <button onClick={() => setPhase("anticipation")} className="mt-3 font-sans text-[12px] font-bold text-ink-mute underline">← back</button>
         </div>
-      </Centered>
+      </div>
     );
   }
 
-  if (phase === "pick" || phase === "starting") {
+  if (phase === "text" && card && date) {
     return (
-      <div className="min-h-full w-full overflow-y-auto px-4 py-8">
-        <div className="mx-auto w-full max-w-2xl">
-          <div className="text-center mb-6">
-            <div className="text-3xl mb-1">💘</div>
-            <h1 className="font-display text-3xl text-ink">an AI date</h1>
-            <p className="font-serif italic text-ink-mute mt-1">
-              a real first date with someone new. ~15 minutes. at the end, your Dating Report.
-            </p>
-          </div>
-
-          {err && <p className="text-center text-red text-sm font-sans mb-3">{err}</p>}
-
-          {/* Step 1 — who */}
-          <h2 className="font-sans text-xs font-bold uppercase tracking-wide text-ink-mute mb-2">1 · who are you meeting?</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
-            {cfg?.personas.map((p) => {
-              const active = p.id === personaId;
-              return (
-                <button
-                  key={p.id}
-                  onClick={() => {
-                    setPersonaId(p.id);
-                    setSceneId(p.defaultSceneId);
-                  }}
-                  className={`text-left rounded-2xl border-2 p-3 transition ${
-                    active ? "border-ink bg-paper-cool shadow-hard" : "border-ink/30 bg-paper-warm hover:border-ink shadow-hard-xs"
-                  }`}
-                >
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <DateAvatar avatarId={p.avatarId} size={44} />
-                    <div className="min-w-0">
-                      <div className="font-sans text-sm font-bold text-ink truncate">{p.name}, {p.age}</div>
-                      <div className="font-serif italic text-[11px] text-[#8b6fb8] truncate">{p.occupation}</div>
-                    </div>
-                  </div>
-                  <p className="font-mono text-[11px] leading-snug text-ink-soft line-clamp-3">{p.blurb}</p>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Step 2 — where */}
-          <h2 className="font-sans text-xs font-bold uppercase tracking-wide text-ink-mute mb-2">2 · where?</h2>
-          <div className="flex flex-wrap gap-2 mb-6">
-            {scenesFor(persona).map((s) => {
-              const active = s.id === sceneId;
-              return (
-                <button
-                  key={s.id}
-                  onClick={() => setSceneId(s.id)}
-                  className={`rounded-full border-2 px-3 py-1.5 font-sans text-[12px] font-bold transition ${
-                    active ? "border-ink bg-lilac text-ink shadow-hard-xs" : "border-ink/30 bg-paper-warm text-ink-soft hover:border-ink"
-                  }`}
-                >
-                  <span className="mr-1">{s.emoji}</span>
-                  {s.location} · {s.time}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* 18+ + start */}
-          <label className="flex items-center gap-2 justify-center mb-4 cursor-pointer select-none">
-            <input type="checkbox" checked={ageOk} onChange={(e) => setAgeOk(e.target.checked)} className="h-4 w-4 accent-red" />
-            <span className="font-serif italic text-sm text-ink-mute">i&apos;m 18 or older &amp; here for a sweet, respectful date</span>
-          </label>
-
-          <button
-            onClick={startDate}
-            disabled={!personaId || !ageOk || phase === "starting"}
-            className="mx-auto block rounded-full border-2 border-ink bg-red px-8 py-3 font-sans text-sm font-bold text-paper-cool shadow-hard hover:shadow-hard-lg disabled:opacity-40 disabled:shadow-hard-xs transition"
-          >
-            {phase === "starting" ? "walking in…" : persona ? `start the date with ${persona.name} →` : "pick someone first"}
-          </button>
-        </div>
-      </div>
+      <TextDate
+        card={card} date={date} controls={controls} messages={messages} typing={typing}
+        remaining={remaining} durationSec={date.durationSec} timeUp={timeUp}
+        input={input} sending={sending} onInput={setInput} onSend={send} onOpener={sendText}
+        onEnd={endDate} onSwitchVoice={() => setPhase("voice")} onLeave={leave} notice={notice}
+      />
     );
   }
 
-  // dating / finishing
-  const name = date?.persona.name ?? "them";
-  const mm = remaining != null ? Math.floor(remaining / 60) : null;
-  const ss = remaining != null ? String(remaining % 60).padStart(2, "0") : null;
+  if (phase === "voice" && card && date) {
+    return (
+      <VoiceDate
+        card={card} date={date} controls={controls} remaining={remaining} timeUp={timeUp}
+        lastLine={lastAssistant} thinking={typing} onUserSpeech={sendText}
+        onBackToText={() => setPhase("text")} onEnd={endDate} onLeave={leave}
+      />
+    );
+  }
 
-  return (
-    <div className="relative flex flex-col h-full w-full">
-      {date && <SceneBackdrop theme={date.scene.visualTheme} />}
+  if (phase === "ending" && card && date) {
+    return (
+      <Ending
+        card={card} date={date} phase={endPhase} errorMessage={endErr}
+        onSignedUp={() => resultId && router.push(`/date/report/${resultId}`)}
+        onRetry={endDate}
+      />
+    );
+  }
 
-      <header className="relative z-10 flex items-center gap-2.5 px-4 py-3 border-b-[1.5px] border-dashed border-ink/40 flex-shrink-0 bg-paper-cool/70 backdrop-blur-sm">
-        {date && <DateAvatar avatarId={date.persona.avatarId} size={38} />}
-        <div className="min-w-0 flex-1">
-          <div className="font-sans text-sm font-bold text-ink truncate">{name}</div>
-          <div className="font-serif italic text-[12px] text-[#8b6fb8] truncate">
-            {date?.scene.emoji} {date?.scene.location} · {date?.scene.time}
-          </div>
-        </div>
-        {mm != null && (
-          <span className={`font-mono text-[12px] font-bold rounded-full border-[1.5px] border-ink px-2.5 py-1 ${timeUp ? "bg-red text-paper-cool" : "bg-paper-cool text-ink"}`}>
-            {timeUp ? "time's up" : `${mm}:${ss}`}
-          </span>
-        )}
-        <button
-          onClick={endDate}
-          disabled={phase === "finishing"}
-          className="flex-shrink-0 rounded-full border-[1.5px] border-ink bg-yellow px-3 py-1.5 font-sans text-[12px] font-bold text-ink shadow-hard-xs hover:bg-yellow-soft disabled:opacity-50"
-        >
-          {phase === "finishing" ? "scoring…" : "end date"}
-        </button>
-      </header>
-
-      <div ref={scrollRef} className="relative z-10 flex-1 min-h-0 overflow-y-auto px-5 py-4 flex flex-col">
-        <div className="mt-auto">
-          {msgs.map((m, i) => (
-            <div key={i} className="mb-2 font-mono text-[13.5px] leading-[1.7] break-words">
-              <span className={`font-semibold mr-1.5 ${m.role === "user" ? "text-you" : "text-stranger"}`}>
-                {m.role === "user" ? "you" : name.toLowerCase()}:
-              </span>
-              <span className="text-ink whitespace-pre-wrap">{m.content}</span>
-            </div>
-          ))}
-          {typing && <TypingIndicator />}
-          {timeUp && phase === "dating" && (
-            <p className="text-center font-serif italic text-ink-mute mt-4">
-              your time&apos;s up 💫 wrap it up &amp; tap <b>end date</b> for your report.
-            </p>
-          )}
-        </div>
-      </div>
-
-      {err && <p className="relative z-10 text-center text-red text-[12px] font-sans pb-1">{err}</p>}
-
-      <div className="relative z-10 px-4 pt-3 pb-5 flex-shrink-0">
-        <div
-          onClick={() => document.getElementById("date-input")?.focus()}
-          className="flex gap-1.5 items-center bg-paper-cool border-2 border-ink rounded-2xl p-[3px] shadow-hard-sm"
-        >
-          <input
-            id="date-input"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                send();
-              }
-            }}
-            placeholder={`say something to ${name}…`}
-            className="flex-1 bg-transparent border-none px-2 py-2 font-mono text-[13px] text-ink outline-none min-w-0 placeholder:font-serif placeholder:italic placeholder:text-ink-mute"
-          />
-          <button
-            onClick={send}
-            disabled={!input.trim() || sending}
-            aria-label="send"
-            className="bg-red text-paper-cool border-2 border-ink rounded-full h-10 w-10 flex items-center justify-center text-lg font-bold flex-shrink-0 shadow-hard-xs disabled:opacity-40"
-          >
-            →
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function Centered({ children }: { children: React.ReactNode }) {
-  return <div className="flex items-center justify-center min-h-full w-full px-4 py-10">{children}</div>;
+  return null;
 }

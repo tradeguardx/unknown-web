@@ -122,19 +122,35 @@ export interface DatePersonaCard {
   gender: string;
   occupation: string;
   avatarId: string;
+  photoUrl?: string | null;
   defaultSceneId: string;
+  archetypeLabel: string;
+  traits: string[];
+  quote: string;
+  chips: { emoji: string; label: string }[];
+  vibe: "soft" | "sharp" | "weird";
+  stripeColor: string;
   tags: string[];
-  blurb: string;
+  voiceId?: string | null;
+  voiceStability?: number | null;
+  voiceStyle?: number | null;
 }
 export interface DateSceneCard {
   id: string;
+  label: string;
+  subtitle: string;
   location: string;
   time: string;
   weather: string;
   ambience: string;
+  sound: boolean;
+  howItChanges: string;
   visualTheme: string;
+  darkTheme: { from: string; via: string; to: string };
   backgroundSounds: string[];
+  ambientAudio?: string | null;
   emoji: string;
+  cardImage?: string | null;
 }
 export interface DateConfig {
   experiences: { id: string; name: string; description: string; objective: string; durationSec: number; modalities: string[]; entitlement: string; minAge: number | null }[];
@@ -174,7 +190,7 @@ export interface DateResultResponse {
   id: string;
   experienceType: string;
   resultType: string;
-  meta: { personaName?: string; personaOccupation?: string; avatarId?: string; sceneId?: string | null; sceneEmoji?: string } | null;
+  meta: { personaName?: string; personaOccupation?: string; avatarId?: string; photoUrl?: string | null; stripeColor?: string; archetypeLabel?: string; sceneId?: string | null; sceneEmoji?: string; sceneLabel?: string | null } | null;
   isOwner: boolean;
   unlocked: boolean;
   createdAt: string;
@@ -297,7 +313,7 @@ export const matchApi = {
   },
   // Start a date → creates the framed conversation server-side, returns ids +
   // public persona/scene + the opener. Needs a (logged-in) Bearer token.
-  async startDate(input: { personaId: string; sceneId?: string; language?: string }): Promise<DateStart> {
+  async startDate(input: { personaId: string; sceneId?: string; language?: string; weather?: string; time?: string; age?: number }): Promise<DateStart> {
     const token = await getToken();
     const res = await fetch("/api/date/start", {
       method: "POST",
@@ -314,6 +330,8 @@ export const matchApi = {
     personaId: string;
     sceneId?: string;
     language?: string;
+    age?: number;
+    elapsedSec?: number;
     messages: { role: "user" | "assistant"; content: string }[];
   }): Promise<{ resultId: string }> {
     const token = await getToken();

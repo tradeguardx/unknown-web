@@ -22,7 +22,7 @@ export async function POST(req: Request) {
   }
 
   const body = await req.json().catch(() => ({}));
-  const { conversationId, personaId, sceneId, language } = body;
+  const { conversationId, personaId, sceneId, language, elapsedSec, age } = body;
   if (!conversationId) return NextResponse.json({ error: "conversationId required" }, { status: 400 });
 
   const seed = personaId ? getCuratedPersona(String(personaId)) : null;
@@ -36,8 +36,11 @@ export async function POST(req: Request) {
   const messages = (Array.isArray(body.messages) ? (body.messages as InMsg[]) : [])
     .filter((m) => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
     .map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
-  if (messages.filter((m) => m.role === "user").length < 3) {
-    return NextResponse.json({ error: "TOO_SHORT", message: "the date was too short to score" }, { status: 422 });
+  // A real read needs a real conversation: ~10 min of discussion, or a long chat.
+  const userTurns = messages.filter((m) => m.role === "user").length;
+  const elapsed = typeof elapsedSec === "number" ? elapsedSec : 0;
+  if (userTurns < 3 || (elapsed < 10 * 60 && userTurns < 12)) {
+    return NextResponse.json({ error: "TOO_SHORT", message: "the date was too short to score — talk ~10 minutes" }, { status: 422 });
   }
 
   const ctx: ResultContext = {
@@ -45,24 +48,35 @@ export async function POST(req: Request) {
     scene,
     persona: {
       name: seed.design.name ?? seed.occupation,
-      age: seed.design.age ?? 25,
+      age: typeof age === "number" && age >= 18 ? Math.round(age) : seed.design.age ?? 25,
       gender: seed.design.gender,
     },
     messages,
     language: typeof language === "string" ? language : seed.design.language,
   };
 
-  const report = await runResult(ctx);
+  let report: unknown | null = null;
+  try {
+    report = await runResult(ctx);
+  } catch (e) {
+    console.error("[date/finish] report generation threw:", e);
+    return NextResponse.json({ error: "REPORT_FAILED", message: `report error: ${e instanceof Error ? e.message : String(e)}` }, { status: 502 });
+  }
   if (!report) {
-    return NextResponse.json({ error: "REPORT_FAILED", message: "couldn't generate the report" }, { status: 502 });
+    console.warn("[date/finish] runResult returned null (LLM/JSON) — check DEEPSEEK/SARVAM keys reachable from the web app");
+    return NextResponse.json({ error: "REPORT_FAILED", message: "couldn't generate the report (LLM returned nothing)" }, { status: 502 });
   }
 
   const meta = {
     personaName: seed.design.name,
     personaOccupation: seed.occupation,
     avatarId: seed.avatarId,
+    photoUrl: seed.photoUrl ?? null,
+    stripeColor: seed.stripeColor,
+    archetypeLabel: seed.archetypeLabel,
     sceneId: scene?.id ?? null,
     sceneEmoji: scene?.emoji ?? "💘",
+    sceneLabel: scene?.label ?? null,
   };
 
   const res = await fetch(`${MATCH_API}/conversations/${conversationId}/result`, {
@@ -76,7 +90,13 @@ export async function POST(req: Request) {
     }),
   });
   const stored = await res.json().catch(() => ({}));
-  if (!res.ok) return NextResponse.json(stored, { status: res.status });
+  if (!res.ok) {
+    console.error("[date/finish] store failed:", res.status, JSON.stringify(stored).slice(0, 300));
+    return NextResponse.json(
+      { error: "STORE_FAILED", message: stored?.error?.message || `store failed (${res.status})` },
+      { status: res.status },
+    );
+  }
   const data = stored.data ?? stored;
 
   return NextResponse.json({ resultId: data.resultId });
