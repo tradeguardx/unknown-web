@@ -225,11 +225,10 @@ export function PlusSubscribe() {
         <button
           onClick={() => buy("subscription")}
           disabled={busy || acct === null}
-          className="om-cta relative mt-auto w-full overflow-hidden rounded-xl border-2 border-ink bg-red px-5 py-3 font-sans font-bold tracking-tight text-paper-cool"
+          className="om-cta mt-auto w-full rounded-xl border-2 border-ink bg-red px-5 py-3 font-sans font-bold tracking-tight text-paper-cool"
           style={{ boxShadow: "4px 4px 0 #111" }}
         >
-          <span className="om-shimmer pointer-events-none absolute inset-0" aria-hidden />
-          <span className="relative z-10">{busy ? "opening checkout…" : acct === null ? "…" : acct.loggedIn ? cta : "log in to subscribe →"}</span>
+          {busy ? "opening checkout…" : acct === null ? "…" : acct.loggedIn ? cta : "log in to subscribe →"}
         </button>
         <p className="mt-2 font-display text-[14px] text-ink-mute">cancel anytime · 7-day refund</p>
       </Card>
