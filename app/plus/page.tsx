@@ -8,11 +8,11 @@ import { PlusSubscribe } from "@/components/match/PlusSubscribe";
 export const metadata: Metadata = {
   title: { absolute: "unknown plus — unlimited chats, saved forever | unknown.chat" },
   description:
-    "unknown plus keeps your conversations going: save & resume any chat, unlimited messages, strangers who never skip out — from $2.99/month, local currency at checkout.",
+    "unknown plus keeps your conversations going: save & resume any chat, unlimited messages, strangers who never skip out — from $4.99/month, local currency at checkout.",
   alternates: { canonical: `${SITE_URL}/plus` },
   openGraph: {
     title: "unknown plus — unlimited chats, saved forever",
-    description: "Save & resume chats, unlimited messages, no skips. From $2.99/mo.",
+    description: "Save & resume chats, unlimited messages, no skips. From $4.99/mo.",
     url: `${SITE_URL}/plus`,
   },
 };

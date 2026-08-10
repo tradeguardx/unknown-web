@@ -182,7 +182,7 @@ export function PlusSubscribe() {
     <>
       {/* Day pass card — shown first (lowest-friction entry, $1) */}
       <Card>
-        <div className="font-sans text-[11px] font-bold uppercase tracking-[0.18em] text-ink-mute">day pass</div>
+        <div className="font-sans text-[11px] font-bold uppercase tracking-[0.18em] text-ink-mute">2-day pass</div>
         <div className="mt-1.5 inline-flex items-baseline gap-1.5">
           <span className="font-sans text-4xl font-bold text-ink">{dayPassLabel}</span>
           <span className="font-display text-ink-mute">one-time</span>
@@ -192,7 +192,7 @@ export function PlusSubscribe() {
           Keep talking. Keep matching. Keep every connection.
         </p>
         <p className="mt-1 font-display text-[13px] text-ink-soft">
-          Unlimited conversations for the next 24 hours.
+          Unlimited conversations for the next 2 days.
         </p>
 
         <ul className="mt-3.5 space-y-2.5">
@@ -211,7 +211,7 @@ export function PlusSubscribe() {
           disabled={busy || acct === null}
           className="mt-5 w-full rounded-xl border-2 border-ink bg-ink px-5 py-3 font-sans font-bold tracking-tight text-paper-cool shadow-hard transition-transform hover:-translate-y-0.5 disabled:opacity-60"
         >
-          {busy ? "opening…" : acct === null ? "…" : acct.loggedIn ? `get day pass · ${dayPassLabel}` : "log in to get day pass →"}
+          {busy ? "opening…" : acct === null ? "…" : acct.loggedIn ? `get 2-day pass · ${dayPassLabel}` : "log in to get 2-day pass →"}
         </button>
       </Card>
 

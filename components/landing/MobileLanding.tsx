@@ -62,7 +62,7 @@ export function MobileLanding({ testimonials }: { testimonials?: TestimonialsDat
             <div className="min-w-0">
               <div className="mb-1.5 flex flex-wrap items-center gap-2">
                 <span className="rounded-full border-[1.5px] border-ink bg-yellow px-2.5 py-0.5 font-sans text-[12px] font-bold tracking-tight text-ink -rotate-1">
-                  ✨ from $2.99/mo
+                  ✨ from $4.99/mo
                 </span>
                 <span className="inline-flex items-center gap-1 font-display text-[12px] font-bold text-ink-soft">
                   <span className="h-[6px] w-[6px] rounded-full bg-red live-blink" aria-hidden />
