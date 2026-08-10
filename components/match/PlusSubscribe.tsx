@@ -11,6 +11,7 @@
 // rest). On success Dodo returns to ?return=<url> (the chat the user came from)
 // so the conversation resumes after paying; otherwise back here.
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { matchApi } from "@/lib/matchApi";
 import { useAccount, clearAccountCache } from "@/lib/useAccount";
@@ -180,66 +181,84 @@ export function PlusSubscribe() {
 
   return (
     <>
-    <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
-      {/* 2-day pass card — lowest-friction entry */}
+    <div className="grid gap-4 lg:grid-cols-[.86fr_1fr_.86fr] lg:items-stretch">
+      {/* FREE */}
+      <Card>
+        <div className="font-sans text-[11px] font-bold uppercase tracking-[0.18em] text-ink-mute">free</div>
+        <div className="mt-1.5 inline-flex items-baseline gap-1.5">
+          <span className="font-sans text-4xl font-bold text-ink">$0</span>
+          <span className="font-display text-[16px] text-ink-mute">forever</span>
+        </div>
+        <p className="mt-2.5 font-serif italic text-[15px] leading-snug text-ink-soft">
+          The 3am version. Good enough that most people never leave.
+        </p>
+        <ul className="mt-4 space-y-2.5">
+          <Feature>stranger chat, unlimited</Feature>
+          <Feature>1 AI date a day</Feature>
+          <Feature no>20-minute cap on chats</Feature>
+          <Feature no>nothing is saved</Feature>
+        </ul>
+        <Link href="/" className="om-cta mt-auto pt-5">
+          <span className="block w-full rounded-xl border-2 border-ink bg-paper-cool px-5 py-3 font-sans font-bold tracking-tight text-ink">
+            you&apos;re on this →
+          </span>
+        </Link>
+      </Card>
+
+      {/* PLUS — the pick */}
+      <Card highlight>
+        <span className="absolute -top-3 left-1/2 -translate-x-1/2 -rotate-2 rounded-full border-[1.5px] border-ink bg-red px-3 py-0.5 font-sans text-[11px] font-bold text-paper-cool whitespace-nowrap">
+          most people pick this
+        </span>
+        <div className="font-sans text-[11px] font-bold uppercase tracking-[0.18em] text-ink-mute">unknown plus</div>
+        <div className="mt-1 inline-flex items-baseline gap-1.5">
+          <span className="font-sans text-5xl font-bold text-ink">{priceLabel ?? "…"}</span>
+          <span className="font-display text-[16px] text-ink-mute">/ month</span>
+        </div>
+        <ul className="mt-4 space-y-2.5">
+          <Feature icon="♾️">everything in free, <b>no limits</b></Feature>
+          <Feature icon="🎙️"><b>unlimited voice dates</b> — talk as long as you like</Feature>
+          <Feature icon="💘"><b>full transcript + her private notes</b></Feature>
+          <Feature icon="💞">unlimited AI dates, match anyone</Feature>
+          <Feature icon="💾">save every chat — any device</Feature>
+          <Feature icon="🧠">they remember you &amp; grow with every chat</Feature>
+        </ul>
+        <button
+          onClick={() => buy("subscription")}
+          disabled={busy || acct === null}
+          className="om-cta relative mt-auto w-full overflow-hidden rounded-xl border-2 border-ink bg-red px-5 py-3 font-sans font-bold tracking-tight text-paper-cool shadow-hard"
+        >
+          <span className="om-shimmer absolute inset-0" aria-hidden />
+          <span className="relative">{busy ? "opening checkout…" : acct === null ? "…" : acct.loggedIn ? cta : "log in to subscribe →"}</span>
+        </button>
+        <p className="mt-2 font-display text-[14px] text-ink-mute">cancel anytime · 7-day refund, no questions</p>
+      </Card>
+
+      {/* 2-DAY PASS */}
       <Card>
         <div className="font-sans text-[11px] font-bold uppercase tracking-[0.18em] text-ink-mute">2-day pass</div>
         <div className="mt-1.5 inline-flex items-baseline gap-1.5">
           <span className="font-sans text-4xl font-bold text-ink">{dayPassLabel}</span>
-          <span className="font-display text-ink-mute">one-time</span>
+          <span className="font-display text-[16px] text-ink-mute">one-time</span>
         </div>
-
-        <p className="mt-2.5 font-sans text-[15px] font-bold leading-snug tracking-tight text-ink">
-          Keep talking. Keep matching. Keep every connection.
+        <p className="mt-2.5 font-serif italic text-[15px] leading-snug text-ink-soft">
+          For a weekend, or one night you don&apos;t want to end.
         </p>
-        <p className="mt-1 font-display text-[13px] text-ink-soft">
-          Unlimited conversations for the next 2 days.
-        </p>
-
-        <ul className="mt-3.5 space-y-2.5">
-          <Feature icon="♾️">unlimited chats — no time limit</Feature>
-          <Feature icon="💘">match as many people as you want</Feature>
-          <Feature icon="💾">save every chat &amp; pick up anytime</Feature>
-          <Feature icon="🧠">they remember you &amp; grow with every chat</Feature>
+        <ul className="mt-4 space-y-2.5">
+          <Feature icon="♾️">everything in plus, for 48 hours</Feature>
+          <Feature icon="🎙️">unlimited voice dates</Feature>
+          <Feature icon="💾">save &amp; pick up while it&apos;s active</Feature>
+          <Feature no>chats expire when it ends</Feature>
         </ul>
-
-        <p className="mt-3.5 font-display text-[12px] text-ink-mute">
-          no subscription · no autorenew · non-refundable
-        </p>
-
         <button
           onClick={() => buy("daypass")}
           disabled={busy || acct === null}
-          className="mt-5 w-full rounded-xl border-2 border-ink bg-ink px-5 py-3 font-sans font-bold tracking-tight text-paper-cool shadow-hard transition-transform hover:-translate-y-0.5 disabled:opacity-60"
+          className="om-cta mt-auto w-full rounded-xl border-2 border-ink bg-ink px-5 py-3 font-sans font-bold tracking-tight text-paper-cool"
+          style={{ boxShadow: "4px 4px 0 #e8503f" }}
         >
           {busy ? "opening…" : acct === null ? "…" : acct.loggedIn ? `get 2-day pass · ${dayPassLabel}` : "log in to get 2-day pass →"}
         </button>
-      </Card>
-
-      {/* Subscription card */}
-      <Card>
-        <div className="inline-flex items-baseline gap-1.5">
-          <span className="font-sans text-4xl font-bold text-ink">{priceLabel ?? "…"}</span>
-          <span className="font-display text-ink-mute">/ month</span>
-        </div>
-        <p className="mt-2 font-display text-[13px] text-ink-mute">
-          shown in your local currency · cancel anytime · 7-day refund
-        </p>
-
-        <ul className="mt-4 space-y-2.5">
-          <Feature icon="♾️">unlimited chats — no 20-minute limit</Feature>
-          <Feature icon="💘">match as many people as you want</Feature>
-          <Feature icon="💾">save every chat &amp; pick up anytime</Feature>
-          <Feature icon="🧠">they remember you &amp; grow with every chat</Feature>
-        </ul>
-
-        <button
-          onClick={() => buy("subscription")}
-          disabled={busy || acct === null}
-          className="mt-5 w-full rounded-xl border-2 border-ink bg-paper-cool px-5 py-3 font-sans font-bold tracking-tight text-ink shadow-hard-xs transition-transform hover:-translate-y-0.5 disabled:opacity-60"
-        >
-          {busy ? "opening checkout…" : acct === null ? "…" : acct.loggedIn ? cta : "log in to subscribe →"}
-        </button>
+        <p className="mt-2 font-display text-[14px] text-ink-mute">non-refundable</p>
       </Card>
     </div>
 
@@ -276,18 +295,24 @@ export function PlusSubscribe() {
   );
 }
 
-function Feature({ icon, children }: { icon: string; children: React.ReactNode }) {
+function Feature({ icon, children, no }: { icon?: string; children: React.ReactNode; no?: boolean }) {
   return (
-    <li className="flex items-start gap-2.5 text-left">
-      <span className="mt-px text-[15px] leading-none" aria-hidden>{icon}</span>
-      <span className="font-sans text-[13.5px] leading-snug text-ink">{children}</span>
+    <li className={`flex items-start gap-2.5 text-left ${no ? "text-ink-mute" : "text-ink"}`}>
+      <span className={`mt-px text-[15px] leading-none ${no ? "text-ink-faint" : ""}`} aria-hidden>{icon ?? (no ? "✕" : "✓")}</span>
+      <span className="font-sans text-[13.5px] leading-snug">{children}</span>
     </li>
   );
 }
 
-function Card({ children }: { children: React.ReactNode }) {
+function Card({ children, highlight }: { children: React.ReactNode; highlight?: boolean }) {
   return (
-    <div className="rounded-3xl border-[2.5px] border-ink bg-paper-cool p-6 text-center shadow-hard -rotate-[0.3deg]">
+    <div
+      className={`relative flex h-full flex-col rounded-3xl border-[2.5px] border-ink p-6 text-center ${
+        highlight
+          ? "bg-gradient-to-br from-[#FBDDD6] via-[#EFE0F2] to-[#F8F0CE] shadow-hard-lg lg:-my-2"
+          : "bg-paper-cool shadow-hard -rotate-[0.3deg]"
+      }`}
+    >
       {children}
     </div>
   );

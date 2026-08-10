@@ -37,7 +37,7 @@ export default function PlusPage() {
       <SiteHeader />
 
       <main className="flex-1">
-        <div className="max-w-3xl mx-auto px-4 py-10">
+        <div className="max-w-5xl mx-auto px-4 py-10">
           <p className="text-xs text-ink-mute">
             <Link href="/" className="hover:text-ink">← back</Link>
           </p>
@@ -52,10 +52,13 @@ export default function PlusPage() {
             </p>
           </div>
 
-          {/* Live subscribe cards — geo-priced, account-aware (side by side on desktop) */}
-          <div className="mt-7 max-w-sm lg:max-w-3xl mx-auto">
+          {/* Live tier cards — geo-priced, account-aware (Free · Plus · 2-day) */}
+          <div className="mt-7 max-w-sm lg:max-w-5xl mx-auto">
             <PlusSubscribe />
           </div>
+
+          {/* what actually changes — comparison */}
+          <ComparisonTable />
 
           {/* Hero feature — one bigger than the rest (Apple-style) */}
           <div className="mt-10 relative overflow-hidden rounded-3xl border-[2.5px] border-ink bg-gradient-to-br from-lilac/55 via-paper-cool to-yellow/40 p-6 lg:p-8 shadow-hard -rotate-[0.4deg]">
@@ -94,5 +97,48 @@ export default function PlusPage() {
 
       <SiteFooter />
     </div>
+  );
+}
+
+// "what actually changes" — the honest Free-vs-Plus comparison. Free stated
+// plainly (a table where free looks useless reads as a trick).
+function ComparisonTable() {
+  const rows: [string, string, string][] = [
+    ["stranger chat", "unlimited", "unlimited"],
+    ["time per chat", "20 minutes", "no limit"],
+    ["AI dates", "1 per day", "unlimited"],
+    ["dating report", "score + summary", "+ transcript & her notes"],
+    ["voice mode", "5-min trial", "unlimited"],
+    ["saved chats", "—", "every one, any device"],
+    ["they remember you", "—", "yes"],
+    ["skips", "they can leave", "nobody leaves"],
+  ];
+  return (
+    <section className="mt-14">
+      <h2 className="mb-4 text-center font-sans text-2xl lg:text-3xl font-bold tracking-tight text-ink">what actually changes</h2>
+      <div className="overflow-x-auto rounded-2xl border-2 border-ink">
+        <table className="w-full border-collapse text-left">
+          <thead>
+            <tr className="bg-ink font-sans text-[11px] uppercase tracking-wide text-paper-cool">
+              <th className="px-3 py-3 font-bold"> </th>
+              <th className="px-3 py-3 font-bold text-paper-cool/70">free</th>
+              <th className="px-3 py-3 font-bold text-red">plus</th>
+            </tr>
+          </thead>
+          <tbody className="font-sans text-[13px]">
+            {rows.map(([label, free, plus], i) => (
+              <tr key={i} className="border-t border-dashed border-ink/20">
+                <td className="px-3 py-3 font-bold text-ink">{label}</td>
+                <td className="px-3 py-3 text-ink-mute">{free}</td>
+                <td className="px-3 py-3 font-bold text-ink" style={{ background: "rgba(232,80,63,0.07)" }}>{plus}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="mt-4 text-center font-serif italic text-[15px] text-ink-mute">
+        try it free first. if the timer never bothers you, don&apos;t pay us.
+      </p>
+    </section>
   );
 }
