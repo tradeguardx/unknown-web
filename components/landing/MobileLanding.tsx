@@ -18,7 +18,6 @@ import { HomeFAQ } from "./HomeFAQ";
 import { MiniChat } from "./MiniChat";
 import { DateBanner } from "./DateBanner";
 import { TwoDoors } from "./TwoDoors";
-import { ReviewsSection } from "./ReviewsSection";
 import { SiteFooter } from "@/components/SiteFooter";
 import type { TestimonialsData } from "@/lib/testimonials";
 
@@ -51,8 +50,8 @@ export function MobileLanding({ testimonials }: { testimonials?: TestimonialsDat
         {/* two doors — separates the gradient banners + pitches stranger chat */}
         <TwoDoors onStranger={() => setSheetOpen(true)} />
 
-        {/* reviews — before the price */}
-        <ReviewsSection />
+        {/* reviews — HELD until real reviews exist (no fabricated ratings live).
+            Re-enable <ReviewsSection /> once we have genuine data. */}
 
         <Link
           href="/plus"
