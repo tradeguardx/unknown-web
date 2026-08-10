@@ -65,9 +65,10 @@ export default function DatePage() {
   // to text. Paid users (active pass or subscription) are never capped.
   const [paid, setPaid] = useState(false);
   const [voiceSec, setVoiceSec] = useState(0);
+  const [serverCapped, setServerCapped] = useState(false); // server said the window's up
   const [prices, setPrices] = useState({ pass: "$1.99", monthly: "$4.99" });
   const VOICE_FREE_SEC = 7 * 60;
-  const voiceCapped = !paid && voiceSec >= VOICE_FREE_SEC;
+  const voiceCapped = serverCapped || (!paid && voiceSec >= VOICE_FREE_SEC);
 
   useEffect(() => {
     detectCountry()
@@ -358,7 +359,7 @@ export default function DatePage() {
         card={card} date={date} controls={controls} remaining={remaining} timeUp={timeUp}
         lastLine={lastAssistant} thinking={typing} onUserSpeech={sendText}
         onBackToText={() => setPhase("text")} onEnd={endDate} onLeave={leave}
-        capped={voiceCapped} onGetPass={getPass} prices={prices}
+        capped={voiceCapped} onGetPass={getPass} onCapped={() => setServerCapped(true)} prices={prices}
       />
     );
   }

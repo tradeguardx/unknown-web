@@ -13,6 +13,7 @@ const MALE = process.env.ELEVENLABS_VOICE_MALE || "q8LPG9jwtX7MRuAmvkLs";
 // Flash = lowest latency (best for a live call). Override with ELEVENLABS_MODEL
 // (e.g. eleven_turbo_v2_5 / eleven_multilingual_v2) if you want more expressiveness.
 const MODEL = process.env.ELEVENLABS_MODEL || "eleven_flash_v2_5";
+const MATCH_API = process.env.MATCH_API_URL || "https://api.unknown.chat/match";
 
 // She should SAY her words, not narrate stage directions. Strip *actions*, bracket
 // tags and emojis so ElevenLabs voices only the real dialogue (natural laughter
@@ -31,9 +32,28 @@ export async function POST(req: Request) {
   const key = process.env.ELEVENLABS_API_KEY;
   if (!key) return NextResponse.json({ error: "VOICE_NOT_CONFIGURED" }, { status: 501 });
 
-  const { text, gender, voiceId, stability, style } = await req.json().catch(() => ({}));
+  const { text, gender, voiceId, stability, style, conversationId } = await req.json().catch(() => ({}));
   const clean = cleanForSpeech(String(text ?? "")).slice(0, 900);
   if (!clean) return NextResponse.json({ error: "text required" }, { status: 400 });
+
+  // Server-authoritative voice gate: 7 free voice minutes per date (measured on
+  // the conversation row), then paid-only. A refresh can't reset it.
+  const auth = req.headers.get("authorization") ?? "";
+  if (conversationId && auth.startsWith("Bearer ")) {
+    try {
+      const vc = await fetch(`${MATCH_API}/conversations/${conversationId}/voice-check`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: auth },
+      });
+      const j = await vc.json().catch(() => ({}));
+      const data = j.data ?? j;
+      if (vc.ok && data && data.allowed === false) {
+        return NextResponse.json({ error: "VOICE_CAPPED", remainingSec: data.remainingSec ?? 0 }, { status: 402 });
+      }
+    } catch {
+      /* fail-open: if the gate is unreachable, don't break the call */
+    }
+  }
 
   // Use the per-persona voice id (from the gender pool); fall back by gender.
   const realVoice = typeof voiceId === "string" && !voiceId.startsWith("eleven_") ? voiceId : null;

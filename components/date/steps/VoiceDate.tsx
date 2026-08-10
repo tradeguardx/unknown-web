@@ -13,6 +13,7 @@ import { DarkStage } from "../DarkStage";
 import { StripePhoto } from "../StripePhoto";
 import { AmbientAudio } from "../AmbientAudio";
 import { LeaveButton } from "../LeaveButton";
+import { matchApi } from "@/lib/matchApi";
 import type { DatePersonaCard, DateStart } from "@/lib/matchApi";
 import type { SceneControls } from "./ScenePicker";
 
@@ -30,6 +31,7 @@ interface Props {
   onLeave: () => void;
   capped?: boolean; // 7 free voice minutes used → paywall
   onGetPass?: (kind: "daypass" | "subscription") => void;
+  onCapped?: () => void; // server said the free window is up
   prices?: { pass: string; monthly: string };
   ending?: boolean;
 }
@@ -74,7 +76,7 @@ function MicPulse() {
 }
 const BAR_COLORS = ["#e64a3a", "#f5d967", "#b89dd4", "#5fa39a", "#e64a3a", "#f5d967", "#b89dd4", "#5fa39a", "#e64a3a", "#f5d967", "#b89dd4"];
 
-export function VoiceDate({ card, date, controls, remaining, timeUp, lastLine, thinking, onUserSpeech, onBackToText, onEnd, onLeave, capped, onGetPass, prices, ending }: Props) {
+export function VoiceDate({ card, date, controls, remaining, timeUp, lastLine, thinking, onUserSpeech, onBackToText, onEnd, onLeave, capped, onGetPass, onCapped, prices, ending }: Props) {
   const scene = date.scene;
   const [muted, setMuted] = useState(false);
   const [captions, setCaptions] = useState(true);
@@ -125,17 +127,25 @@ export function VoiceDate({ card, date, controls, remaining, timeUp, lastLine, t
     setSpeaking(true);
     setCaption(text);
     try {
+      const token = await matchApi.accessToken().catch(() => null);
       const res = await fetch("/api/date/tts", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({
           text,
           gender: card.gender,
           voiceId: card.voiceId ?? undefined,
           stability: card.voiceStability ?? undefined,
           style: card.voiceStyle ?? undefined,
+          conversationId: date.conversationId,
         }),
       });
+      if (res.status === 402) { // server: free voice window is up
+        setSpeaking(false);
+        busyRef.current = false;
+        onCapped?.();
+        return;
+      }
       if (!res.ok || !res.body) throw new Error(String(res.status));
 
       const a = new Audio();

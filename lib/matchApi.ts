@@ -303,6 +303,10 @@ export const matchApi = {
   createMatch: (m: { persona: unknown; displayName: string; avatar?: string; vibe?: string }) =>
     call<{ match: MatchedPersona }>("/matches", { method: "POST", body: JSON.stringify(m) }),
 
+  // Current Supabase access token (creates an anon session on first use). Used to
+  // authorize same-origin Next routes (e.g. /api/date/tts voice gating).
+  accessToken: () => getToken(),
+
   // ── AI Date experience ──
   // Picker config (experiences + scenes + persona cards). Public, no auth needed.
   async dateConfig(): Promise<DateConfig> {
