@@ -198,11 +198,10 @@ export function PlusSubscribe() {
           <Feature no>20-minute cap on chats</Feature>
           <Feature no>nothing is saved</Feature>
         </ul>
-        <Link href="/" className="om-cta mt-auto pt-5">
-          <span className="block w-full rounded-xl border-2 border-ink bg-paper-cool px-5 py-3 font-sans font-bold tracking-tight text-ink">
-            you&apos;re on this →
-          </span>
+        <Link href="/" className="om-cta mt-auto block w-full rounded-xl border-2 border-ink bg-paper-cool px-5 py-3 text-center font-sans font-bold tracking-tight text-ink">
+          you&apos;re on this →
         </Link>
+        <p className="mt-2 font-display text-[14px] text-ink-mute">always free — no card needed</p>
       </Card>
 
       {/* PLUS — the pick */}
@@ -231,7 +230,7 @@ export function PlusSubscribe() {
           <span className="om-shimmer absolute inset-0" aria-hidden />
           <span className="relative">{busy ? "opening checkout…" : acct === null ? "…" : acct.loggedIn ? cta : "log in to subscribe →"}</span>
         </button>
-        <p className="mt-2 font-display text-[14px] text-ink-mute">cancel anytime · 7-day refund, no questions</p>
+        <p className="mt-2 font-display text-[14px] text-ink-mute">cancel anytime · 7-day refund</p>
       </Card>
 
       {/* 2-DAY PASS */}

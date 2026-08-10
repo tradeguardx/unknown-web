@@ -65,13 +65,13 @@ export default function DatePage() {
   // to text. Paid users (active pass or subscription) are never capped.
   const [paid, setPaid] = useState(false);
   const [voiceSec, setVoiceSec] = useState(0);
-  const [prices, setPrices] = useState({ pass: "$2", monthly: "$4.99" });
+  const [prices, setPrices] = useState({ pass: "$1.99", monthly: "$4.99" });
   const VOICE_FREE_SEC = 7 * 60;
   const voiceCapped = !paid && voiceSec >= VOICE_FREE_SEC;
 
   useEffect(() => {
     detectCountry()
-      .then((cc) => setPrices(WEST.has((cc || "").toUpperCase()) ? { pass: "$3", monthly: "$8.99" } : { pass: "$2", monthly: "$4.99" }))
+      .then((cc) => setPrices(WEST.has((cc || "").toUpperCase()) ? { pass: "$2.99", monthly: "$8.99" } : { pass: "$1.99", monthly: "$4.99" }))
       .catch(() => {});
   }, []);
 
