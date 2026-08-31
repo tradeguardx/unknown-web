@@ -69,3 +69,6 @@ This v1 is intentionally minimal. Before public launch, add:
 ## Stack
 
 Next.js 15 · React 19 · TypeScript · Tailwind · Anthropic SDK · Claude Haiku 4.5
+
+
+<!-- Security scan triggered at 2026-08-31 16:38:31 -->
