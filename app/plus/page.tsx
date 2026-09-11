@@ -4,6 +4,7 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SITE_URL } from "@/lib/site";
 import { PlusSubscribe } from "@/components/match/PlusSubscribe";
+import { OfferBar } from "@/components/OfferBar";
 
 export const metadata: Metadata = {
   title: { absolute: "unknown plus — unlimited chats, saved forever | unknown.chat" },
@@ -34,6 +35,7 @@ const FEATURES: { emoji: string; title: string; desc: string }[] = [
 export default function PlusPage() {
   return (
     <div className="min-h-screen flex flex-col">
+      <OfferBar />
       <SiteHeader />
 
       <main className="flex-1">

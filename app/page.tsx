@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { MobileLanding } from "@/components/landing/MobileLanding";
+import { OfferBar } from "@/components/OfferBar";
 import { getTestimonials } from "@/lib/testimonials";
 import { SITE_URL, SITE_NAME } from "@/lib/site";
 
@@ -141,6 +142,7 @@ export default async function Landing() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(ld) }}
       />
+      <OfferBar />
       <MobileLanding testimonials={testimonials} />
     </>
   );
