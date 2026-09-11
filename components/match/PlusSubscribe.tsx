@@ -35,6 +35,16 @@ function fmtDate(iso: string | null): string {
   }
 }
 
+// 10% off a "$4.99"-style price label → "$4.49" (keeps the currency symbol).
+function discount10(label: string | null): string | null {
+  if (!label) return null;
+  const m = label.match(/^(\D*)([\d.,]+)(.*)$/);
+  if (!m) return null;
+  const n = parseFloat(m[2].replace(/,/g, ""));
+  if (!isFinite(n) || n <= 0) return null;
+  return `${m[1]}${(n * 0.9).toFixed(2)}${m[3]}`;
+}
+
 export function PlusSubscribe() {
   const acct = useAccount();
   const [priceLabel, setPriceLabel] = useState<string | null>(null);
@@ -178,6 +188,9 @@ export function PlusSubscribe() {
   // ── Not subscribed (or still loading) — the subscribe CTA ──
   const priceSuffix = priceLabel ? `${priceLabel}/mo` : "";
   const cta = priceLabel ? `subscribe · ${priceSuffix} →` : "subscribe →";
+  // FUN10 promo: 10% off monthly, auto-applied at Dodo checkout. Show the landed
+  // price so the offer bar's "claim" actually pays off on the card.
+  const discounted = discount10(priceLabel);
 
   return (
     <>
@@ -214,6 +227,12 @@ export function PlusSubscribe() {
           <span className="font-sans text-5xl font-bold text-ink">{priceLabel ?? "…"}</span>
           <span className="font-display text-[16px] text-ink-mute">/ month</span>
         </div>
+        {discounted && (
+          <div className="mt-2 inline-flex items-center gap-1.5 rounded-full border-[1.5px] border-ink bg-yellow px-2.5 py-1 font-sans text-[12px] font-bold text-ink">
+            🎉 code <span className="font-mono tracking-wide">FUN10</span> · 10% off →{" "}
+            <span className="tabular-nums">{discounted}/mo</span>
+          </div>
+        )}
         <ul className="mt-4 space-y-2.5">
           <Feature icon="♾️">everything in free, <b>no limits</b></Feature>
           <Feature icon="🎙️"><b>unlimited voice dates</b> — talk as long as you like</Feature>
