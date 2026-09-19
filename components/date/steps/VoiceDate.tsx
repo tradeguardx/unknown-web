@@ -1,14 +1,19 @@
 "use client";
 
-// The voice date — she actually speaks (ElevenLabs TTS via /api/date/tts) and you
-// reply with your mic (Web Speech API). Our own LLM still writes the words; this
-// screen just voices them and listens back.
+// The voice date — a REAL call. ElevenLabs Conversational AI runs the whole
+// duplex loop (mic capture, turn-taking, barge-in, the LLM reply, and her
+// speaking) over one live connection, so it feels like a phone call rather than
+// walkie-talkie. One shared agent is personalized per call via server-minted
+// overrides (spoken prompt + opener + her voice).
 //
-// Flow: her line → TTS plays (mic paused to avoid echo) → mic reopens → you speak →
-// transcript sent (onUserSpeech) → "thinking" → her reply → TTS … States are made
-// obvious: speaking (rings + badge) / thinking (slow ring) / listening (green dot).
+// Flow: ring → connect (signed URL + overrides) → she picks up and speaks the
+// opener → you just talk, interrupting freely → each final turn is reported up
+// (onTurn) so the report is built from the real transcript. The 7-min free
+// window + the 20-min date clock are enforced by the parent; when the window is
+// up we end the live session and show the paywall.
 
-import { useEffect, useRef, useState } from "react";
+import { useConversation } from "@elevenlabs/react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { DarkStage } from "../DarkStage";
 import { StripePhoto } from "../StripePhoto";
 import { AmbientAudio } from "../AmbientAudio";
@@ -23,9 +28,8 @@ interface Props {
   controls: SceneControls;
   remaining: number | null;
   timeUp: boolean;
-  lastLine: string;
-  thinking: boolean;
-  onUserSpeech: (text: string) => void;
+  age?: number;
+  onTurn: (role: "user" | "assistant", content: string) => void; // report each final turn up
   onBackToText: () => void;
   onEnd: () => void;
   onLeave: () => void;
@@ -37,6 +41,7 @@ interface Props {
 }
 
 const WEATHER_WORD: Record<string, string> = { snow: "snowing", rain: "raining", storm: "storming", fog: "foggy", clear: "clear" };
+const BAR_COLORS = ["#e64a3a", "#f5d967", "#b89dd4", "#5fa39a", "#e64a3a", "#f5d967", "#b89dd4", "#5fa39a", "#e64a3a", "#f5d967", "#b89dd4"];
 
 // A soft two-beat phone ringback via Web Audio (no asset needed).
 function playRingback(): () => void {
@@ -64,7 +69,6 @@ function playRingback(): () => void {
   }
 }
 
-// Expanding "you're being heard" circles shown while the user talks.
 function MicPulse() {
   return (
     <span className="relative inline-flex h-4 w-4 items-center justify-center align-middle">
@@ -74,196 +78,111 @@ function MicPulse() {
     </span>
   );
 }
-const BAR_COLORS = ["#e64a3a", "#f5d967", "#b89dd4", "#5fa39a", "#e64a3a", "#f5d967", "#b89dd4", "#5fa39a", "#e64a3a", "#f5d967", "#b89dd4"];
 
-export function VoiceDate({ card, date, controls, remaining, timeUp, lastLine, thinking, onUserSpeech, onBackToText, onEnd, onLeave, capped, onGetPass, onCapped, prices, ending }: Props) {
+export function VoiceDate({ card, date, controls, remaining, timeUp, age, onTurn, onBackToText, onEnd, onLeave, capped, onGetPass, onCapped, prices, ending }: Props) {
   const scene = date.scene;
   const [muted, setMuted] = useState(false);
   const [captions, setCaptions] = useState(true);
-  const [speaking, setSpeaking] = useState(false);
-  const [listening, setListening] = useState(false);
-  const [connecting, setConnecting] = useState(true); // brief "connecting…" until her first word
-  const [ringing, setRinging] = useState(true); // the call is ringing before she picks up
-  const [userSpeaking, setUserSpeaking] = useState(false); // you are talking (mic picking you up)
-  const [caption, setCaption] = useState(lastLine);
-  const [sttSupported, setSttSupported] = useState(true);
-  const [voiceError, setVoiceError] = useState(false);
+  const [ringing, setRinging] = useState(true);
+  const [caption, setCaption] = useState("");
+  const [voiceError, setVoiceError] = useState<string | null>(null);
+  const [micDenied, setMicDenied] = useState(false);
 
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const recRef = useRef<any>(null);
-  const activeRef = useRef(true);
-  const busyRef = useRef(false); // true while speaking (pause mic to avoid echo)
-  const spokenRef = useRef<string>("");
-  const mutedRef = useRef(muted);
-  mutedRef.current = muted;
-
+  const startedRef = useRef(false);
+  const endedRef = useRef(false);
+  const lastTurnRef = useRef<string>(""); // dedupe consecutive identical messages
   const mm = remaining != null ? Math.floor(remaining / 60) : null;
   const ss = remaining != null ? String(remaining % 60).padStart(2, "0") : null;
   const weatherWord = WEATHER_WORD[controls.weather] ?? controls.weather;
 
-  function stopSpeaking() {
-    const a = audioRef.current;
-    if (a) {
-      a.pause();
-      try { a.src = ""; } catch {}
-      audioRef.current = null;
-    }
-    setSpeaking(false);
-  }
+  const onMessage = useCallback((props: { message: string; source: string }) => {
+    const text = (props?.message ?? "").trim();
+    if (!text) return;
+    const role: "user" | "assistant" = props.source === "user" ? "user" : "assistant";
+    const key = `${role}:${text}`;
+    if (key === lastTurnRef.current) return; // drop exact repeats
+    lastTurnRef.current = key;
+    if (role === "assistant") setCaption(text);
+    onTurn(role, text);
+  }, [onTurn]);
 
-  function startMic() {
-    if (!activeRef.current || busyRef.current) return;
-    try { recRef.current?.start(); } catch {/* already started */}
-  }
-  function pauseMic() {
-    try { recRef.current?.stop(); } catch {}
-  }
+  const conversation = useConversation({
+    onConnect: () => { setRinging(false); },
+    onDisconnect: () => {},
+    onMessage,
+    onError: (e: unknown) => {
+      setVoiceError(typeof e === "string" ? e : "voice unavailable right now");
+    },
+  });
 
-  async function speak(text: string) {
-    if (!text || mutedRef.current) return;
-    stopSpeaking();
-    busyRef.current = true;
-    pauseMic();
-    setSpeaking(true);
-    setCaption(text);
-    try {
-      const token = await matchApi.accessToken().catch(() => null);
-      const res = await fetch("/api/date/tts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        body: JSON.stringify({
-          text,
-          gender: card.gender,
-          voiceId: card.voiceId ?? undefined,
-          stability: card.voiceStability ?? undefined,
-          style: card.voiceStyle ?? undefined,
-          conversationId: date.conversationId,
-        }),
-      });
-      if (res.status === 402) { // server: free voice window is up
-        setSpeaking(false);
-        busyRef.current = false;
-        onCapped?.();
-        return;
-      }
-      if (!res.ok || !res.body) throw new Error(String(res.status));
+  const status = conversation.status; // "disconnected" | "connecting" | "connected"
+  const isSpeaking = conversation.isSpeaking;
+  const connected = status === "connected";
 
-      const a = new Audio();
-      audioRef.current = a;
-      a.onplay = () => setConnecting(false);
-      const done = () => { setSpeaking(false); busyRef.current = false; startMic(); };
-      a.onended = done;
-      a.onerror = done;
+  const endSession = useCallback(() => {
+    if (endedRef.current) return;
+    endedRef.current = true;
+    try { conversation.endSession(); } catch {/* already closed */}
+  }, [conversation]);
 
-      // Stream: start playing as chunks arrive (much faster first sound) — fall
-      // back to a full-file blob if MediaSource/mpeg isn't supported.
-      const canStream = typeof MediaSource !== "undefined" && MediaSource.isTypeSupported("audio/mpeg");
-      if (canStream) {
-        const ms = new MediaSource();
-        a.src = URL.createObjectURL(ms);
-        ms.addEventListener("sourceopen", () => {
-          const sb = ms.addSourceBuffer("audio/mpeg");
-          const reader = res.body!.getReader();
-          const append = (chunk: Uint8Array) =>
-            new Promise<void>((resolve) => { sb.addEventListener("updateend", () => resolve(), { once: true }); sb.appendBuffer(chunk as unknown as BufferSource); });
-          (async () => {
-            try {
-              for (;;) {
-                const { done: d, value } = await reader.read();
-                if (d) break;
-                if (value) await append(value);
-              }
-              if (!sb.updating) ms.endOfStream();
-              else sb.addEventListener("updateend", () => { try { ms.endOfStream(); } catch {} }, { once: true });
-            } catch { try { ms.endOfStream(); } catch {} }
-          })();
-          a.play().catch(() => {});
+  // Ring first, then connect — a call-like intro. Start the live session once.
+  useEffect(() => {
+    const stopRing = playRingback();
+    const ringTimer = setTimeout(() => setRinging(false), 2400);
+
+    (async () => {
+      if (startedRef.current) return;
+      startedRef.current = true;
+      try {
+        const token = await matchApi.accessToken().catch(() => null);
+        const res = await fetch("/api/date/voice-session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+          body: JSON.stringify({
+            conversationId: date.conversationId,
+            personaId: date.persona.id,
+            sceneId: date.scene.id,
+            language: date.language,
+            age: age ?? date.persona.age,
+            weather: controls.weather,
+            time: controls.time,
+            opener: date.opener,
+          }),
         });
-      } else {
-        const url = URL.createObjectURL(await res.blob());
-        a.src = url;
-        a.addEventListener("ended", () => URL.revokeObjectURL(url), { once: true });
-        await a.play();
+        if (res.status === 402) { onCapped?.(); return; }        // free window already used
+        if (res.status === 501) { onBackToText(); return; }      // calling not configured → stay in text
+        if (!res.ok) { setVoiceError("couldn't connect the call"); return; }
+        const data = await res.json();
+        await conversation.startSession({
+          signedUrl: data.signedUrl,
+          connectionType: "websocket",
+          overrides: data.overrides,
+        });
+      } catch (e: any) {
+        if (e?.name === "NotAllowedError" || /permission|denied/i.test(String(e?.message))) setMicDenied(true);
+        else setVoiceError("couldn't start the call");
       }
-    } catch {
-      setVoiceError(true);
-      setSpeaking(false);
-      busyRef.current = false;
-      startMic();
-    }
-  }
+    })();
 
-  // Ring first, then she "picks up" — a call-like intro.
-  useEffect(() => {
-    const stop = playRingback();
-    const t = setTimeout(() => setRinging(false), 2400);
-    return () => { clearTimeout(t); stop(); };
-  }, []);
-
-  // Speak each new persona line as it arrives (opener included) — but only once
-  // she's "picked up" (ringing done).
-  useEffect(() => {
-    if (ringing) return;
-    if (lastLine && lastLine !== spokenRef.current) {
-      spokenRef.current = lastLine;
-      setCaption(lastLine);
-      void speak(lastLine);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lastLine, ringing]);
-
-  // Mic (Web Speech API) — set up once.
-  useEffect(() => {
-    activeRef.current = true;
-    const SR = (typeof window !== "undefined" && ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition)) || null;
-    if (!SR) { setSttSupported(false); return; }
-    const rec = new SR();
-    rec.lang = "en-US";
-    rec.continuous = true;
-    rec.interimResults = false;
-    rec.onstart = () => setListening(true);
-    rec.onspeechstart = () => setUserSpeaking(true);
-    rec.onspeechend = () => setUserSpeaking(false);
-    rec.onend = () => {
-      setListening(false);
-      setUserSpeaking(false);
-      if (activeRef.current && !busyRef.current) { try { rec.start(); } catch {} }
-    };
-    rec.onerror = () => { setListening(false); setUserSpeaking(false); };
-    rec.onresult = (e: any) => {
-      let finalText = "";
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        if (e.results[i].isFinal) finalText += e.results[i][0].transcript;
-      }
-      finalText = finalText.trim();
-      setUserSpeaking(false);
-      if (finalText && !busyRef.current) onUserSpeech(finalText);
-    };
-    recRef.current = rec;
-    try { rec.start(); } catch {}
-    return () => {
-      activeRef.current = false;
-      try { rec.stop(); } catch {}
-      stopSpeaking();
-    };
+    return () => { clearTimeout(ringTimer); stopRing(); endSession(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Muting stops her mid-sentence.
-  useEffect(() => { if (muted) stopSpeaking(); }, [muted]);
-
-  // Out of free voice minutes → stop the call audio + mic behind the paywall.
+  // Mute her voice (output) without dropping the call.
   useEffect(() => {
-    if (capped) { stopSpeaking(); pauseMic(); }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [capped]);
+    try { conversation.setVolume?.({ volume: muted ? 0 : 1 }); } catch {/* not ready */}
+  }, [muted, conversation, connected]);
 
-  const status = speaking ? "speaking" : thinking ? "thinking" : listening ? "listening" : "idle";
+  // Out of free voice minutes → end the live call and reveal the paywall.
+  useEffect(() => {
+    if (capped) endSession();
+  }, [capped, endSession]);
+
+  const uiStatus = ringing ? "ringing" : !connected ? "connecting" : isSpeaking ? "speaking" : "listening";
 
   return (
     <DarkStage theme={scene.darkTheme} ambience={{ sceneId: scene.id, weather: controls.weather }}>
-      {/* scene ambience, ducked while she speaks */}
-      <AmbientAudio src={scene.ambientAudio} enabled={controls.sound && !muted && !capped} volume={speaking ? 0.16 : 0.5} />
+      <AmbientAudio src={scene.ambientAudio} enabled={controls.sound && !muted && !capped} volume={isSpeaking ? 0.16 : 0.5} />
 
       {/* 7-minute voice paywall */}
       {capped && (
@@ -299,41 +218,40 @@ export function VoiceDate({ card, date, controls, remaining, timeUp, lastLine, t
           <span className="rounded-full border border-white/25 bg-white/10 px-2.5 py-1 font-sans text-[11px] font-bold text-paper-cool">
             {scene.emoji} {scene.label.replace(/^the /, "")} · {weatherWord}
           </span>
-          <span className="hidden sm:inline font-display italic text-[12px] text-white/60">music dips while she talks</span>
+          <span className="hidden sm:inline font-display italic text-[12px] text-white/60">talk over her anytime — she&apos;ll hear you</span>
         </div>
         <div className="flex items-center gap-2">
           <span className={`font-mono text-[12px] font-bold rounded-full border-[1.5px] px-2.5 py-1 ${timeUp ? "border-ink bg-red text-paper-cool" : "border-ink bg-yellow text-ink"}`}>
             {timeUp ? "time's up" : `${mm ?? Math.floor(date.durationSec / 60)}:${ss ?? "00"} left`}
           </span>
-          <button onClick={onEnd} disabled={ending} className="rounded-full border-[1.5px] border-ink bg-paper-cool px-3 py-1 font-sans text-[12px] font-bold text-ink hover:bg-paper-deep disabled:opacity-60">
+          <button onClick={() => { endSession(); onEnd(); }} disabled={ending} className="rounded-full border-[1.5px] border-ink bg-paper-cool px-3 py-1 font-sans text-[12px] font-bold text-ink hover:bg-paper-deep disabled:opacity-60">
             end date
           </button>
-          <LeaveButton onLeave={onLeave} />
+          <LeaveButton onLeave={() => { endSession(); onLeave(); }} />
         </div>
       </div>
 
       {/* stage */}
       <div className="flex flex-1 min-h-0 flex-col items-center justify-center overflow-y-auto px-5 py-6 text-center">
         <div className="relative flex items-center justify-center">
-          {speaking && <span className="absolute h-52 w-52 rounded-full border border-white/20 animate-ping" style={{ animationDuration: "2.4s" }} aria-hidden />}
-          {speaking && <span className="absolute h-64 w-64 rounded-full border border-white/10 animate-ping" style={{ animationDuration: "3.2s" }} aria-hidden />}
-          {(thinking || connecting || ringing) && <span className="absolute h-56 w-56 rounded-full border border-white/15 animate-pulse" aria-hidden />}
-          {ringing && <span className="absolute h-72 w-72 rounded-full border border-white/10 animate-ping" style={{ animationDuration: "1.4s" }} aria-hidden />}
-          {userSpeaking && <span className="absolute h-52 w-52 rounded-full border-2 border-teal/50 animate-ping" style={{ animationDuration: "1.4s" }} aria-hidden />}
-          {userSpeaking && <span className="absolute h-64 w-64 rounded-full border border-teal/30 animate-ping" style={{ animationDuration: "1.9s" }} aria-hidden />}
+          {uiStatus === "speaking" && <span className="absolute h-52 w-52 rounded-full border border-white/20 animate-ping" style={{ animationDuration: "2.4s" }} aria-hidden />}
+          {uiStatus === "speaking" && <span className="absolute h-64 w-64 rounded-full border border-white/10 animate-ping" style={{ animationDuration: "3.2s" }} aria-hidden />}
+          {(uiStatus === "connecting" || uiStatus === "ringing") && <span className="absolute h-56 w-56 rounded-full border border-white/15 animate-pulse" aria-hidden />}
+          {uiStatus === "ringing" && <span className="absolute h-72 w-72 rounded-full border border-white/10 animate-ping" style={{ animationDuration: "1.4s" }} aria-hidden />}
+          {uiStatus === "listening" && <span className="absolute h-52 w-52 rounded-full border-2 border-teal/40 animate-ping" style={{ animationDuration: "2s" }} aria-hidden />}
           <StripePhoto color={card.stripeColor} photoUrl={card.photoUrl ?? undefined} alt={card.name} variant="circle" showPhotoTag={false} className="h-40 w-40 shadow-hard" />
         </div>
 
         <div className="mt-5 flex items-center gap-2">
           <span className="font-sans text-2xl font-bold text-white">{card.name.toLowerCase()}</span>
-          {ringing && <span className="rounded-full bg-yellow px-2.5 py-0.5 font-sans text-[11px] font-bold text-ink">calling…</span>}
-          {!ringing && status === "speaking" && <span className="rounded-full bg-red px-2.5 py-0.5 font-sans text-[11px] font-bold text-paper-cool">speaking</span>}
-          {!ringing && status === "thinking" && <span className="rounded-full bg-lilac px-2.5 py-0.5 font-sans text-[11px] font-bold text-ink">thinking…</span>}
+          {uiStatus === "ringing" && <span className="rounded-full bg-yellow px-2.5 py-0.5 font-sans text-[11px] font-bold text-ink">calling…</span>}
+          {uiStatus === "speaking" && <span className="rounded-full bg-red px-2.5 py-0.5 font-sans text-[11px] font-bold text-paper-cool">speaking</span>}
+          {uiStatus === "connecting" && <span className="rounded-full bg-lilac px-2.5 py-0.5 font-sans text-[11px] font-bold text-ink">connecting…</span>}
         </div>
-        {ringing && <p className="mt-2 font-display italic text-[13px] text-white/70">ringing… she&apos;s about to pick up</p>}
+        {uiStatus === "ringing" && <p className="mt-2 font-display italic text-[13px] text-white/70">ringing… she&apos;s about to pick up</p>}
 
         {/* waveform only while speaking */}
-        {speaking && (
+        {uiStatus === "speaking" && (
           <div className="mt-3 flex h-8 items-end gap-1" aria-hidden>
             {BAR_COLORS.map((c, i) => (
               <span key={i} className="w-1.5 rounded-full animate-pulse" style={{ backgroundColor: c, height: `${8 + ((i * 37) % 24)}px`, animationDelay: `${(i % 5) * 0.12}s`, animationDuration: "0.7s" }} />
@@ -341,29 +259,25 @@ export function VoiceDate({ card, date, controls, remaining, timeUp, lastLine, t
           </div>
         )}
 
-        {captions && caption && !ringing && (
+        {captions && caption && uiStatus !== "ringing" && (
           <p className="mt-5 max-w-xl font-serif italic text-xl sm:text-2xl leading-snug text-white">“{caption}”</p>
         )}
 
         {/* mic status (hidden while ringing) */}
-        <div className={`mt-5 flex items-center justify-center gap-2 rounded-full border border-white/25 bg-white/10 px-4 py-1.5 font-display italic text-[12px] text-paper-cool ${ringing ? "hidden" : ""}`}>
-          {!sttSupported ? (
-            <>voice input isn&apos;t supported here — tap <b>back to text</b></>
+        <div className={`mt-5 flex items-center justify-center gap-2 rounded-full border border-white/25 bg-white/10 px-4 py-1.5 font-display italic text-[12px] text-paper-cool ${uiStatus === "ringing" ? "hidden" : ""}`}>
+          {micDenied ? (
+            <>mic is blocked — allow it in your browser, or tap <b>back to text</b></>
           ) : voiceError ? (
-            <>voice unavailable right now — you can still text</>
-          ) : status === "listening" ? (
-            userSpeaking ? (
-              <>
-                <MicPulse />
-                <span className="font-sans not-italic font-bold text-teal">hearing you…</span>
-              </>
-            ) : (
-              <><span className="inline-block h-2 w-2 rounded-full bg-teal align-middle" /> your mic is open — just talk</>
-            )
-          ) : status === "speaking" ? (
-            <>listening paused while she talks…</>
+            <>{voiceError} — you can still text</>
+          ) : uiStatus === "listening" ? (
+            <>
+              <MicPulse />
+              <span className="font-sans not-italic font-bold text-teal">your mic is open — just talk</span>
+            </>
+          ) : uiStatus === "speaking" ? (
+            <>she&apos;s talking — jump in whenever</>
           ) : (
-            <>…</>
+            <>connecting the call…</>
           )}
         </div>
 
@@ -371,13 +285,19 @@ export function VoiceDate({ card, date, controls, remaining, timeUp, lastLine, t
           <button onClick={() => setMuted((m) => !m)} className="rounded-full border-2 border-ink bg-paper-cool px-4 py-2 font-sans text-[13px] font-bold text-ink shadow-hard-xs">
             {muted ? "🔈 unmute" : "🔇 mute"}
           </button>
-          <button onClick={onBackToText} className="rounded-full border-2 border-ink bg-paper-cool px-4 py-2 font-sans text-[13px] font-bold text-ink shadow-hard-xs">
+          <button onClick={() => { endSession(); onBackToText(); }} className="rounded-full border-2 border-ink bg-paper-cool px-4 py-2 font-sans text-[13px] font-bold text-ink shadow-hard-xs">
             💬 back to text
           </button>
           <button onClick={() => setCaptions((c) => !c)} className="rounded-full border-2 border-ink bg-paper-cool px-4 py-2 font-sans text-[13px] font-bold text-ink shadow-hard-xs">
             captions {captions ? "on" : "off"}
           </button>
         </div>
+
+        {(voiceError || micDenied) && (
+          <button onClick={() => { endSession(); onBackToText(); }} className="mt-4 rounded-full border-2 border-ink bg-yellow px-5 py-2 font-sans text-[13px] font-bold text-ink shadow-hard-xs">
+            continue in text →
+          </button>
+        )}
       </div>
     </DarkStage>
   );

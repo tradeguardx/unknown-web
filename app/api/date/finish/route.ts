@@ -87,6 +87,8 @@ export async function POST(req: Request) {
       resultType: experience.resultType,
       resultJson: report,
       meta,
+      // Authoritative transcript (voice calls bypass the per-turn store) → admin.
+      transcript: messages,
     }),
   });
   const stored = await res.json().catch(() => ({}));

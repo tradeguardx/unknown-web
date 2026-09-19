@@ -162,7 +162,19 @@ export default function DatePage() {
   const card = cfg?.personas.find((p) => p.id === personaId) ?? null;
   const sceneCard = cfg?.scenes.find((s) => s.id === sceneId) ?? null;
   const userTurns = messages.filter((m) => m.role === "user").length;
-  const lastAssistant = [...messages].reverse().find((m) => m.role === "assistant")?.content ?? "";
+
+  // Voice call turns come straight from the ElevenLabs SDK (it runs the LLM), so
+  // we just record them into the transcript — no server round-trip. Dedupe the
+  // opener (already message[0]) and any exact repeats.
+  const appendVoiceTurn = (role: "user" | "assistant", content: string) => {
+    const c = tidy(content);
+    if (!c) return;
+    setMessages((m) => {
+      const last = m[m.length - 1];
+      if (last && last.role === role && last.content === c) return m;
+      return [...m, { role, content: c }];
+    });
+  };
 
   function pickPersona(id: string) {
     setPersonaId(id);
@@ -357,7 +369,7 @@ export default function DatePage() {
     return (
       <VoiceDate
         card={card} date={date} controls={controls} remaining={remaining} timeUp={timeUp}
-        lastLine={lastAssistant} thinking={typing} onUserSpeech={sendText}
+        age={date.persona.age} onTurn={appendVoiceTurn}
         onBackToText={() => setPhase("text")} onEnd={endDate} onLeave={leave}
         capped={voiceCapped} onGetPass={getPass} onCapped={() => setServerCapped(true)} prices={prices}
       />
