@@ -37,7 +37,7 @@ const FAQS: { q: string; a: string }[] = [
   },
   {
     q: "Is it free?",
-    a: "Yes — free anonymous AI chat. No signup, no paywall to start a conversation.",
+    a: "Yes — one free anonymous chat every day, no signup to start. Want unlimited chats (and to save the ones you like)? Unknown+ or a 2-day pass unlocks it.",
   },
 ];
 

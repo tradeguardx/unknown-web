@@ -148,6 +148,12 @@ export function ChatWindow() {
   const [matchNudge, setMatchNudge] = useState<number | null>(null); // the minute mark
   const [skipNudge, setSkipNudge] = useState(false);
   const nudgedMarkRef = useRef(0);
+  // Daily free-chat gate: one free stranger chat per day, then upgrade / day pass.
+  const [freeLimit, setFreeLimit] = useState(false);
+  // Access token for logged-in users, sent to /api/chat/start so paid users
+  // bypass the daily gate server-side. Null for anonymous visitors (never creates
+  // an anon session just to browse).
+  const authTokenRef = useRef<string | null>(null);
   // Paying users (active subscription OR day pass) have NO limits — unlimited
   // chat, no 20-min cap, unlimited matches, no nudges.
   const [paid, setPaid] = useState(false);
@@ -321,6 +327,12 @@ export function ChatWindow() {
       // Only logged-in users can be paid → only then check /me (no anon session
       // is created just to browse the stranger chat).
       if (u && !u.is_anonymous) {
+        // A real session exists → accessToken() returns it without creating one.
+        try {
+          authTokenRef.current = await matchApi.accessToken();
+        } catch {
+          /* ignore */
+        }
         try {
           const m = await matchApi.me();
           if (alive) setPaid(m.subscription.active || m.pass.active);
@@ -635,9 +647,21 @@ export function ChatWindow() {
       setIntent(prefs?.intent);
       const res = await fetch("/api/chat/start", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(authTokenRef.current ? { Authorization: `Bearer ${authTokenRef.current}` } : {}),
+        },
         body: JSON.stringify({ prefs, captchaToken }),
       });
+      // Daily free-chat limit reached (non-paid) → show the upgrade gate.
+      if (res.status === 402) {
+        clearAllTimeouts();
+        setMessages([]);
+        setTyping(false);
+        setEnded(true);
+        setFreeLimit(true);
+        return;
+      }
       if (res.status === 403) {
         const data = await res.json().catch(() => ({} as { code?: string }));
         const code = (data as { code?: string })?.code;
@@ -1191,6 +1215,33 @@ export function ChatWindow() {
           onSuccess={onCaptchaSuccess}
           onCancel={onCaptchaCancel}
         />
+      )}
+
+      {freeLimit && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/60 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-3xl border-[2.5px] border-ink bg-paper-cool p-6 text-center shadow-hard">
+            <div className="text-4xl">🎟️</div>
+            <h2 className="mt-3 font-sans text-xl font-bold text-ink">that was today&apos;s free chat</h2>
+            <p className="mt-2 font-serif text-[15px] leading-snug text-ink-soft">
+              You get one free chat a day. Keep going right now with unlimited chats —
+              upgrade to Unknown+ or grab a 2-day pass.
+            </p>
+            <a
+              href={`/plus?return=${encodeURIComponent(typeof window !== "undefined" ? window.location.href : "/chat")}`}
+              className="om-cta mt-5 block w-full rounded-xl border-2 border-ink bg-red px-5 py-3 text-center font-sans font-bold tracking-tight text-paper-cool"
+              style={{ boxShadow: "4px 4px 0 #111" }}
+            >
+              upgrade to unknown+ →
+            </a>
+            <a
+              href={`/plus?return=${encodeURIComponent(typeof window !== "undefined" ? window.location.href : "/chat")}`}
+              className="om-cta mt-2.5 block w-full rounded-xl border-2 border-ink bg-paper-cool px-5 py-3 text-center font-sans font-bold tracking-tight text-ink"
+            >
+              get a 2-day pass →
+            </a>
+            <p className="mt-3 font-display text-[14px] text-ink-mute">your free chat resets tomorrow</p>
+          </div>
+        </div>
       )}
 
       <MenuDrawer open={menuOpen} onClose={() => setMenuOpen(false)} />

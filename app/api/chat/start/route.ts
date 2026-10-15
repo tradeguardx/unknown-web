@@ -16,6 +16,7 @@ import {
   resetAfterCaptcha,
 } from "@/lib/captchaCounter";
 import { emitChatStarted, countryFrom, visitorVid } from "@/lib/events";
+import { claimDailyFreeChat } from "@/lib/freeChatLimit";
 
 export const runtime = "nodejs";
 
@@ -76,6 +77,21 @@ export async function POST(req: Request) {
       );
     }
     resetAfterCaptcha(ip);
+  }
+
+  // Daily free-chat gate: one free stranger conversation per day; another the same
+  // day needs a plan or day pass. Paid users are never limited. Checked here so a
+  // blocked start never creates a session.
+  const gate = await claimDailyFreeChat(visitorVid(req), req.headers.get("authorization"));
+  if (!gate.allowed) {
+    return NextResponse.json(
+      {
+        error: "FREE_LIMIT",
+        code: "free_limit_daily",
+        message: "You've used today's free chat. Upgrade to Unknown+ or grab a 2-day pass to keep chatting.",
+      },
+      { status: 402 },
+    );
   }
 
   recordChatStart(ip);
