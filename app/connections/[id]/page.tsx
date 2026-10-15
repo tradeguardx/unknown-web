@@ -96,6 +96,7 @@ export default function ConnectionChatPage() {
     setMsgs((m) => [...m, { role: "user", text }]);
     setSending(true);
     setTyping(true);
+    const t0 = Date.now();
     try {
       const res = await matchApi.send(convoId, text);
       const warnText = res.warning?.text;
@@ -104,7 +105,24 @@ export default function ConnectionChatPage() {
         // Content-filter warning (no reply) — show it as a system line.
         setMsgs((m) => [...m, { role: "system", text: warnText }]);
       } else if (reply) {
-        setMsgs((m) => [...m, { role: "assistant", text: tidy(reply) }]);
+        // Human pacing: split a 2-message burst into separate bubbles and reveal
+        // each at a realistic typing speed — a long, polished reply arriving all at
+        // once is the #1 "it's a bot" tell. Subtract the API latency already spent.
+        const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+        const parts = tidy(reply).split("\n").map((s) => s.trim()).filter(Boolean).slice(0, 3);
+        const chunks = parts.length ? parts : [tidy(reply)];
+        const elapsed = Date.now() - t0;
+        for (let i = 0; i < chunks.length; i++) {
+          const c = chunks[i];
+          setTyping(true);
+          const typingMs = Math.min(4000, Math.max(700, c.length * 40 + 300));
+          await sleep(i === 0 ? Math.max(250, typingMs - elapsed) : typingMs);
+          setMsgs((m) => [...m, { role: "assistant", text: c }]);
+          if (i < chunks.length - 1) {
+            setTyping(false);
+            await sleep(300 + Math.random() * 450);
+          }
+        }
         // Keep the plan/usage state fresh (paywall is enforced server-side on 402).
         void refreshAccount();
       }

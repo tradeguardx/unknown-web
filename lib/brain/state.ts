@@ -17,23 +17,27 @@ export type ChatMode = "random" | "connection";
 export interface StageInfo {
   label: string;
   ladderIdx: number; // rung of the language-formality ladder this stage earns
+  level: number; // 1..5 relationship progression — a connection ALWAYS starts at 1
 }
 
 // Relationship depth. Random progresses by turns within the single session
-// (many users chat 20–30 min before matching); connection by total history.
+// (many users chat 20–30 min before matching); a connection ALWAYS starts at
+// level 1 ("just met") the moment it's created and grows with shared history.
 export function relationshipStage(mode: ChatMode, messageCount: number): StageInfo {
   if (mode === "random") {
     const turns = Math.floor(messageCount / 2);
     // Casual "talk to strangers" app → informal peer register (tum/tú/du), not
     // formal (aap). It's never stiff; deepens toward closest as they connect.
-    if (turns < 6) return { label: "stranger", ladderIdx: 1 };
-    if (turns < 15) return { label: "comfortable stranger", ladderIdx: 1 };
-    return { label: "connected stranger", ladderIdx: 2 };
+    if (turns < 6) return { label: "stranger", ladderIdx: 1, level: 1 };
+    if (turns < 15) return { label: "comfortable stranger", ladderIdx: 1, level: 2 };
+    return { label: "connected stranger", ladderIdx: 2, level: 3 };
   }
-  if (messageCount <= 12) return { label: "familiar", ladderIdx: 1 };
-  if (messageCount <= 40) return { label: "friend", ladderIdx: 1 };
-  if (messageCount <= 120) return { label: "close friend", ladderIdx: 2 };
-  return { label: "companion", ladderIdx: 2 };
+  // Connection: begins at "just met" and climbs. Level 1 is the start, by design.
+  if (messageCount <= 6) return { label: "just met", ladderIdx: 1, level: 1 };
+  if (messageCount <= 20) return { label: "getting to know each other", ladderIdx: 1, level: 2 };
+  if (messageCount <= 60) return { label: "friends", ladderIdx: 1, level: 3 };
+  if (messageCount <= 150) return { label: "close", ladderIdx: 2, level: 4 };
+  return { label: "deeply connected", ladderIdx: 2, level: 5 };
 }
 
 // Exactly ONE goal for this reply, weighted by depth + whether flirt is on the table.
@@ -214,6 +218,7 @@ export function buildConversationState(a: ConversationStateArgs): string {
     mode: a.mode,
     canLeave: String(a.mode === "random"),
     relationshipStage: stage.label,
+    relationshipLevel: `${stage.level}/5`,
     goal,
     mood: MOOD_FOR_GOAL[goal] ?? "warm",
     energy: energyFor(a.lastUserText),
@@ -237,7 +242,11 @@ export function buildConversationState(a: ConversationStateArgs): string {
     instr.push(`STYLE — ${style.note} Use the "style.slang" naturally (don't overuse). Sound like a real local, not translated English.`);
   }
   if (a.mode === "connection") {
-    instr.push(`Relationship is "${stage.label}" — act it: deepen, keep inside jokes alive${a.futureThread ? `, follow up on "${a.futureThread}"` : ""}.`);
+    if (stage.level <= 1) {
+      instr.push(`You've JUST met — this is the very beginning (level 1/5). You barely know each other: be warm and genuinely curious, learn who they are, don't act like old friends or overly intimate yet. Let closeness grow from here.`);
+    } else {
+      instr.push(`Relationship is "${stage.label}" (level ${stage.level}/5) — act exactly that close, no more: deepen naturally, keep inside jokes alive${a.futureThread ? `, follow up on "${a.futureThread}"` : ""}. Don't skip ahead of where you actually are.`);
+    }
   } else {
     instr.push(`React before asking; at most ONE question. Deepen toward feeling connected.`);
     if (turns >= 6) instr.push(`If wrapping up, leave one future thread worth coming back for — curiosity, not pressure.`);
