@@ -206,9 +206,9 @@ export function PlusSubscribe() {
           The 3am version. Good enough that most people never leave.
         </p>
         <ul className="mt-4 space-y-2.5">
-          <Feature>stranger chat, unlimited</Feature>
+          <Feature>1 stranger chat a day</Feature>
           <Feature>1 AI date a day</Feature>
-          <Feature no>20-minute cap on chats</Feature>
+          <Feature no>no unlimited chatting</Feature>
           <Feature no>nothing is saved</Feature>
         </ul>
         <Link href="/" className="om-cta mt-auto block w-full rounded-xl border-2 border-ink bg-paper-cool px-5 py-3 text-center font-sans font-bold tracking-tight text-ink">

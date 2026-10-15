@@ -106,7 +106,7 @@ export default function PlusPage() {
 // plainly (a table where free looks useless reads as a trick).
 function ComparisonTable() {
   const rows: [string, string, string][] = [
-    ["stranger chat", "unlimited", "unlimited"],
+    ["stranger chat", "1 a day", "unlimited"],
     ["time per chat", "20 minutes", "no limit"],
     ["AI dates", "1 per day", "unlimited"],
     ["dating report", "score + summary", "+ transcript & her notes"],
